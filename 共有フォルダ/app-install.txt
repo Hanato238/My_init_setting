@@ -1,0 +1,32 @@
+# Chocolateyがインストールされているか確認
+if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+    Write-Host "Chocolateyがインストールされていません。先にChocolateyをインストールしてください。"
+    return
+}
+
+# Python 3.9から13までをインストール
+3.9..13 | ForEach-Object { choco install python -y --version $_ }
+
+# VS Codeをインストール
+choco install vscode -y
+
+# Vimをインストール
+choco install vim -y
+
+# Google Chromeをインストール
+choco install googlechrome -y
+
+# Google Driveをインストール
+choco install google-drive-file-stream -y
+
+# OneDriveをインストール
+choco install onedrive -y
+
+# Prime Videoアプリをインストール
+choco install prime-video-desktop -y
+
+# Ubuntuをインストール
+choco install ubuntu -y
+
+# WSL2をインストール
+choco install wsl --pre -y
