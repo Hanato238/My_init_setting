@@ -1,11 +1,7 @@
-/#!/bin/bash
-
+#!/bin/bash
 # aptをupgrade update
 sudo apt-get -y update
 sudo apt-get -y upgrade
-
-# lxqtをインストール
-sudo apt-get install lxqt
 
 # google chromeをインストールする
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
@@ -27,8 +23,6 @@ sudo apt-get install -y curl
 
 # vimをインストールする
 sudo apt-get install -y vim
-
-
 
 sudo apt autoremove -y
 sudo reboot
