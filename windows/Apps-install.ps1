@@ -34,11 +34,11 @@ choco install vim -y
 # Curlをインストール
 choco install curl -y
 # Gitをインストール
-choco install git -y
+choco install git gh -y
 # ExpressVPNをインストール
 choco install expressvpn -y
 # vscode marterialiconをインストール
-choco install materialico-vscode -y
+choco install materialicon-vscode -y
 
 
 # すべてのアプリをupgrade

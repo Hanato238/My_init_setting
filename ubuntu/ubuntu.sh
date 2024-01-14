@@ -1,17 +1,34 @@
-# aptをupgrade update
-sudo apt upgrade && update -y
+/#!/bin/bash
 
-# GNOMEをインストール
-sudo apt install gnome
+# aptをupgrade update
+sudo apt-get -y update
+sudo apt-get -y upgrade
+
+# lxqtをインストール
+sudo apt-get install lxqt
 
 # google chromeをインストールする
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo dpkg -i google-chrome-stable_current_amd64.deb
 sudo apt-get install -f
+rm google-chrome-stable_current_amd64.deb
 
 # VScodeをインストールする
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-sudo mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
-sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/vscode.list'
-sudo apt-get update
-sudo apt-get install code
+sudo snap install -y --classic code
+
+# gitをインストールする
+sudo apt-get install -y git
+
+# expressVPNをインストールする
+sudo apt-get install -y expressvpn
+
+# curlをインストールする
+sudo apt-get install -y curl
+
+# vimをインストールする
+sudo apt-get install -y vim
+
+
+
+sudo apt autoremove -y
+sudo reboot
