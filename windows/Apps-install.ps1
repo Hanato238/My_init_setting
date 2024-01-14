@@ -39,6 +39,8 @@ choco install git gh -y
 choco install expressvpn -y
 # vscode marterialiconをインストール
 choco install materialicon-vscode -y
+# powertoysをインストール
+choco install powertoys -y
 
 
 # すべてのアプリをupgrade
