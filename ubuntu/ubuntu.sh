@@ -3,16 +3,20 @@
 sudo apt-get -y update
 sudo apt-get -y upgrade
 
+# desktop環境をインストールする
+sudo apt install lubuntu-desktop
+
 # chrome remote desktopをインストールする
 wget https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
 sudo dpkg -i chrome-remote-desktop_current_amd64.deb
-sudo apt intall --assume0yes --fix-broken
+sudo apt intall --assume-yes --fix-broken
 rm chrome-remote-desktop_current_amd64.deb
 
 # google chromeをインストールする
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 sudo dpkg -i google-chrome-stable_current_amd64.deb
 sudo apt-get install -f
+sudo apt install --assume-yes --fix-broken
 rm google-chrome-stable_current_amd64.deb
 
 # VScodeをインストールする
