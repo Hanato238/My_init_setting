@@ -56,6 +56,7 @@ if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
 Add-Content -Path $profilePath -Value @"
 function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
+Set-Alias -Name "chatgpt" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe https://chat.openai.com/"
 Set-Alias -Name "line" -Value "C:\Users\lesen\AppData\Local\LINE\bin\LineLauncher.exe"
 Set-Alias -Name "vscode" -Value "C:\Program Files\Microsoft VS Code\Code.exe"
 Set-Alias -Name "expressvpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
