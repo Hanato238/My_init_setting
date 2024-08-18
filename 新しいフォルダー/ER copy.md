@@ -7,8 +7,8 @@ title: "タイトル"
 ---
 erDiagram
     sellers ||--o{ join : ""
-    join }o--|| research : ""
-    research ||--|| dicision : "asin: research.dicision=true"
+    join }o--|| products : ""
+    products ||--|| dicision : "asin: products.dicision=true"
     dicision ||--|| purchase : "asin:dicision.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"
     deliver ||--o{ stock : "ASIN:deliver.deliver=true"
@@ -35,20 +35,26 @@ erDiagram
         timestamp created_at "作成日時"
         timestamp updated_at "更新日時"
     }
-
-    research {
+%% 検索時間に依存するdataを分離。productsとresearchへ再編
+    products { 
         bigint id PK "商品候補ID"
         varchar asin FK "ASIN:join.asin"
-        float three_month_sales "3カ月間販売数"
-        int competitors "競合カート数"
-        float monthly_sales_per_competitor "カートごと月間販売数"
-        int commission "FBA手数料"
-        int deposit "入金量"
         float weight "商品重量"
         img image "商品画像"
         varchar ec_url "購入先URL"
         float unit_price "購入単価"
         cry cry "通貨単位"
+    }
+
+    research {
+        bigint id PK "ASIN検索履歴ID"
+        varchar asin FK "ASIN:join.asin"
+        timestamp create_date "検索日時"
+        float three_month_sales "3カ月間販売数"
+        int competitors "競合カート数"
+        float monthly_sales_per_competitor "カートごと月間販売数"
+        int commission "FBA手数料"
+        int deposit "入金量"
         float cry_jpy "為替"
         float expected_purchase_price "予想仕入値"
         float expected_profit "予想利益"
