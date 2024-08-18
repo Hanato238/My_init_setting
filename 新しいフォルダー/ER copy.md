@@ -10,6 +10,7 @@ erDiagram
     join }o--|| products : ""
     products ||--o{ research : ""
     research ||--o{ dicision : "asin: products.dicision=true"
+    research ||--o{ competitors : ""
     dicision ||--|| purchase : "asin:dicision.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"
     deliver ||--o{ stock : "ASIN:deliver.deliver=true"
@@ -25,7 +26,6 @@ erDiagram
         int five_star_rate "星5率"
         timestamp deleted_at "削除日時"
         timestamp created_at "作成日時"
-        timestamp updated_at "更新日時"
     }
 
     join {
@@ -36,6 +36,7 @@ erDiagram
         timestamp created_at "作成日時"
         timestamp updated_at "更新日時"
     }
+
 %% 検索時間に依存するdataを分離。productsとresearchへ再編
     products { 
         bigint id PK "商品候補ID"
@@ -61,6 +62,17 @@ erDiagram
         float expected_profit "予想利益"
         float expexted_roi "予想利益率"
         boolean decision "仕入判定"
+    }
+
+%% 競合の情報をtableとして追加
+    competitors {
+        bigint id PK "競合データID"
+        bigint asin FK "ASIN:join.asin"
+        bigint research_id FK "research.id"
+        varchar seller "販売元"
+        boolearm amazon_prime "Amazom Prime商品"
+        varchar product_status "商品状態"
+        int price "出品価格"
     }
 
     dicision {
