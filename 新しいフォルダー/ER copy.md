@@ -1,14 +1,15 @@
-# 商品DB
+# 商品リサーチ管理DB
 
 
 ```mermaid
 ---
-title: "タイトル"
+title: "商品リサーチ"
 ---
 erDiagram
     sellers ||--o{ join : ""
     join }o--|| products : ""
-    products ||--|| dicision : "asin: products.dicision=true"
+    products ||--o{ research : ""
+    research ||--o{ dicision : "asin: products.dicision=true"
     dicision ||--|| purchase : "asin:dicision.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"
     deliver ||--o{ stock : "ASIN:deliver.deliver=true"
