@@ -2,15 +2,17 @@
 
 
 ```mermaid
+
 ---
 title: "商品リサーチ"
 ---
 erDiagram
     sellers ||--o{ join : ""
-    join }o--|| products : ""
-    products ||--o{ research : ""
-    research ||--o{ dicision : "asin: products.dicision=true"
-    research ||--o{ competitors : ""
+    join }o--|| products_master : ""
+    products_master ||--o{  research : ""
+    research ||--o{ products_detail : ""
+    products_detail ||--o{ competitors : ""
+    products_detail ||--o{ dicision : "asin: products.dicision=true"
     dicision ||--|| purchase : "asin:dicision.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"
     deliver ||--o{ stock : "ASIN:deliver.deliver=true"
@@ -37,8 +39,8 @@ erDiagram
         timestamp updated_at "更新日時"
     }
 
-%% 検索時間に依存するdataを分離。productsとresearchへ再編
-    products { 
+%% 検索時間に依存するdataを分離。productsとproducts_detailへ再編
+    products_master { 
         bigint id PK "商品候補ID"
         varchar asin FK "ASIN:join.asin"
         float weight "商品重量"
@@ -48,27 +50,35 @@ erDiagram
         cry cry "通貨単位"
     }
 
+%% asinで一括検索する場合を考慮し、リサーチ日時とともに中間テーブル作成
     research {
+        bigint id PK ""
+        bigint research_id FK "リサーチID"
+        varcher asin FK "ASIN:join.asin"
+        timestamp research_date "リサーチ日時"
+    }
+
+    products_detail {
         bigint id PK "ASIN検索履歴ID"
         varchar asin FK "ASIN:join.asin"
-        timestamp create_date "検索日時"
+        bigint research_id FK "research.research_id"
         float three_month_sales "3カ月間販売数"
         int competitors "競合カート数"
         float monthly_sales_per_competitor "カートごと月間販売数"
+        int lowest_price "競合最低出品価格"
         int commission "FBA手数料"
         int deposit "入金量"
         float cry_jpy "為替"
         float expected_purchase_price "予想仕入値"
         float expected_profit "予想利益"
         float expexted_roi "予想利益率"
-        boolean decision "仕入判定"
+        bool decision "仕入判定"
     }
 
 %% 競合の情報をtableとして追加
     competitors {
         bigint id PK "競合データID"
-        bigint asin FK "ASIN:join.asin"
-        bigint research_id FK "research.id"
+        bigint products_detail_id FK "products_detail.id"
         varchar seller "販売元"
         boolearm amazon_prime "Amazom Prime商品"
         varchar product_status "商品状態"
