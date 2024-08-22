@@ -1,23 +1,23 @@
-# 商品リサーチ管理DB
-
 
 ```mermaid
 
 ---
-title: "商品リサーチ"
+title: "商品リサーチDB(案)"
 ---
 erDiagram
     sellers ||--o{ join : ""
     join }o--|| products_master : ""
-    products_master ||--o{  research : ""
+    research }o--|| sellers : ""
+    products_master ||--o{ research : ""
+    products_master ||--o{ products_ec : ""
     research ||--o{ products_detail : ""
     products_detail ||--o{ competitors : ""
-    products_detail ||--o{ dicision : "asin: products.dicision=true"
-    dicision ||--|| purchase : "asin:dicision.final_dicision=true"
+    research ||--|| purchase : "asin:research.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"
     deliver ||--o{ stock : "ASIN:deliver.deliver=true"
     stock ||--o{ shipping :"ASIN:stock.shipping=true"
     analysis }o--o{ shipping : ""
+    analysis }o--|| join :""
 
 
 
@@ -26,28 +26,32 @@ erDiagram
         varchar seller_name "Seller名"
         varchar shop_url "Shop URL"
         int five_star_rate "星5率"
-        timestamp deleted_at "削除日時"
-        timestamp created_at "作成日時"
     }
 
     join {
         bigint id PK "ID"
         bigint seller_id FK "Seller ID:sellers.id"
         varchar asin FK "ASIN"
-        timestamp deleted_at "削除日時"
+        bool evaluate FK "research.dicision"
+        bool product_master
         timestamp created_at "作成日時"
-        timestamp updated_at "更新日時"
     }
 
 %% 検索時間に依存するdataを分離。productsとproducts_detailへ再編
     products_master { 
-        bigint id PK "商品候補ID"
-        varchar asin FK "ASIN:join.asin"
+        varchar asin PK "ASIN:join.asin"
+        varchar amazon_url "商品ページ"
         float weight "商品重量"
-        img image "商品画像"
+        string image "商品画像URL:cloud storage"
         varchar ec_url "購入先URL"
         float unit_price "購入単価"
         cry cry "通貨単位"
+    }
+
+    products_ec {
+        bigint id PK
+        string ec_url "仕入れ先候補URL"
+        bool check "チェック"
     }
 
 %% asinで一括検索する場合を考慮し、リサーチ日時とともに中間テーブル作成
@@ -56,6 +60,8 @@ erDiagram
         bigint research_id FK "リサーチID"
         varcher asin FK "ASIN:join.asin"
         timestamp research_date "リサーチ日時"
+        bool dicision "仕入れ判定"
+        bool final_dicision "最終判定"
     }
 
     products_detail {
@@ -83,12 +89,6 @@ erDiagram
         boolearm amazon_prime "Amazom Prime商品"
         varchar product_status "商品状態"
         int price "出品価格"
-    }
-
-    dicision {
-        bigint id PK "仕入れ候補ID"
-        varchar asin FK "ASIN:join.asin"
-        boolean final_dicision "出品判定"
     }
 
     purchase {
