@@ -1,12 +1,17 @@
 ```mermaid
 ---
-title: "価格・判定等の確認入力作業"
+title: "全行程"
 ---
 sequenceDiagram
     participant users as Users
     participant ss as SpreadSheet
     participant gas as GoogleAppsScript
+    participant cf as CloudFunctions
     participant db as Database
+    participant cs as CloudStorage
+    participant keepa as Keepa
+    participant spapi as SP-API
+    participant csapi as CustomSearchAPI
 
         opt 定期実行    
         ss ->> gas : 定期的に呼び出し
@@ -20,12 +25,6 @@ sequenceDiagram
         gas -->> db : write
         end
 
-    participant cs as CloudStorage
-    participant cf as CloudFunctions
-    participant apis as APIs
-    participant keepa as Keepa
-    participant spapi as SP-API
-    participant csapi as CustomSearchAPI
 
         opt 定期実行 : ASIN検索＝sellers.create_join(id), 商品マスタ追加=join.add_product_master(asin)
             cf ->> db : request sellerID at seller

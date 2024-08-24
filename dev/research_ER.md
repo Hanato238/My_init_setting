@@ -5,12 +5,12 @@
 title: "商品リサーチDB(案)"
 ---
 erDiagram
-    sellers ||--o{ join : ""
-    join }o--|| products_master : ""
+    sellers ||--o{ join : "① ASINリスト取得"
+    join }o--|| products_master : "② 商品マスタ情報取得"
     research }o--|| sellers : ""
-    products_master ||--o{ research : ""
-    products_master ||--o{ products_ec : ""
-    research ||--o{ products_detail : ""
+    products_master ||--o{ research : "④ サーチリスト作成"
+    products_master ||--o{ products_ec : "③ 画像で仕入れ先候補検索"
+    research ||--o{ products_detail : "⑤ keepaで需要計算"
     products_detail ||--o{ competitors : ""
     research ||--|| purchase : "asin:research.final_dicision=true"
     purchase ||--|| deliver : "ASIN:purchase.transfer=true"

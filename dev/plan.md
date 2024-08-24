@@ -14,17 +14,51 @@ FBAを利用した個人輸入業の仕入れ調査の効率化のため、amazo
 cloud SQLにDBを構築し、cloud functionで定期実行しデータを収集する。画像データはcloud storage上に保存し、リンクをcloud SQLに保存する。
 一部人力による入力が必要な部分についてはGASを利用してspreadsheet上で操作を行う。この人力による入力は外注とするため、操作が容易になるようUIをデザインしたい。
 
+1. DBに登録されているsellerIDを引数に、cloud functionsとkeepaでsellerの出品しているASINを取得。中間テーブルを更新する。
+1. DBに登録されているASINを引数に、cloud functionsとSP-APIを利用してASINに対応するURL, 重量等, 商品画像のマスタ情報を取得する。商品画像はcloud storageに保存する。
+1. DBにある商品画像のURL(cloud storage)をもとにcloud storageに保存された商品画像を取得。これを引数にcloud functionsでcustom search apiを呼び出し、ヒットした検索結果上位5つをDBに保存する。
+1. 商品マスタ情報で最終検索日時が一定期間より過去のものを選択し、cloud functionsでDB上のサーチリストに追加する。
+1. サーチリスト上で検索が終了していないものを選択し、cloud functionsでkeepaを呼び出し、その商品の売れ行きなどを計算し、DBに追加する。
+1. userがspreadsheetを利用してDBの情報(商品価格等)を更新する。
+1. userがspreadsheetを利用してDBに登録された商品が仕入れてもよいものか最終判断を行い、結果を入力する。
 
 ## システム方式・構成
-シーケンス図
-@import "./research_SQ.md"
+### シーケンス図
+#### 1. ASINリスト取得
+@import "./SQ/research_SQ_get_asin.md"
 
-ER図
+#### 2. 商品のマスタ情報を取得
+@import "./SQ/research_SQ_get_details.md"
+
+#### 3. 商品画像から仕入れ先候補を検索
+@import "./SQ/research_SQ_image_search.md"
+
+#### 4. サーチリストの作成
+@import "./SQ/research_SQ_search_listing.md"
+
+#### 5. 需要計算
+@import "./SQ/research_SQ_keepa.md"
+
+#### 6. Userによる商品のマスタ情報入力
+@import "./SQ/research_SQ_UI_input_data.md"
+
+#### 7. User(Admin)による仕入れの最終判断
+@import "./SQ/research_SQ_UI_dicision.md"
+
+
+### アーキテクチャー図
+![](./architecture.drawio.svg) 
+※使用言語はGAS/Python/MySQL
+
+### ER図
 @import "./research_ER.md"
 
-アーキテクチャー図
-![](./architecture.drawio.svg)
-※使用言語はGAS/Python/MySQL
+
+### 手動入力部
+#### 6. Userによる商品のマスタ情報入力
+![](./UI/data_input_UI.png)
+#### 7. User(Admin)による仕入れの最終判断
+![](./UI/final_dicision_UI.png)
 
 
 ## 用語定義
