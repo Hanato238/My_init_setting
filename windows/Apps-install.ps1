@@ -63,5 +63,5 @@ Set-Alias -Name "expressvpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvp
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
 Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 
-$workspace = "D:\vs code workspace"
+$workspace = "C:\Users\lesen\workspace"
 "@
