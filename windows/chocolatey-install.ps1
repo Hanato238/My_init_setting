@@ -11,7 +11,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Set-ExecutionPolicy Bypass -Scope Process -Force
     iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
-    Write-Host "Chocolatey のインストールが完了しました。スクリプトを再実行してください。" -ForegroundColor Green
+    Write-Host "Chocolatey install has been completed" -ForegroundColor Green
     return
 }
 
