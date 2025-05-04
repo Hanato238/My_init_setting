@@ -4,9 +4,14 @@
 ##? Set-ExecutionPolicy Bypass -Scope Process -Force; 
 
 # Install Chocolatey
-# Chocolateyがインストールされているか確認
+# Chocolateyが存在しない場合、インストールして終了
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+    Write-Host "Chocolatey が見つかりません。インストールを開始します..." -ForegroundColor Yellow
+
+    Set-ExecutionPolicy Bypass -Scope Process -Force
     iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+    Write-Host "Chocolatey のインストールが完了しました。スクリプトを再実行してください。" -ForegroundColor Green
     return
 }
 
