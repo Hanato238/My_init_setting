@@ -1,0 +1,21 @@
+mail
+
+【les.ensoleilles@gmail.com】
+[bank]
+to:les.ensoleilles+bank@gmail.com
+from:SMBC_service@dn.smbc.co.jp
+
+[service]
+to:les.ensoleilles+service@gmail.com
+from:GitHub
+from:Nomad SIM
+from:AICエデュケーション
+
+
+[shopping]
+to:les.ensoleilles+shopping@gmail.com
+from:Amazon.co.jp
+from:Amazon Prime Video
+from:メルカリ
+form:Aliexpress
+from:<ジーユーオンラインストア＞

@@ -1,0 +1,33 @@
+# termuxの環境構築
+termux-setup-storage
+pkg update && upgrade -y
+cd ./storage/documents
+mkdir ./termux/scripts
+cd $home
+touch ./.bashrc ./.bash_profile
+
+pkg install proot-distro vim zip chmod -y
+proot-distro install ubuntu -y
+proot-distro login ubuntu
+
+# ubuntu内部設定とユーザ追加
+apt update && apt upgrade -y
+apt install sudo adduser -y
+sudo adduser fumiya
+
+# ユーザー設定
+su fumiya
+
+## statup script
+
+## bashrc
+alias la = "ls -a"
+alias ll = "ls -l"
+alias lf = "ls -al"
+
+## bash_profile
+SCRIPTS = "$HOME/storage/documents/termux/scripts"
+TERMUX = "$HOME/storage/documents/termux"
+DOCUMENTS ="$HOME/storage/documents"
+DOWNLOADS = "$HOME/storage/downloads"
+

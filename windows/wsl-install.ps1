@@ -1,4 +1,11 @@
-# WSLを有効化するPowerShellスクリプト
+# Chocolateyがインストールされているか確認
+if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+    Write-Host "Chocolateyがインストールされていません。先にChocolateyをインストールしてください。"
+    return
+}
+
+# WSL2をインストール
+choco install wsl2 -y
 
 # 管理者権限で実行されていることを確認
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {

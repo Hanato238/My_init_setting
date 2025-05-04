@@ -9,12 +9,13 @@ iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/in
 # Verify installation
 choco --version
 
-# WSL2をインストール
-choco install wsl2 -y
 # Google Chromeをインストール
 choco install googlechrome -y
 # Google Driveをインストール
 choco install google-drive-file-stream -y
+# Gitをインストール
+choco install git -y
+
 
 #再起動
 Restart-Computer -Force
