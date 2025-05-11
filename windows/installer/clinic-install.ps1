@@ -1,6 +1,6 @@
 # Chocolateyがインストールされているか確認
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host "Chocolateyがインストールされていません。先にChocolateyをインストールしてください。"
+    Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
     return
 }
 
@@ -9,7 +9,7 @@ choco install zoom -y
 # LINEをインストール
 choco install line -y
 # teamviewer.hostをインストール
-choco install teamviewer.host -y
+choco install teamviewer.host --ignore-checksums -y
 
 # Vimをインストール
 choco install vim -y

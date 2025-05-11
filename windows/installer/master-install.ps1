@@ -1,49 +1,49 @@
-# Chocolateyがインストールされているか確認
+# Check if Chocolatey is installed
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host "Chocolateyがインストールされていません。先にChocolateyをインストールしてください。"
+    Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
     return
 }
 
-# Python 3.9から13までをインストール
+# install python 3.9, 3.10, 3.11
 choco install python python39 python310 pytnon311 -y
-# VS Codeをインストール
+# install vscode
 choco install vscode -y
-# Ubuntuをインストール
+# install ubuntu 22.04
 choco install wsl-ubuntu-2204 -y
-# docker desktopをインストール
+# install docker desktop
 choco install docker-desktop -y
 
 
 
-# OneDriveをインストール
+# install OneDrive
 choco install onedrive -y
-# zoomをインストール
+# install zoom
 choco install zoom -y
-# LINEをインストール
+# install LINE
 choco install line -y
-# VMware workstationをインストール
+# install VMware Workstation
 choco install vmware-workstation-player -y
-# kindleをインストール
+# install Kindle
 choco install kindle -y
-# teamviewerをインストール
+# install TeamViewer
 choco install teamviewer -y
 
 
 
-# Vimをインストール
+# install Vim
 choco install vim -y
-# Curlをインストール
+# install curl
 choco install curl -y
-# ExpressVPNをインストール
+# install ExpressVPN
 choco install expressvpn -y
-# vscode marterialiconをインストール
+# install vscode material icon theme
 choco install materialicon-vscode -y
-# powertoysをインストール
+# install powertoys
 choco install powertoys -y
 
 
-# すべてのアプリをupgrade
-chogo upgrade all -y
+# upgrade all packages
+choco upgrade all -y
 
 
 

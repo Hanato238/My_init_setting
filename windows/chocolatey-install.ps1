@@ -1,12 +1,12 @@
 # Run PowerShell as Administrator before executing this script
 
 # Set execution policy to allow script execution
-##? Set-ExecutionPolicy Bypass -Scope Process -Force; 
+Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # Install Chocolatey
-# Chocolateyが存在しない場合、インストールして終了
+# if Chocolatey is not installed, install it
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host "Chocolatey が見つかりません。インストールを開始します..." -ForegroundColor Yellow
+    Write-Host "Chocolatey is not installed, start installation..." -ForegroundColor Yellow
 
     Set-ExecutionPolicy Bypass -Scope Process -Force
     iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
@@ -19,14 +19,10 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 # Verify installation
 choco --version
 
-# Google Chromeをインストール
+# install Google Chrome
 choco install googlechrome --ignore-checksums -y
-# Google Driveをインストール
+# install Google Drive
 choco install googledrie --ignore-checksums -y
 choco install google-drive-file-stream --ignore-checksums -y
-# Gitをインストール
+# install Git
 choco install git -y
-
-
-#再起動
-Restart-Computer -Force
