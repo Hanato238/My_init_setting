@@ -1,7 +1,7 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # public desktop path
-$desktopPathes = @("C:\Users\Public\Desktop", "C:\Users\lesen\Desktop")
+$desktopPathes = @("C:\Users\Public\Desktop", "C:\Users\lesen\Desktop", "C:\Users\Administrator\Desktop")
 
 # remove existing shortcuts
 foreach ($desktopPath in $desktopPathes) {
