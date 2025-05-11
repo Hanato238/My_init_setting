@@ -25,6 +25,12 @@ Set-Alias -Name "vscode" -Value "C:\Program Files\Microsoft VS Code\Code.exe"
 Set-Alias -Name "expressvpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
 Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+Set-Alias -Name "powerpoint" -Value ""C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE"
+Set-Alias -Name "word" -Value "C:\Program Files\Microsoft Office\root\Office16\WINWINWORD.EXE"
+Set-Alias -Name "excel" -Value "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
+Set-Alias -Name "onenote" -Value "C:\Program Files\Microsoft Office\root\Office16\ONENOTE.EXE"
+Set-Alias -Name "outlook" -Value "C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE"
 "@
 
 Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green

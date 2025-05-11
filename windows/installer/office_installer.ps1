@@ -19,6 +19,13 @@ foreach ($file in $fileNames) {
     Invoke-WebRequest -Uri $url -OutFile $outPath
 }
 
+# Check if office is already installed
+$officePath = "C:\Program Files\Microsoft Office\root\Office16"
+if (Test-Path $officePath) {
+    Write-Host "Office is already installed at $officePath" -ForegroundColor Yellow
+    return
+}
+
 # Run the setup.exe with the configuration file
 Set-Location $targetDir
 Start-Process -FilePath ".\setup.exe" -ArgumentList "/configure .\configuration-Office2021Enterprise.xml" -Wait
