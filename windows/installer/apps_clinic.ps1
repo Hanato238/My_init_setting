@@ -17,7 +17,7 @@ choco install git -y
 # install zoom
 choco install zoom -y
 # install LINE
-choco install line -y
+choco install line --ignore-checksums -y
 # install teamviewer.host
 choco install teamviewer.host --ignore-checksums -y
 

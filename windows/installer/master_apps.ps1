@@ -28,7 +28,7 @@ choco install onedrive -y
 # install zoom
 choco install zoom -y
 # install LINE
-choco install line -y
+choco install line --ignore-checksums -y
 # install VMware Workstation
 choco install vmware-workstation-player -y
 # install Kindle

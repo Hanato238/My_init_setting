@@ -1,8 +1,9 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
+
+## clear desktop shortcuts
 # public desktop path
 $desktopPathes = @("C:\Users\Public\Desktop", "C:\Users\lesen\Desktop", "C:\Users\Administrator\Desktop")
-
 # remove existing shortcuts
 foreach ($desktopPath in $desktopPathes) {
     if (Test-Path -Path $desktopPath) {
@@ -19,12 +20,37 @@ foreach ($desktopPath in $desktopPathes) {
 
 
 # shortcut paths
-##$apps = @(
+##$desktopApps = @(
 ##)
 
 # create shortcuts
 ##foreach ($app in $apps) {
-##    $shortcut = $shell.CreateShortcut("$desktopPath\$($app.Name).lnk")
+##    $shortcut = $shell.CreateShortcut("$desktopPublicPath\$($app.Name).lnk")
+##    $shortcut.TargetPath = $app.Target
+##    $shortcut.Save()
+##}
+
+
+
+## clear taskbar shortcuts
+$taskbarPath = "C:\Users\lesen\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+
+# remove existing shortcuts
+if (Test-Path -Path $taskbarPath) {
+    Get-ChildItem -Path $taskbarPath -Filter "*.lnk" | Remove-Item -Force
+    Write-Host "Removing existing shortcuts from $taskbarPath" -ForegroundColor Green
+} else {
+    Write-Host "$taskbarPath does not exist." -ForegroundColor Red
+    continue
+}
+
+# shortcut paths
+##$taskbarApps = @(
+##)
+
+# create shortcuts
+##foreach ($app in $apps) {
+##    $shortcut = $shell.CreateShortcut("$taskbarPath\$($app.Name).lnk")
 ##    $shortcut.TargetPath = $app.Target
 ##    $shortcut.Save()
 ##}
