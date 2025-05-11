@@ -1,7 +1,7 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # set github directory and files
-$baseUrl = "https://github.com/hanato238/My_init_setting/main/windows/app_data/"
+$baseUrl = "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/app_data/"
 $fileNames = @("setup.exe", "configuration-Office2021Enterprise.xml")
 
 # Set the target directory for the downloaded files
