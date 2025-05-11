@@ -1,10 +1,18 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # public desktop path
-$desktopPath = "C:\Users\Public\Desktop\Zoom Workplace.lnk"
+$desktopPathes = @("C:\Users\Public\Desktop", "C:\Users\lesen\Desktop")
 
 # remove existing shortcuts
-Get-ChildItem -Path $desktopPath -Filter *.lnk | Remove-Item -Force
+foreach ($desktopPath in $desktopPathes) {
+    if (Test-Path -Path $desktopPath) {
+        Get-ChildItem -Path $desktopPath -Filter "*.lnk" | Remove-Item -Force
+        Write-Host "Removing existing shortcuts from $desktopPath" -ForegroundColor Green
+    } else {
+        Write-Host "$desktopPath does not exist." -ForegroundColor Red
+        continue
+    }
+}
 
 # com object for creating shortcuts
 ##$shell = New-Object -ComObject WScript.Shell
