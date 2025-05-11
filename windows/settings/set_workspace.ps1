@@ -9,6 +9,11 @@ if (-Not (Test-Path -Path $workspacePath)) {
 # Set the workspace path in PowerShell profile
 $lineToAdd = '$workspace = "C:\Users\lesen\workspace"'
 $profilePath = $PROFILE
-if (-not (Get-Content $profilePath | Select-String -Pattern [regex]::Escape($lineToAdd))) {
-    Add-Content -Path $profilePath -Value "`n$lineToAdd"
+
+if (Test-Path $profilePath) {
+    if (-not (Get-Content $profilePath | Select-String -Pattern ([regex]::Escape($lineToAdd)))) {
+        Add-Content -Path $profilePath -Value "`n$lineToAdd"
+    }
+} else {
+    Set-Content -Path $profilePath -Value $lineToAdd
 }
