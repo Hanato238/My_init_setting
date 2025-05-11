@@ -26,3 +26,6 @@ Set-Alias -Name "expressvpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvp
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
 Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 "@
+
+Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
+Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
