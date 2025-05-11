@@ -12,6 +12,10 @@ if (-not (Test-Path -Path $targetDir)) {
 foreach ($file in $fileNames) {
     $url = "$baseUrl$file"
     $outPath = Join-Path $targetDir $file
+    if (Test-Path $outPath) {
+        Write-Host "$file already exists, skipping download." -ForegroundColor Yellow
+        continue
+    }
     Invoke-WebRequest -Uri $url -OutFile $outPath
 }
 
