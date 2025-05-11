@@ -1,19 +1,15 @@
-# Chocolateyがインストールされているか確認
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
+# check if Chocolatey is installed
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host "Chocolateyがインストールされていません。先にChocolateyをインストールしてください。"
+    Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
     return
 }
 
-# WSL2をインストール
+# install WSL2
 choco install wsl2 -y
 
-# 管理者権限で実行されていることを確認
-if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "Process as Administrator"
-    exit
-}
-
-# 既存のWSLのバージョンを確認
+# check if WSL is already activated
 $wslVersion = Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WSMAN\Client" -Name "DefaultPorts" -ErrorAction SilentlyContinue
 
 if ($wslVersion -eq $null) {
@@ -24,16 +20,17 @@ if ($wslVersion -eq $null) {
 }
 
 
-# WSLを有効化する
+# activate WSL
 Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
 
-# 再起動を促すメッセージ
+# check if WSL is activated
 Write-Host "Activated WSL, a part of function start working after restart"
-Write-Host "コンピューターを再起動しますか？ (y/n)"
+Write-Host "Do you want to restart your computer now? (y/n)"
 $choice = Read-Host
 
 if ($choice -eq "y" -or $choice -eq "Y") {
     Restart-Computer
 } else {
-    Write-Host "再起動するまで一部の変更が有効にならない可能性があります。手動で再起動してください"
+    Write-Host "if you want to restart, please restart manually"
+    Write-Host "Please restart your computer to apply the changes." -ForegroundColor Yellow
 }

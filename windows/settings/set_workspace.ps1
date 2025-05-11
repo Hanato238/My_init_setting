@@ -8,7 +8,7 @@ if (-Not (Test-Path -Path $workspacePath)) {
 }
 else{
     Write-Host "Workspace directory already exists at $workspacePath" -ForegroundColor Yellow
-    
+    return
 }
 # Set the workspace path in PowerShell profile
 $lineToAdd = '$workspace = "C:\Users\lesen\workspace"'

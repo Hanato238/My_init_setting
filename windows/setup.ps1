@@ -6,7 +6,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 # install Chocolatey and else
 iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/chocolatey_installer.ps1")
 
-# install apps for clinic
+# install apps
 iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/apps_clinic.ps1")
 
 # install office
