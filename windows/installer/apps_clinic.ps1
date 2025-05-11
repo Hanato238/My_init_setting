@@ -4,25 +4,33 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     return
 }
 
-# zoomをインストール
+# install Google Chrome
+choco install googlechrome --ignore-checksums -y
+# install Google Drive
+choco install googledrie --ignore-checksums -y
+choco install google-drive-file-stream --ignore-checksums -y
+# install Git
+choco install git -y
+
+# install zoom
 choco install zoom -y
-# LINEをインストール
+# install LINE
 choco install line -y
-# teamviewer.hostをインストール
+# install teamviewer.host
 choco install teamviewer.host --ignore-checksums -y
 
-# Vimをインストール
+# install vim
 choco install vim -y
-# Curlをインストール
+# install curl
 choco install curl -y
-# ExpressVPNをインストール
+# install ExpressVPN
 choco install expressvpn -y
-# powertoysをインストール
+# install powertoys
 choco install powertoys -y
 
 
-# すべてのアプリをupgrade
-chogo upgrade all -y
+# upgrade all
+choco upgrade all -y
 
 
 

@@ -4,6 +4,14 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     return
 }
 
+# install Google Chrome
+choco install googlechrome --ignore-checksums -y
+# install Google Drive
+choco install googledrie --ignore-checksums -y
+choco install google-drive-file-stream --ignore-checksums -y
+# install Git
+choco install git -y
+
 # install python 3.9, 3.10, 3.11
 choco install python python39 python310 pytnon311 -y
 # install vscode
@@ -47,3 +55,4 @@ choco upgrade all -y
 
 
 
+# 

@@ -3,19 +3,17 @@ $profilePath = $PROFILE
 if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
     New-Item -Path $profilePath -ItemType File
 }
-# プロファイル内容を読み込む（行単位）
+# get $PROFILE content other than that starts with "Set-Alias"
 $lines = Get-Content $profilePath
-
-# Set-Alias で始まる行を除外
 $filteredLines = $lines | Where-Object { -not ($_ -match '^\s*Set-Alias') }
 
-# 元のPROFILEをバックアップ
+# backup $PROFILE
 Copy-Item -Path $PROFILE -Destination "$PROFILE.bak"
 
-# 上書き保存（元のファイルを更新）
+# set $PROFILE content
 Set-Content -Path $profilePath -Value $filteredLines
 
-# Set-Alias
+# set new Aliases
 Add-Content -Path $profilePath -Value @"
 function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
