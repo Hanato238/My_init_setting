@@ -1,3 +1,5 @@
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
 # Set $PROFILE
 $profilePath = $PROFILE
 if (-not (Test-Path -Path $profilePath -PathType Leaf)) {

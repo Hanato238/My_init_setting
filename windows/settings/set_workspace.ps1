@@ -1,3 +1,5 @@
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
 # get workspacepath and if not exist, create it
 $workspacePath = "C:\Users\lesen\workspace"
 if (-Not (Test-Path -Path $workspacePath)) {
