@@ -1,15 +1,22 @@
-# タスクバーにピン止めするショートカットのパス
-$taskbarPath = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar')
-$shortcutPath = [System.IO.Path]::Combine($taskbarPath, 'Gmail.lnk')
+Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# タスクバーにピン止めするショートカットを作成
-if (-not (Test-Path $shortcutPath)) {
-    $chromeExePath = (Get-Command chrome).Source
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = $chromeExePath
-    $shortcut.Arguments = "--new-window https://mail.google.com/"
-    $shortcut.Save()
-}
+# public desktop path
+$desktopPath = "C:\Users\Public\Desktop\Zoom Workplace.lnk"
 
-Write-Host "Gmailのショートカットが作成され、タスクバーにピン止めされました。"
+# remove existing shortcuts
+Get-ChildItem -Path $desktopPath -Filter *.lnk | Remove-Item -Force
+
+# com object for creating shortcuts
+##$shell = New-Object -ComObject WScript.Shell
+
+
+# shortcut paths
+##$apps = @(
+##)
+
+# create shortcuts
+##foreach ($app in $apps) {
+##    $shortcut = $shell.CreateShortcut("$desktopPath\$($app.Name).lnk")
+##    $shortcut.TargetPath = $app.Target
+##    $shortcut.Save()
+##}
