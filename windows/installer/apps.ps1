@@ -1,3 +1,5 @@
+Set-ExecutionPolicy Bypass -Scope Process -Force
+
 # Check if Chocolatey is installed
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
@@ -12,8 +14,8 @@ choco install google-drive-file-stream --ignore-checksums -y
 # install Git
 choco install git -y
 
-# install python 3.9, 3.10, 3.11
-choco install python python39 python310 pytnon311 -y
+# install python 3.9, 3.10, 3.11, 3.12, 3.13
+choco install python39 python310 pytnon311 python312 python313 -y
 # install vscode
 choco install vscode -y
 # install ubuntu 22.04
@@ -35,6 +37,8 @@ choco install vmware-workstation-player -y
 choco install kindle -y
 # install TeamViewer
 choco install teamviewer -y
+# install teamviewer.host
+choco install teamviewer.host --ignore-checksums -y
 
 
 

@@ -7,7 +7,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/chocolatey_installer.ps1")
 
 # install apps
-iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/apps_clinic.ps1")
+iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/apps.ps1")
 
 # install office
 iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/office_installer.ps1")
