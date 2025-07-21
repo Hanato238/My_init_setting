@@ -3,7 +3,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 ## clear desktop shortcuts
 # public desktop path
-$desktopPathes = @("C:\Users\Public\Desktop", "C:\Users\lesen\Desktop", "C:\Users\Administrator\Desktop")
+$desktopPathes = @("C:\Users\Public\Desktop", "$HOME\Desktop")
 # remove existing shortcuts
 foreach ($desktopPath in $desktopPathes) {
     if (Test-Path -Path $desktopPath) {
@@ -33,7 +33,7 @@ foreach ($desktopPath in $desktopPathes) {
 
 
 ## clear taskbar shortcuts
-$taskbarPath = "C:\Users\lesen\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+$taskbarPath = "$HOME\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
 
 # remove existing shortcuts
 if (Test-Path -Path $taskbarPath) {

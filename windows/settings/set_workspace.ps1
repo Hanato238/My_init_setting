@@ -1,7 +1,9 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # get workspacepath and if not exist, create it
-$workspacePath = "C:\Users\lesen\workspace"
+$workspacePath = Join-Path -Path $HOME -ChildPath "workspace"
+
+
 if (-Not (Test-Path -Path $workspacePath)) {
     New-Item -Path $workspacePath -ItemType Directory -Force
     Write-Host "Workspace directory created at $workspacePath" -ForegroundColor Green
@@ -10,8 +12,9 @@ else{
     Write-Host "Workspace directory already exists at $workspacePath" -ForegroundColor Yellow
     return
 }
+
 # Set the workspace path in PowerShell profile
-$lineToAdd = '$workspace = "C:\Users\lesen\workspace"'
+$lineToAdd = '$workspace = "$HOME\workspace"'
 $profilePath = $PROFILE
 
 if (Test-Path $profilePath) {
@@ -26,3 +29,4 @@ if (Test-Path $profilePath) {
     Set-Content -Path $profilePath -Value $lineToAdd
     Write-Host "PowerShell profile created and workspace path added." -ForegroundColor Green
 }
+Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
