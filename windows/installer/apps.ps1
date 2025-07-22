@@ -31,14 +31,14 @@ choco install onedrive -y
 choco install zoom -y
 # install LINE
 choco install line --ignore-checksums -y
-# install VMware Workstation
-choco install vmware-workstation-player -y
 # install Kindle
 choco install kindle -y
 # install TeamViewer
 choco install teamviewer -y
 # install teamviewer.host
 choco install teamviewer.host --ignore-checksums -y
+# install wireshark
+choco install wireshark
 
 
 
@@ -52,6 +52,8 @@ choco install expressvpn -y
 choco install materialicon-vscode -y
 # install powertoys
 choco install powertoys -y
+# install gsudo
+choco install gsudo -y
 
 
 # upgrade all packages
