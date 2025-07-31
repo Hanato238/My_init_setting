@@ -9,7 +9,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 # install Google Chrome
 choco install googlechrome --ignore-checksums -y
 # install Google Drive
-choco install googledrie --ignore-checksums -y
+choco install googledrvie --ignore-checksums -y
 choco install google-drive-file-stream --ignore-checksums -y
 # install Git
 choco install git -y
@@ -22,7 +22,8 @@ choco install vscode -y
 choco install wsl-ubuntu-2204 -y
 # install docker desktop
 choco install docker-desktop -y
-
+# install gcloud SDK
+choco install gcloudsdk --ignore-checksums -y
 
 
 # install OneDrive
@@ -38,7 +39,9 @@ choco install teamviewer -y
 # install teamviewer.host
 choco install teamviewer.host --ignore-checksums -y
 # install wireshark
-choco install wireshark
+choco install wireshark -y
+# install procmon
+choco install procmon -y
 
 
 
@@ -54,7 +57,8 @@ choco install materialicon-vscode -y
 choco install powertoys -y
 # install gsudo
 choco install gsudo -y
-
+# install choco cleaner
+choco install choco-cleaner -y
 
 # upgrade all packages
 choco upgrade all -y

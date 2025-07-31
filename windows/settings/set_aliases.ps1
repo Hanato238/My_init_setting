@@ -36,6 +36,7 @@ Set-Alias -Name "outlook" -Value "C:\Program Files\Microsoft Office\root\Office1
 function chatgpt { & chrome 'https://chat.openai.com/' }
 function gemini { & chrome 'https://gemini.google.com/app?utm_source=app_launcher&utm_medium=owned&utm_campaign=base_all' }
 function github { & chrome 'https://github.com/' }
+function repository { & chrome 'https://community.chocolatey.org/packages' }
 "@
 
 Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
