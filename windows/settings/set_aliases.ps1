@@ -47,6 +47,7 @@ function lineoam { & chrome 'https://manager.line.biz/' }
 function openai { & chrome 'https://platform.openai.com/settings/organization/general' }
 function phantomjs { & chrome 'https://dashboard.phantomjscloud.com/dash.html' }
 function rainio { & chrome 'https://app.raindrop.io/my/0' }
+function youtube { & chrome 'https://www.youtube.com/' }
 "@
 
 Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
