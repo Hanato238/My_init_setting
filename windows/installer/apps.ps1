@@ -25,6 +25,9 @@ choco install docker-desktop -y
 # install gcloud SDK
 choco install gcloudsdk --ignore-checksums -y
 
+# install Bitwarden
+choco install bitwarden bitwarden-chrome bitwarden-cli -y
+
 
 # install OneDrive
 choco install onedrive -y
