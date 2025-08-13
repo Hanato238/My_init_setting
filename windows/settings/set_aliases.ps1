@@ -20,6 +20,7 @@ Add-Content -Path $profilePath -Value @"
 function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
 Set-Alias -Name "line" -Value "C:\Users\lesen\AppData\Local\LINE\bin\LineLauncher.exe"
+Set-Alias -Name "zoom" -Value "C:\Program Files\Zoom\bin\Zoom.exe"
 Set-Alias -Name "vscode" -Value "C:\Program Files\Microsoft VS Code\Code.exe"
 Set-Alias -Name "vpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
@@ -37,6 +38,9 @@ function chatgpt { & chrome 'https://chat.openai.com/' }
 function gemini { & chrome 'https://gemini.google.com/app?utm_source=app_launcher&utm_medium=owned&utm_campaign=base_all' }
 function github { & chrome 'https://github.com/' }
 function repository { & chrome 'https://community.chocolatey.org/packages' }
+function line-dev { & chrome 'https://developers.line.biz/console' }
+function gdrive { & chrome 'https://drive.google.com/drive/' }
+function gmail { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
 "@
 
 Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
