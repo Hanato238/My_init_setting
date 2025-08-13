@@ -38,9 +38,15 @@ function chatgpt { & chrome 'https://chat.openai.com/' }
 function gemini { & chrome 'https://gemini.google.com/app?utm_source=app_launcher&utm_medium=owned&utm_campaign=base_all' }
 function github { & chrome 'https://github.com/' }
 function repository { & chrome 'https://community.chocolatey.org/packages' }
-function line-dev { & chrome 'https://developers.line.biz/console' }
 function gdrive { & chrome 'https://drive.google.com/drive/' }
 function gmail { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
+function gcp { & chrome 'https://console.cloud.google.com/welcome?hl=ja' }
+function gaistudio { & chrome 'https://aistudio.google.com/app/prompts/new_chat' }
+function linedev { & chrome 'https://developers.line.biz/console/' }
+function lineoam { & chrome 'https://manager.line.biz/' }
+function openai { & chrome 'https://platform.openai.com/settings/organization/general' }
+function phantomjs { & chrome 'https://dashboard.phantomjscloud.com/dash.html' }
+function rainio { & chrome 'https://app.raindrop.io/my/0' }
 "@
 
 Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
