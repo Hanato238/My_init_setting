@@ -1,25 +1,23 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# Set $PROFILE
+# $PROFILE のパスを取得
 $profilePath = $PROFILE
+
+# プロファイルファイルが存在しない場合は作成
 if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
     New-Item -Path $profilePath -ItemType File -Force
 }
-# get $PROFILE content other than that starts with "Set-Alias"
-$lines = Get-Content $profilePath
-$filteredLines = $lines | Where-Object { -not ($_ -match '^\s*Set-Alias') }
 
-# backup $PROFILE
-Copy-Item -Path $PROFILE -Destination "$PROFILE.bak"
+# バックアップを保存
+if (Test-Path $profilePath) {
+    Copy-Item -Path $profilePath -Destination "$profilePath.bak" -Force
+}
 
-# set $PROFILE content
-Set-Content -Path $profilePath -Value $filteredLines
-
-# set new Aliases
-Add-Content -Path $profilePath -Value @"
+# 新しい内容で完全上書き
+Set-Content -Path $profilePath -Value @"
 function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
-Set-Alias -Name "line" -Value "C:\Users\lesen\AppData\Local\LINE\bin\LineLauncher.exe"
+Set-Alias -Name "line" -Value "$env:USERPROFILE\AppData\Local\LINE\bin\LineLauncher.exe"
 Set-Alias -Name "zoom" -Value "C:\Program Files\Zoom\bin\Zoom.exe"
 Set-Alias -Name "vscode" -Value "C:\Program Files\Microsoft VS Code\Code.exe"
 Set-Alias -Name "vpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
@@ -48,7 +46,11 @@ function openai { & chrome 'https://platform.openai.com/settings/organization/ge
 function phantomjs { & chrome 'https://dashboard.phantomjscloud.com/dash.html' }
 function rainio { & chrome 'https://app.raindrop.io/my/0' }
 function youtube { & chrome 'https://www.youtube.com/' }
+
+Set-Alias -Name "vectra" -Value "C:\Vectra\bin\vectra.exe"
+Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbManager\bin\dbmanager.exe"
+function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB"}
 "@
 
-Write-Host "Aliases have been set in PowerShell profile." -ForegroundColor Green
+Write-Host "PowerShell profile has been overwritten with new aliases." -ForegroundColor Green
 Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
