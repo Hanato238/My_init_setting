@@ -15,7 +15,7 @@ choco install google-drive-file-stream --ignore-checksums -y
 choco install git -y
 
 # install python 3.9, 3.10, 3.11, 3.12, 3.13
-choco install python39 python310 pytnon311 python312 python313 -y
+choco install python39 python310 pytnon311 python312 python313 python314-y
 # install vscode
 choco install vscode -y
 # install ubuntu 22.04
@@ -24,6 +24,10 @@ choco install wsl-ubuntu-2204 -y
 choco install docker-desktop -y
 # install gcloud SDK
 choco install gcloudsdk --ignore-checksums -y
+# install windows-sdk
+choco install windows-sdk-10.1 -y
+# install ngrok
+choco install ngrok -y
 
 # install Bitwarden
 choco install bitwarden bitwarden-chrome bitwarden-cli -y
@@ -60,12 +64,17 @@ choco install materialicon-vscode -y
 choco install powertoys -y
 # install gsudo
 choco install gsudo -y
+# install mingw
+choco install mingw -y
+# install winget
+choco install winget -y
+# install tree
+choco install tree -y
+
+
 # install choco cleaner
 choco install choco-cleaner -y
 
 # upgrade all packages
 choco upgrade all -y
 
-
-
-# 
