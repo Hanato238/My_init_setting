@@ -7,7 +7,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 }
 
 # install Google Chrome
-choco install googlechrome --ignore-checksums -y
+choco install googlechrome -y
 # install Google Drive
 choco install googledrvie --ignore-checksums -y
 choco install google-drive-file-stream --ignore-checksums -y
@@ -16,6 +16,10 @@ choco install git -y
 
 # install python 3.9, 3.10, 3.11, 3.12, 3.13
 choco install python39 python310 pytnon311 python312 python313 python314-y
+# install uv
+choco install uv -y
+# install nodejs-lts
+choco install nodejs-lts -y
 # install vscode
 choco install vscode -y
 # install ubuntu 22.04
@@ -45,11 +49,6 @@ choco install kindle -y
 choco install teamviewer -y
 # install teamviewer.host
 choco install teamviewer.host --ignore-checksums -y
-# install wireshark
-choco install wireshark -y
-# install procmon
-choco install procmon -y
-
 
 
 # install Vim
@@ -70,6 +69,8 @@ choco install mingw -y
 choco install winget -y
 # install tree
 choco install tree -y
+# install procmon wireshark
+choco install procmon wireshark -y
 
 
 # install choco cleaner
