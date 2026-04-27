@@ -78,5 +78,7 @@ Set-McpEnv "GW_MCP_CLIENT_ID"             "GOOGLE_CLIENT_ID"
 Set-McpEnv "GW_MCP_CLIENT_SECRET"         "GOOGLE_CLIENT_SECRET"
 '@
 
+Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
+
 Write-Host "PowerShell profile has been overwritten with new aliases." -ForegroundColor Green
 Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
