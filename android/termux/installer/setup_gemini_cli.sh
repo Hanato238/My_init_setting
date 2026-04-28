@@ -20,13 +20,13 @@ npm install -g @mmmbuto/gemini-cli-termux@latest
 gemini extensions install https://github.com/upstash/context7
 
 # add desktop-commander
-gemini extensions install　https://github.com/wonderwhy-er/DesktopCommanderMCP
+gemini extensions install https://github.com/wonderwhy-er/DesktopCommanderMCP
 
 # add github
 gemini extensions install https://github.com/amelianoir/github-mcp-server
 
 # add google-workspace
-gemini extensions install -y https://github.com/gemini-cli-extensions/workspace
+gemini extensions install https://github.com/gemini-cli-extensions/workspace
 
 # add clasp
 gemini extensions install https://github.com/gemini/clasp
