@@ -17,25 +17,25 @@ npm install -g @mmmbuto/gemini-cli-termux@latest
 
 
 # add context7
-gemini extensions install -y https://github.com/upstash/context7
+gemini extensions install https://github.com/upstash/context7
 
 # add desktop-commander
-gemini extensions install -y　https://github.com/wonderwhy-er/DesktopCommanderMCP
+gemini extensions install　https://github.com/wonderwhy-er/DesktopCommanderMCP
 
 # add github
-gemini extensions install -y https://github.com/amelianoir/github-mcp-server
+gemini extensions install https://github.com/amelianoir/github-mcp-server
 
 # add google-workspace
 gemini extensions install -y https://github.com/gemini-cli-extensions/workspace
 
 # add clasp
-gemini extensions install -y https://github.com/gemini/clasp
+gemini extensions install https://github.com/gemini/clasp
 
 # add security
-gemini extensions install -y https://github.com/gemini-cli-extensions/security
+gemini extensions install https://github.com/gemini-cli-extensions/security
 
 # add web-accessibility
-gemini extensions install -y https://github.com/gemini-cli-extensions/web-accessibility
+gemini extensions install https://github.com/gemini-cli-extensions/web-accessibility
 
 # add gcp-resource-manager
-gemini extensions install -y https://github.com/gemini-cli-extensions/cloud-resource-manager
+gemini extensions install https://github.com/gemini-cli-extensions/cloud-resource-manager
