@@ -29,7 +29,7 @@ gemini extensions install https://github.com/amelianoir/github-mcp-server
 gemini extensions install https://github.com/gemini-cli-extensions/workspace
 
 # add clasp
-gemini extensions install https://github.com/gemini/clasp
+gemini extensions install https://github.com/google/clasp
 
 # add security
 gemini extensions install https://github.com/gemini-cli-extensions/security
