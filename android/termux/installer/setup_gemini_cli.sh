@@ -33,4 +33,4 @@ gemini extensions install https://github.com/amelianoir/github-mcp-server
 gemini extensions install https://github.com/gemini-cli-extensions/workspace
 
 
-gemini extensions install https://github.com/gemini-cli-extensions/clasp
+gemini extensions install https://github.com/gemini/clasp
