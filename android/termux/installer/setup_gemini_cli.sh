@@ -16,16 +16,21 @@ mkdir -p ~/storage/documents/termux/scripts
 # uv (Python package manager)
 pip install uv
 
-# gemini-cli
-npm install -g @google/gemini-cli
+# install gemini-cli-termux
+npm install -g @mmmbuto/gemini-cli-termux@latest
 
-# Bitwarden CLI
-npm install -g @bitwarden/cli
 
-# notebooklm-mcp-cli
-uv tool install notebooklm-mcp-cli
-nlm login
-nlm setup add gemini
+# add context7
+gemini extensions install https://github.com/upstash/context7
 
-# Bitwarden login (interactive)
-bw login
+# add desktop-commander
+gemini extensions install　https://github.com/wonderwhy-er/DesktopCommanderMCP
+
+# add github
+gemini extensions install https://github.com/amelianoir/github-mcp-server
+
+# add google-workspace
+gemini extensions install https://github.com/gemini-cli-extensions/workspace
+
+
+gemini extensions install https://github.com/gemini-cli-extensions/clasp
