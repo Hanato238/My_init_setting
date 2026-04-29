@@ -30,9 +30,6 @@ else {
     Write-Host "PowerShell profile created and workspace path added." -ForegroundColor Green
 }
 
-# Set the startup directory
-$setLocationLine = 'Set-Location "C:\Users\lesen\workspace"'
-
 if (Test-Path $profilePath) {
     if (-not (Get-Content $profilePath | Select-String -Pattern ([regex]::Escape($setLocationLine)))) {
         Add-Content -Path $profilePath -Value "`n$setLocationLine"

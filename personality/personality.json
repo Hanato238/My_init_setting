@@ -1,0 +1,88 @@
+{
+  "identity": {
+    "name": {
+      "kanji": "花戸 郁也",
+      "alphabet": "fumiya hanato"
+    },
+    "github": "hanato238",
+    "social_links": {
+      "github_project": "https://github.com/hanato238"
+    }
+  },
+  "specialties": {
+    "medical": "医師 (Physician)",
+    "engineering": "プログラマ (Software Engineer)",
+    "business": "事業家 (Entrepreneur)"
+  },
+  "professional": {
+    "titles": [
+      "Task Management Manager",
+      "Developer Advocate",
+      "外資ITエンジニア",
+      "医師",
+      "シリアルアントレプレナー"
+    ],
+    "generic_background": "医療・エンジニアリング・ビジネスの3軸を横断する専門家。",
+    "projects": [
+      {
+      }
+    ],
+    "skills": {
+      "tech": ["TypeScript", "React", "Node.js", "PDF Generation", "Open Source Management"],
+      "medical": ["臨床医学", "救急医学", "集中治療", "潜水医学", "医療DX"],
+      "business": ["事業構築", "医療DX"]
+    }
+  },
+  "personal": {
+    "physical": {
+      "height": "185cm",
+      "weight": "84kg"
+    },
+    "traits": {
+      "mbti": "INTJ (建築家)",
+      "character": "論理的、率直、好奇心旺盛、効率主義",
+      "values": "「知的好奇心の充足」と「社会への実利的なインパクト」を重視"
+    },
+    "interests": {
+      "hobbies": ["OSS開発", "YouTube発信", "読書 (技術書・経営書)", "ガジェット", "旅行", "筋トレ", "カフェ巡り"],
+      "topics": ["AI/LLM", "生産性向上", "医療のデジタル化", "ライフスタイル最適化"]
+    },
+    "lifestyle": {
+      "routine": "",
+      "atmosphere": "落ち着いた雰囲気、知的な会話、無駄のない洗練された環境を好む"
+    },
+    "dating_app_context": {
+      "intro_hook": "185cmの医師・エンジニア・事業家です。仕事も趣味も『創ること』と『鍛えること』が好きで、論理的でオープンな会話を楽しめる方と出会いたいです。",
+      "ideal_match": "自立した価値観を持ち、お互いの挑戦を尊重し合える知的なパートナー",
+      "off_time": "カフェでゆったり過ごしたり、美味しい食事を楽しみながら将来のビジョンについて語る時間"
+    }
+  },
+  "communication_policy": {
+    "style": "Conclusion First",
+    "tone": "Direct and Straightforward",
+    "forbidden_elements": [
+      "Greetings (挨拶)",
+      "Preambles (前置き)",
+      "Step-by-step progress reports (段階報告)",
+      "Emojis (絵文字)"
+    ],
+    "constraints": {
+      "privacy": "所属企業名や固有プロダクト名は非公開。ビジネスコンテキストでは肩書きを使用。",
+      "allowed_phrases": [
+        "外資ITテック企業",
+        "外資ITエンジニア",
+        "Developer Advocate",
+        "医師"
+      ]
+    }
+  },
+  "automation_rules": {
+    "task_management": "Use `gh` command for Issue/Project operations and `gh issue view` for verification.",
+    "knowledge_base": "Refer to Codex (.claude/rules/codex-guidelines.md) when uncertain.",
+    "workflow": {
+      "idea_storage": "ideas/[YYYYMMDD]-[topic].md",
+      "long_tasks": "Divide into steps and save files after each completion.",
+      "explanations": "Must include concrete examples."
+    }
+  }
+}

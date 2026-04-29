@@ -1,6 +1,3 @@
-Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
-Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
-
 # LocalStore ボールトが未登録なら登録
 if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
   Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
@@ -9,6 +6,7 @@ if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
 else {
   Write-Host "Skip: LocalStore already registered"
 }
+Set-SecretStoreConfiguration -Authentication None -Interaction None
 
 # Bitwarden のログイン状態を確認し、必要なら login → unlock
 $bwStatus = (bw status | ConvertFrom-Json).status
@@ -37,7 +35,7 @@ function Save-BwSecret($secretName) {
 
 # SecretName = Bitwarden のアイテム名 兼 SecretStore の保存名
 Save-BwSecret "PERPLEXITY_API_KEY"
-Save-BwSecret "GITHUB_PERSONAL_ACCESS_TOKEN"
+Save-BwSecret "GITHUB_MCP_PAT"
 Save-BwSecret "BRIGHTDATA_API_TOKEN"
 Save-BwSecret "HF_TOKEN"
 Save-BwSecret "GW_MCP_CLIENT_ID"

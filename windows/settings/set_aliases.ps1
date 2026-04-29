@@ -1,19 +1,30 @@
+# 1. Temporarily bypass execution policy for the current process
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# $PROFILE のパスを取得
+# 2. Check for administrative privileges and auto-elevate if needed
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Administrative privileges required. Elevating..." -ForegroundColor Yellow
+    # Request elevation while maintaining the bypass policy
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
+Write-Host "Running with administrative privileges..." -ForegroundColor Green
+
+# Get $PROFILE path
 $profilePath = $PROFILE
 
-# プロファイルファイルが存在しない場合は作成
+# Create profile file if it doesn't exist
 if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
     New-Item -Path $profilePath -ItemType File -Force
 }
 
-# バックアップを保存
+# Save backup
 if (Test-Path $profilePath) {
     Copy-Item -Path $profilePath -Destination "$profilePath.bak" -Force
 }
 
-# 新しい内容で完全上書き
+# Overwrite profile with new content
 Set-Content -Path $profilePath -Value @"
 function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -26,14 +37,15 @@ Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker D
 Set-Alias -Name "git-bash" -Value "C:\Program Files\Git\git-bash.exe"
 Set-Alias -Name "powertoys" -Value "C:\Program Files\PowerToys\PowerToys.exe"
 Set-Alias -Name "bitwarden" -Value "C:\Users\lesen\AppData\Local\Programs\Bitwarden\Bitwarden.exe"
+Set-Alias -Name "spacedesk" -Value "C:\Program Files\datronicsoft\spacedesk\spacedeskConsole.exe"
+Set-Alias -Name "gemini" -Value "C:\Users\lesen\AppData\Roaming\npm\gemini.ps1"
+Set-Alias -Name "claude" -Value "C:\Users\lesen\AppData\Roaming\npm\claude.ps1"
 
 Set-Alias -Name "powerpoint" -Value "C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE"
 Set-Alias -Name "word" -Value "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE"
 Set-Alias -Name "excel" -Value "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE"
 Set-Alias -Name "onenote" -Value "C:\Program Files\Microsoft Office\root\Office16\ONENOTE.EXE"
 Set-Alias -Name "outlook" -Value "C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE"
-Set-Alias -Name "gemini" -Value "C:\ProgramData\chocolatey\bin\gemini.exe"
-Set-Alias -Name "claude" -Value "C:\ProgramData\chocolatey\bin\claude.exe"
 
 function chatgpt { & chrome 'https://chat.openai.com/' }
 function gemini-chrome { & chrome 'https://gemini.google.com/app?utm_source=app_launcher&utm_medium=owned&utm_campaign=base_all' }
@@ -62,23 +74,26 @@ Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbM
 function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB"}
 "@
 
-# SecretStore → 環境変数注入を $PROFILE に追記（シングルクォートで $ を展開しない）
+# Inject secret store to environment variables in $PROFILE
 Add-Content -Path $profilePath -Value @'
 
-# MCP サーバ用 API キーを SecretStore から環境変数に注入
+# Inject API keys for MCP servers from SecretStore to Environment Variables
 function Set-McpEnv($secret, $env) {
     $v = Get-Secret -Name $secret -AsPlainText -ErrorAction SilentlyContinue
     if ($v) { [System.Environment]::SetEnvironmentVariable($env, $v) }
 }
 Set-McpEnv "PERPLEXITY_API_KEY"           "PERPLEXITY_API_KEY"
-Set-McpEnv "GITHUB_PERSONAL_ACCESS_TOKEN" "GITHUB_PERSONAL_ACCESS_TOKEN"
+Set-McpEnv "GITHUB_MCP_PAT"               "GITHUB_MCP_PAT"
 Set-McpEnv "BRIGHTDATA_API_TOKEN"         "API_TOKEN"
 Set-McpEnv "HF_TOKEN"                     "HF_TOKEN"
 Set-McpEnv "GW_MCP_CLIENT_ID"             "GOOGLE_CLIENT_ID"
 Set-McpEnv "GW_MCP_CLIENT_SECRET"         "GOOGLE_CLIENT_SECRET"
 '@
 
+# Configure SecretStore
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
+# Set the startup directory
+$setLocationLine = 'Set-Location "C:\Users\lesen\workspace"'
 
 Write-Host "PowerShell profile has been overwritten with new aliases." -ForegroundColor Green
 Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow

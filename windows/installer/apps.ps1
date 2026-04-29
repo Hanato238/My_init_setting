@@ -9,13 +9,13 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 # install Google Chrome
 choco install googlechrome -y
 # install Google Drive
-choco install googledrvie --ignore-checksums -y
+choco install googledrive --ignore-checksums -y
 choco install google-drive-file-stream --ignore-checksums -y
 # install Git
 choco install git -y
 
 # install python 3.9, 3.10, 3.11, 3.12, 3.13
-choco install python39 python310 pytnon311 python312 python313 python314-y
+choco install python39 python310 python311 python312 python313 python314 -y
 # install uv
 choco install uv -y
 # install nodejs-lts
@@ -79,3 +79,6 @@ choco install choco-cleaner -y
 # upgrade all packages
 choco upgrade all -y
 
+
+Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
+Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force

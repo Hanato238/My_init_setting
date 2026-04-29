@@ -24,13 +24,6 @@
         "args": ["/c", "npx", "@playwright/mcp@latest"],
         "env": {}
       },
-      "serena": {
-        "type": "stdio",
-        "command": "uvx",
-        "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--context",
-  "ide-assistant", "--project", "%USERPROFILE%"],
-        "env": {}
-      },
       "desktop-commander": {
         "type": "stdio",
         "command": "cmd",

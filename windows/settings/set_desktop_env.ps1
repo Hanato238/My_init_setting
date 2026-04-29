@@ -1,4 +1,15 @@
+# 1. Temporarily bypass execution policy for the current process
 Set-ExecutionPolicy Bypass -Scope Process -Force
+
+# 2. Check for administrative privileges and auto-elevate if needed
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Administrative privileges required. Elevating..." -ForegroundColor Yellow
+    # Request elevation while maintaining the bypass policy
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
+Write-Host "Running with administrative privileges..." -ForegroundColor Green
 
 
 ## clear desktop shortcuts
@@ -7,11 +18,18 @@ $desktopPathes = @("C:\Users\Public\Desktop", "$HOME\Desktop")
 # remove existing shortcuts
 foreach ($desktopPath in $desktopPathes) {
     if (Test-Path -Path $desktopPath) {
-        Get-ChildItem -Path $desktopPath -Filter "*.lnk" | Remove-Item -Force
-        Write-Host "Removing existing shortcuts from $desktopPath" -ForegroundColor Green
-    } else {
-        Write-Host "$desktopPath does not exist." -ForegroundColor Red
-        continue
+        Write-Host "Checking: $desktopPath" -ForegroundColor Cyan
+        try {
+            # Filter shortcuts (exclude Recycle Bin/Trash)
+            Get-ChildItem -Path $desktopPath -File | Where-Object { ($_.Extension -match '^\.(lnk|url)$') -and ($_.Name -notmatch '(?i)Recycle Bin|Trash') } | Remove-Item -Force -ErrorAction Stop
+            Write-Host "Removing existing shortcuts (except Recycle Bin) from $desktopPath" -ForegroundColor Green
+        }
+        catch {
+            Write-Warning "Failed to clear some items in $desktopPath (Maybe in use or permission issue)."
+        }
+    }
+    else {
+        Write-Host "$desktopPath does not exist." -ForegroundColor Yellow
     }
 }
 
@@ -37,11 +55,17 @@ $taskbarPath = "$HOME\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\U
 
 # remove existing shortcuts
 if (Test-Path -Path $taskbarPath) {
-    Get-ChildItem -Path $taskbarPath -Filter "*.lnk" | Remove-Item -Force
-    Write-Host "Removing existing shortcuts from $taskbarPath" -ForegroundColor Green
-} else {
-    Write-Host "$taskbarPath does not exist." -ForegroundColor Red
-    continue
+    try {
+        # Filter shortcuts (exclude Recycle Bin/Trash)
+        Get-ChildItem -Path $taskbarPath -File | Where-Object { ($_.Extension -match '^\.(lnk|url)$') -and ($_.Name -notmatch '(?i)Recycle Bin|Trash') } | Remove-Item -Force -ErrorAction Stop
+        Write-Host "Removing existing shortcuts (except Recycle Bin) from $taskbarPath" -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Failed to clear taskbar shortcuts."
+    }
+}
+else {
+    Write-Host "$taskbarPath does not exist." -ForegroundColor Yellow
 }
 
 # shortcut paths
