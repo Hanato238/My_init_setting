@@ -35,6 +35,8 @@ choco install ngrok -y
 
 # install Bitwarden
 choco install bitwarden bitwarden-chrome bitwarden-cli -y
+# install spacedesk-server
+choco install spacedesk-server
 
 
 # install OneDrive

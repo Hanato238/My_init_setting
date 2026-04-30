@@ -2,28 +2,21 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # install claude-code-cli
 npm install -g @anthropic-ai/claude-code
-npm install @google/gemini-cli -y
+npm install -g @google/gemini-cli -y
 refreshenv
 
 # install 
-claude mcp add github --scope user -- npx -y @modelcontextprotocol/server-github
-claude mcp add context7 --scope user -- npx -y @upstash/context7-mcp
-claude mcp add playwright --scope project -- npx -y @playwright/mcp@latest
-claude mcp add memory --scope user -- npx -y @modelcontextprotocol/server-memory
-claude mcp add markitdown -s project -- uvx markitdown-mcp
-claude mcp add youtube -s project -- npx @anaisbetts/mcp-youtube
 
 # install gemini-cli
-gemini extensions install https://github.com/googleworkspace/cli
-gemini extensions install https://github.com/google/clasp
-gemini extensions install https://github.com/gemini-cli-extensions/security
-gemini extensions install https://github.com/gemini-cli-extensions/workspace
-gemini extensions install https://github.com/gemini-cli-extensions/web-accessibility
-gemini extensions install https://github.com/gemini-cli-extensions/observability
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-resource-manager
-gemini extensions install https://github.com/github/github-mcp-server
-gemini extensions install https://github.com/upstash/context7
-gemini extensions install 
+
+gemini mcp add filesystem npx @modelcontextprotocol/server-filesystem %USERPROFILE% --scope user 
+gemini mcp add serena uvx --from git+https://github.com/oraios/serena serena start-mcp-server --scope user
+gemini mcp add memory npx -y @modelcontextprotocol/server-memory --scope user
+gemini mcp add context7 npx -y @upstash/context7-mcp --scope user
+gemini mcp add markitdown uvx markitdown-mcp --scope user
+gemini mcp add drawio npx -y @drawio/mcp --scope user
+gemini mcp add youtube npx -y @anaisbetts/mcp-youtube --scope user
+gemini mcp add perplexity npx -y @perplexity-ai/mcp-server -e PERPLEXITY_API_KEY=--scope user
 
 # install notebooklm-mcp-cli
 uv tool install notebooklm-mcp-cli
