@@ -66,16 +66,6 @@
         "args": ["/c", "npx", "-y", "@llmindset/hf-mcp-server"],
         "env": {}
       },
-      "gmail": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@shinzolabs/gmail-mcp"],
-        "env": {}
-      },
-      "figma": {
-        "type": "http",
-        "url": "https://mcp.figma.com/mcp"
-      },
       "openevidence": {
         "command": "node",
         "args": ["%USERPROFILE%\\mcp_servers\\openevidence-mcp\\dist\\server.js"]
