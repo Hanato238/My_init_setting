@@ -25,14 +25,17 @@ if os.path.exists(gemini_path):
 else:
     gemini = {}
 
-action = "overwrite" if "mcpServers" in gemini else "add"
-gemini["mcpServers"] = src["mcpServers"]
+if "mcpServers" not in gemini:
+    gemini["mcpServers"] = {}
+
+# Merge servers instead of overwriting the whole dict
+gemini["mcpServers"].update(src["mcpServers"])
 
 with open(gemini_path, "w", encoding="utf-8") as f:
     json.dump(gemini, f, indent=2, ensure_ascii=False)
 
 print(f"[ Gemini ] {gemini_path}")
-print(f"{action}: {', '.join(src['mcpServers'].keys())}")
+print(f"Updated/Added servers: {', '.join(src['mcpServers'].keys())}")
 PYEOF
 
 echo ""

@@ -88,6 +88,8 @@ Set-McpEnv "BRIGHTDATA_API_TOKEN"         "API_TOKEN"
 Set-McpEnv "HF_TOKEN"                     "HF_TOKEN"
 Set-McpEnv "GW_MCP_CLIENT_ID"             "GOOGLE_CLIENT_ID"
 Set-McpEnv "GW_MCP_CLIENT_SECRET"         "GOOGLE_CLIENT_SECRET"
+Set-McpEnv "TODOIST_API_KEY"              "TODOIST_API_KEY"
+Set-McpEnv "HOTPEPPER_GOURMET_API_KEY"    "HOTPEPPER_GOURMET_API_KEY"
 '@
 
 # Configure SecretStore

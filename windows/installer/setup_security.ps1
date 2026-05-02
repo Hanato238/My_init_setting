@@ -40,5 +40,7 @@ Save-BwSecret "BRIGHTDATA_API_TOKEN"
 Save-BwSecret "HF_TOKEN"
 Save-BwSecret "GW_MCP_CLIENT_ID"
 Save-BwSecret "GW_MCP_CLIENT_SECRET"
+Save-BwSecret "TODOIST_API_KEY"
+Save-BwSecret "HOTPEPPER_GOURMET_API_KEY"
 
 Write-Host "Done: secrets saved to SecretStore."

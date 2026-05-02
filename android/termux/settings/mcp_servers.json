@@ -62,6 +62,60 @@
       "command": "uvx",
       "args": ["workspace-mcp"],
       "env": {}
+    },
+    "youtube": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["$HOME/workspace/mcp-servers/youtube/dist/index.js"],
+      "env": {}
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "$HOME/workspace/mcp-servers/serena", "run", "start-mcp-server"],
+      "env": {}
+    },
+    "markitdown": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "$HOME/workspace/mcp-servers/markitdown/packages/markitdown-mcp", "run", "markitdown-mcp"],
+      "env": {}
+    },
+    "google-maps": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@googlemaps/mcp-server"],
+      "env": {}
+    },
+    "drawio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@jgraph/drawio-mcp"],
+      "env": {}
+    },
+    "observability": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-observability"],
+      "env": {}
+    },
+    "openevidence": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@openevidence/mcp-server"],
+      "env": {}
+    },
+    "hardening-agent": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@gcp-hardening/mcp-server"],
+      "env": {}
+    },
+    "security": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["$HOME/workspace/mcp-servers/gemini-cli-security/mcp-server/dist/index.js"],
+      "env": {}
     }
   }
 }

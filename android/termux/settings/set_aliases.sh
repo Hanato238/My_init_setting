@@ -19,6 +19,19 @@ export TERMUX="$HOME/storage/documents/termux"
 export DOCUMENTS="$HOME/storage/documents"
 export DOWNLOADS="$HOME/storage/downloads"
 
+# Load secrets from ~/.secrets if it exists
+_load_secrets_file() {
+    local secrets_file="$HOME/.secrets"
+    if [ -f "$secrets_file" ]; then
+        # Load exports from file, ignoring comments and empty lines
+        while IFS= read -r line || [ -n "$line" ]; do
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            export "$line"
+        done < "$secrets_file"
+    fi
+}
+
 # Load API keys from Bitwarden CLI
 _bw_load_secrets() {
     # Reuse cached session token if still valid
@@ -44,9 +57,15 @@ _bw_load_secrets() {
     unset -f _bw_get
 }
 
+# 1. Load from file first (fallback)
+_load_secrets_file
+
+# 2. Try Bitwarden if available
 if command -v bw &>/dev/null; then
     _bw_load_secrets
 fi
+
+unset -f _load_secrets_file
 unset -f _bw_load_secrets
 EOF
 
