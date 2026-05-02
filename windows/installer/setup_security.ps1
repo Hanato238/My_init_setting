@@ -23,24 +23,32 @@ if (-not $env:BW_SESSION) {
 # オンラインと同期
 bw sync --session $env:BW_SESSION
 
-function Save-BwSecret($secretName) {
-  $value = bw get password $secretName --session $env:BW_SESSION
-  if (-not $value) {
-    Write-Warning "Bitwarden item '$secretName' not found. Skipping."
-    return
-  }
-  Set-Secret -Name $secretName -Secret $value -Vault LocalStore
-  Write-Host "Saved: $secretName"
+# フォルダ「security_keys」のIDを取得
+$folderId = (bw list folders --session $env:BW_SESSION | ConvertFrom-Json | Where-Object { $_.name -eq "security_keys" }).id
+
+if (-not $folderId) {
+    Write-Error "Bitwarden folder 'security_keys' not found."
+    exit 1
 }
 
-# SecretName = Bitwarden のアイテム名 兼 SecretStore の保存名
-Save-BwSecret "PERPLEXITY_API_KEY"
-Save-BwSecret "GITHUB_MCP_PAT"
-Save-BwSecret "BRIGHTDATA_API_TOKEN"
-Save-BwSecret "HF_TOKEN"
-Save-BwSecret "GW_MCP_CLIENT_ID"
-Save-BwSecret "GW_MCP_CLIENT_SECRET"
-Save-BwSecret "TODOIST_API_KEY"
-Save-BwSecret "HOTPEPPER_GOURMET_API_KEY"
+Write-Host "Fetching all items from folder 'security_keys'..."
+$items = bw list items --folderid $folderId --session $env:BW_SESSION | ConvertFrom-Json
 
-Write-Host "Done: secrets saved to SecretStore."
+foreach ($item in $items) {
+    $secretName = $item.name
+    # パスワード欄、またはフィールド（あれば）から値を取得
+    $value = $item.login.password
+    if (-not $value -and $item.fields) {
+        $value = ($item.fields | Where-Object { $_.name -eq "value" -or $_.name -eq "api_key" }).value
+    }
+    
+    if ($value) {
+        Set-Secret -Name $secretName -Secret $value -Vault LocalStore
+        Write-Host "Saved: $secretName"
+    }
+    else {
+        Write-Warning "Item '$secretName' has no password or valid custom field. Skipping."
+    }
+}
+
+Write-Host "Done: secrets from 'security_keys' saved to SecretStore."

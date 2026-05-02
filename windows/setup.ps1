@@ -13,5 +13,10 @@ iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/window
 iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/office_installer.ps1")
 
 # set workspace and aliases
-iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/settings/set_workspace.ps1")
-iex (iwr "http://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/settings/set_aliases.ps1")
+& "$PSScriptRoot\settings\set_workspace.ps1"
+& "$PSScriptRoot\settings\set_aliases.ps1"
+
+# setup MCP servers
+& "$PSScriptRoot\installer\setup_security.ps1"    # 秘密情報をBitwardenから取得
+& "$PSScriptRoot\settings\install_mcp_repos.ps1" # Extensionの自動インストール
+& "$PSScriptRoot\settings\set_mcp_servers.ps1"   # その他のサーバーの登録

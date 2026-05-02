@@ -1,79 +1,52 @@
-  {
-    "mcpServers": {
-      "perplexity": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@perplexity-ai/mcp-server"],
-        "env": {}
-      },
-      "notebooklm-python": {
-        "type": "stdio",
-        "command": "uvx",
-        "args": ["--from", "notebooklm-mcp-cli", "notebooklm-mcp"],
-        "env": {}
-      },
-      "github": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-github"],
-        "env": {}
-      },
-      "playwright": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "@playwright/mcp@latest"],
-        "env": {}
-      },
-      "desktop-commander": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@wonderwhy-er/desktop-commander@latest"],
-        "env": {}
-      },
-      "git": {
-        "type": "stdio",
-        "command": "uvx",
-        "args": ["mcp-server-git"],
-        "env": {}
-      },
-      "context7": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@upstash/context7-mcp@latest"],
-        "env": {}
-      },
-      "browser-mcp": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "@agent-infra/mcp-server-browser@latest"],
-        "env": {}
-      },
-      "filesystem": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "%USERPROFILE%"],
-        "env": {}
-      },
-      "bright-data": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "@brightdata/mcp"],
-        "env": {}
-      },
-      "huggingface": {
-        "type": "stdio",
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@llmindset/hf-mcp-server"],
-        "env": {}
-      },
-      "openevidence": {
-        "command": "node",
-        "args": ["%USERPROFILE%\\mcp_servers\\openevidence-mcp\\dist\\server.js"]
-      },
-      "google-workspace": {
-        "command": "uvx",
-        "args": ["workspace-mcp"],
-        "env": {}
+{
+  "mcpServers": {
+    "perplexity": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@perplexity-ai/mcp-server"],
+      "env": {
+        "PERPLEXITY_API_KEY": "$PERPLEXITY_API_KEY"
       }
+    },
+    "fetch": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["%USERPROFILE%\\workspace\\mcp-servers\\mcp-official-servers\\src\\fetch\\dist\\index.js"],
+      "env": {}
+    },
+    "sequentialthinking": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["%USERPROFILE%\\workspace\\mcp-servers\\mcp-official-servers\\src\\sequentialthinking\\dist\\index.js"],
+      "env": {}
+    },
+    "drawio": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["%USERPROFILE%\\workspace\\mcp-servers\\drawio-mcp\\dist\\index.js"],
+      "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "@playwright/mcp@latest"],
+      "env": {}
+    },
+    "desktop-commander": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@wonderwhy-er/desktop-commander@latest"],
+      "env": {}
+    },
+    "browser-mcp": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "@agent-infra/mcp-server-browser@latest"
+      ],
+      "env": {}
     }
   }
+}

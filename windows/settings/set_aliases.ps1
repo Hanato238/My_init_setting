@@ -53,6 +53,7 @@ function claude-chrome { & chrome 'https://claude.ai/' }
 function pplx-chrome { & chrome 'https://www.perplexity.ai/' }
 function nlm-chrome { & chrome 'https://notebooklm.google.com/' }
 function hf-chrome { & chrome 'https://huggingface.co/' }
+function context7 { & 'https://context7.com/dashboard' }
 function github { & chrome 'https://github.com/' }
 function repository { & chrome 'https://community.chocolatey.org/packages' }
 function gdrive { & chrome 'https://drive.google.com/drive/' }
@@ -63,11 +64,14 @@ function linedev { & chrome 'https://developers.line.biz/console/' }
 function lineoam { & chrome 'https://manager.line.biz/' }
 function openai { & chrome 'https://platform.openai.com/settings/organization/general' }
 function phantomjs { & chrome 'https://dashboard.phantomjscloud.com/dash.html' }
+fuction tencentc { & chrome 'https://www.tencentcloud.com/' }
 function rainio { & chrome 'https://app.raindrop.io/my/0' }
 function youtube { & chrome 'https://www.youtube.com/' }
 function qq { & chrome 'https://www.e-igakukai.jp/user_service/kaiin_portal/home/home.htm' }
 function mf { & chrome 'https://moneyforward.com/' }
 function oe { & chrome 'https://www.openevidence.com/' }
+function keepa { & chrome 'https://keepa.com/#!' }
+function asc { & chrome 'https://sellercentral.amazon.co.jp/home' }
 
 Set-Alias -Name "vectra" -Value "C:\Vectra\bin\vectra.exe"
 Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbManager\bin\dbmanager.exe"
@@ -77,19 +81,14 @@ function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB"}
 # Inject secret store to environment variables in $PROFILE
 Add-Content -Path $profilePath -Value @'
 
-# Inject API keys for MCP servers from SecretStore to Environment Variables
-function Set-McpEnv($secret, $env) {
-    $v = Get-Secret -Name $secret -AsPlainText -ErrorAction SilentlyContinue
-    if ($v) { [System.Environment]::SetEnvironmentVariable($env, $v) }
+# Inject all secrets from SecretStore to Environment Variables dynamically
+Get-SecretInfo -Vault LocalStore | ForEach-Object {
+    $name = $_.Name
+    $val = Get-Secret -Name $name -AsPlainText -ErrorAction SilentlyContinue
+    if ($val) {
+        [System.Environment]::SetEnvironmentVariable($name, $val)
+    }
 }
-Set-McpEnv "PERPLEXITY_API_KEY"           "PERPLEXITY_API_KEY"
-Set-McpEnv "GITHUB_MCP_PAT"               "GITHUB_MCP_PAT"
-Set-McpEnv "BRIGHTDATA_API_TOKEN"         "API_TOKEN"
-Set-McpEnv "HF_TOKEN"                     "HF_TOKEN"
-Set-McpEnv "GW_MCP_CLIENT_ID"             "GOOGLE_CLIENT_ID"
-Set-McpEnv "GW_MCP_CLIENT_SECRET"         "GOOGLE_CLIENT_SECRET"
-Set-McpEnv "TODOIST_API_KEY"              "TODOIST_API_KEY"
-Set-McpEnv "HOTPEPPER_GOURMET_API_KEY"    "HOTPEPPER_GOURMET_API_KEY"
 '@
 
 # Configure SecretStore

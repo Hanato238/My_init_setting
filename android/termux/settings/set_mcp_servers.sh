@@ -15,8 +15,12 @@ servers_path, gemini_path = sys.argv[1], sys.argv[2]
 with open(servers_path, encoding="utf-8") as f:
     raw = f.read()
 
-# Expand $HOME placeholder
-raw = raw.replace("$HOME", os.environ["HOME"])
+# Expand environment variables ($HOME, $API_KEY, etc.)
+def expand_env(match):
+    name = match.group(1)
+    return os.environ.get(name, match.group(0))
+
+raw = re.sub(r'\$(\w+)', expand_env, raw)
 src = json.loads(raw)
 
 if os.path.exists(gemini_path):
