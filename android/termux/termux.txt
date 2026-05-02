@@ -2,9 +2,9 @@
 
 ## ファイル構成
 installer/setup_gemini_cli.sh   # パッケージ・gemini-cli インストール
-settings/set_aliases.sh         # .bashrc / .bash_profile 生成 (Secretsロード機能付)
-settings/mcp_servers.json       # MCP サーバ定義 (Termux 版 / リポジトリ版追加)
-settings/install_mcp_repos.sh   # mcp-servers リポジトリのクローン
+installer/setup_security.sh      # Bitwarden から API キー取得
+settings/set_aliases.sh         # .bashrc / .bash_profile 生成
+settings/mcp_servers.json       # MCP サーバ定義 (Termux 版)
 settings/set_mcp_servers.sh     # MCP サーバを Gemini 設定に注入
 
 ## 実行順序
@@ -17,34 +17,25 @@ cd My_init_setting/android/termux
 
 ### 2. 実行権限を付与
 chmod +x installer/setup_gemini_cli.sh
+chmod +x installer/setup_security.sh
 chmod +x settings/set_aliases.sh
-chmod +x settings/install_mcp_repos.sh
 chmod +x settings/set_mcp_servers.sh
 
 ### 3. インストール (gemini-cli, nlm 等)
 bash installer/setup_gemini_cli.sh
 
-### 4. エイリアス・プロファイル設定
+### 4. セキュリティ設定 (Bitwarden から API キー取得)
+# 事前に Bitwarden CLI が必要です
+bash installer/setup_security.sh
+
+### 5. エイリアス・プロファイル設定
 bash settings/set_aliases.sh
 source ~/.bash_profile
 
-### 5. API キーを ~/.secrets に保存 (chmod 600 必須)
-cat > ~/.secrets << 'EOF'
-PERPLEXITY_API_KEY=your_key
-GITHUB_PERSONAL_ACCESS_TOKEN=your_token
-HF_TOKEN=your_token
-GOOGLE_CLIENT_ID=your_id
-GOOGLE_CLIENT_SECRET=your_secret
-EOF
-chmod 600 ~/.secrets
-
-### 6. MCP リポジトリをインストール
-bash settings/install_mcp_repos.sh
-
-### 7. MCP サーバを Gemini に登録
+### 6. MCP サーバを Gemini に登録
 bash settings/set_mcp_servers.sh
 
 ## 備考
 - Windows の SecretStore 相当は ~/.secrets (パーミッション 600 で管理)
-- .bash_profile が自動的に ~/.secrets を読み込み、環境変数に展開します。
 - Windows 専用サーバ (playwright, desktop-commander, browser-mcp) は除外
+- ~/.bash_profile 起動時に ~/.secrets を自動ロードして環境変数に注入
