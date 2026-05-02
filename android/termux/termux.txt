@@ -2,6 +2,7 @@
 
 ## ファイル構成
 installer/setup_gemini_cli.sh   # パッケージ・gemini-cli インストール
+installer/setup_security.sh      # Bitwarden から API キー取得
 settings/set_aliases.sh         # .bashrc / .bash_profile 生成
 settings/mcp_servers.json       # MCP サーバ定義 (Termux 版)
 settings/set_mcp_servers.sh     # MCP サーバを Gemini 設定に注入
@@ -16,25 +17,20 @@ cd My_init_setting/android/termux
 
 ### 2. 実行権限を付与
 chmod +x installer/setup_gemini_cli.sh
+chmod +x installer/setup_security.sh
 chmod +x settings/set_aliases.sh
 chmod +x settings/set_mcp_servers.sh
 
 ### 3. インストール (gemini-cli, nlm 等)
 bash installer/setup_gemini_cli.sh
 
-### 4. エイリアス・プロファイル設定
+### 4. セキュリティ設定 (Bitwarden から API キー取得)
+# 事前に Bitwarden CLI が必要です
+bash installer/setup_security.sh
+
+### 5. エイリアス・プロファイル設定
 bash settings/set_aliases.sh
 source ~/.bash_profile
-
-### 5. API キーを ~/.secrets に保存 (chmod 600 必須)
-cat > ~/.secrets << 'EOF'
-PERPLEXITY_API_KEY=your_key
-GITHUB_PERSONAL_ACCESS_TOKEN=your_token
-HF_TOKEN=your_token
-GOOGLE_CLIENT_ID=your_id
-GOOGLE_CLIENT_SECRET=your_secret
-EOF
-chmod 600 ~/.secrets
 
 ### 6. MCP サーバを Gemini に登録
 bash settings/set_mcp_servers.sh
