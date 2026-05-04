@@ -5,6 +5,12 @@ npm install -g @anthropic-ai/claude-code
 npm install -g @google/gemini-cli -y
 refreshenv
 
+gemini mcp add filesystem npx -y @modelcontextprotocol/server-filesystem -s user
+gemini mcp add memory npx -y @modelcontextprotocol/server-memory -s user
+gemini mcp add sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking -s user
+gemini mcp add fetch uvx mcp-server-fetch -s user
+gemini mcp add git uvx mcp-server-git -s user
+
 # install mcp-servers collection
 $mcpServersDir = "$env:USERPROFILE\workspace\mcp-servers"
 if (!(Test-Path $mcpServersDir)) {
@@ -40,7 +46,8 @@ function Install-GeminiExtension($path) {
         
         # Install to Gemini CLI
         gemini extensions install . --consent
-    } else {
+    }
+    else {
         Write-Warning "Extension path not found: $fullPath"
     }
 }
@@ -55,16 +62,6 @@ $extensions = @(
     "serena",
     "openevidence-mcp",
     "notebooklm-mcp-cli"
-)
-
-# 2. Install Official MCP Extensions (from source)
-$extensions += @(
-    "mcp-official-servers\src\fetch",
-    "mcp-official-servers\src\filesystem",
-    "mcp-official-servers\src\git",
-    "mcp-official-servers\src\memory",
-    "mcp-official-servers\src\sequentialthinking",
-    "mcp-official-servers\src\everything"
 )
 
 # 3. Install other tools (without fork)

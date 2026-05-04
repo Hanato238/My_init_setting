@@ -1,4 +1,4 @@
-# install_mcp_repos.ps1 - Install Gemini CLI Extensions from repository
+# Install-McpRepos.ps1 - Install Gemini CLI Extensions from repository
 $ErrorActionPreference = "Stop"
 
 $RepoUrl = "https://github.com/Hanato238/mcp-servers.git"
@@ -35,4 +35,4 @@ Get-ChildItem -Path $TargetDir -Filter "gemini-extension.json" -Recurse -Depth 3
 
 Write-Host ""
 Write-Host "Done: Extensions have been installed." -ForegroundColor Green
-Write-Host "Next: Run '.\settings\set_mcp_servers.ps1' to add other standard MCP servers." -ForegroundColor Yellow
+Write-Host "Next: Run '.\settings\Set-McpServers.ps1' to add other standard MCP servers." -ForegroundColor Yellow

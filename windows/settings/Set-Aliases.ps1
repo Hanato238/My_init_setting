@@ -64,7 +64,7 @@ function linedev { & chrome 'https://developers.line.biz/console/' }
 function lineoam { & chrome 'https://manager.line.biz/' }
 function openai { & chrome 'https://platform.openai.com/settings/organization/general' }
 function phantomjs { & chrome 'https://dashboard.phantomjscloud.com/dash.html' }
-fuction tencentc { & chrome 'https://www.tencentcloud.com/' }
+function tencentc { & chrome 'https://www.tencentcloud.com/' }
 function rainio { & chrome 'https://app.raindrop.io/my/0' }
 function youtube { & chrome 'https://www.youtube.com/' }
 function qq { & chrome 'https://www.e-igakukai.jp/user_service/kaiin_portal/home/home.htm' }
@@ -82,11 +82,32 @@ function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB"}
 Add-Content -Path $profilePath -Value @'
 
 # Inject all secrets from SecretStore to Environment Variables dynamically
-Get-SecretInfo -Vault LocalStore | ForEach-Object {
-    $name = $_.Name
-    $val = Get-Secret -Name $name -AsPlainText -ErrorAction SilentlyContinue
-    if ($val) {
-        [System.Environment]::SetEnvironmentVariable($name, $val)
+function Load-SecretEnvironment {
+    if (Get-Module -ListAvailable Microsoft.PowerShell.SecretStore) {
+        Get-SecretInfo -Vault LocalStore -ErrorAction SilentlyContinue | ForEach-Object {
+            $name = $_.Name
+            $val = Get-Secret -Name $name -AsPlainText -ErrorAction SilentlyContinue
+            if ($val) {
+                Set-Content -Path "Env:\$name" -Value $val
+            }
+        }
+    }
+}
+
+# Run once on startup
+Load-SecretEnvironment
+
+# Command to quickly sync Bitwarden updates to the local environment
+function Sync-ApiKeys {
+    Write-Host "Fetching latest keys from Bitwarden..." -ForegroundColor Cyan
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\installer\Initialize-Security.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath
+        Write-Host "Applying keys to the current session..." -ForegroundColor Cyan
+        Load-SecretEnvironment
+        Write-Host "API keys synchronized successfully." -ForegroundColor Green
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
     }
 }
 '@
