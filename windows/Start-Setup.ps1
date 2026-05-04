@@ -1,6 +1,5 @@
 # Run PowerShell as Administrator before executing this script
 
-# Set execution policy to allow script execution
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # install Chocolatey and else
@@ -16,7 +15,7 @@ iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windo
 & "$PSScriptRoot\settings\Set-Workspace.ps1"
 & "$PSScriptRoot\settings\Set-Aliases.ps1"
 
-# setup MCP servers
-& "$PSScriptRoot\installer\Initialize-Security.ps1"    # 秘密情報をBitwardenから取得
-& "$PSScriptRoot\settings\Install-McpRepos.ps1" # Extensionの自動インストール
-& "$PSScriptRoot\settings\Set-McpServers.ps1"   # その他のサーバーの登録
+# setup LLM CLI tools + MCP extensions (Gemini & Claude)
+& "$PSScriptRoot\installer\Initialize-Security.ps1"  # 秘密情報をBitwardenから取得
+& "$PSScriptRoot\installer\Install-LlmCli.ps1"        # CLI + MCP extensions + standard servers
+& "$PSScriptRoot\settings\Set-McpServers.ps1"         # mcp_servers.json からの追加サーバー登録
