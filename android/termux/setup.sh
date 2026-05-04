@@ -16,6 +16,13 @@ run_script() {
 
 echo "--- Starting Termux Environment Setup ---"
 
+if [ ! -d "$HOME/workspace" ]; then
+    mkdir -p "$HOME/workspace"
+    echo "Created ~/workspace"
+else
+    echo "~/workspace already exists"
+fi
+
 echo "[1/4] Installing LLM CLI and extensions..."
 run_script "$BASE_URL/installer/install_llm_cli.sh"
 
