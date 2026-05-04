@@ -30,6 +30,8 @@ choco install docker-desktop -y
 choco install gcloudsdk --ignore-checksums -y
 # install windows-sdk
 choco install windows-sdk-10.1 -y
+# install aws-cli
+choco install awscli -y
 # install ngrok
 choco install ngrok -y
 

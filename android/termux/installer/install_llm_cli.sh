@@ -58,12 +58,11 @@ install_ext() {
 EXTENSIONS=(
     "context7"
     "github"
+    "desktop-commander"
     "google-workspace-cli"
     "hardening-agent"
-    "huggingface"
     "observability"
-    "youtube"
-    "serena"
+    "todoist"
     "markitdown"
     "perplexity-mcp"
 )

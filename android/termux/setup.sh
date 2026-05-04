@@ -2,28 +2,31 @@
 # setup.sh - Main setup entry point for Termux
 set -e
 
-# Base URL for bootstrap (GitHub)
 BASE_URL="https://raw.githubusercontent.com/hanato238/My_init_setting/main/android/termux"
+
+# Download to a temp file and run so that stdin remains the terminal
+# (curl | bash would otherwise block interactive prompts like bw login)
+run_script() {
+    local tmp
+    tmp=$(mktemp /tmp/setup_XXXXXX.sh)
+    curl -fsSL "$1" -o "$tmp"
+    bash "$tmp"
+    rm -f "$tmp"
+}
 
 echo "--- Starting Termux Environment Setup ---"
 
-# 1. Install LLM CLI & Extensions (URL bootstrap)
 echo "[1/4] Installing LLM CLI and extensions..."
-curl -fsSL "$BASE_URL/installer/install_llm_cli.sh" | bash
+run_script "$BASE_URL/installer/install_llm_cli.sh"
 
-# 2. Initialize Security (URL bootstrap)
 echo "[2/4] Initializing Bitwarden security..."
-curl -fsSL "$BASE_URL/installer/initialize_security.sh" | bash
+run_script "$BASE_URL/installer/initialize_security.sh"
 
-# 3. Setup Workspace
 echo "[3/4] Setting up workspace..."
-# After step 1, the repo should be cloned if using local files is preferred,
-# but for the first run, we use the URL.
-curl -fsSL "$BASE_URL/settings/set_workspace.sh" | bash
+run_script "$BASE_URL/settings/set_workspace.sh"
 
-# 4. Set Aliases
 echo "[4/4] Setting up aliases and profile..."
-curl -fsSL "$BASE_URL/settings/set_aliases.sh" | bash
+run_script "$BASE_URL/settings/set_aliases.sh"
 
 echo "--- Setup Complete! ---"
 echo "Please run 'source ~/.bash_profile' to apply changes."

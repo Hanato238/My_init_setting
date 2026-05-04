@@ -35,6 +35,7 @@ Set-Alias -Name "vpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\Ex
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
 Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 Set-Alias -Name "git-bash" -Value "C:\Program Files\Git\git-bash.exe"
+Set-Alias -Name "Ubuntu" -Value "C:\Users\lesen\AppData\Local\Microsoft\WindowsApps\ubuntu.exe"
 Set-Alias -Name "powertoys" -Value "C:\Program Files\PowerToys\PowerToys.exe"
 Set-Alias -Name "bitwarden" -Value "C:\Users\lesen\AppData\Local\Programs\Bitwarden\Bitwarden.exe"
 Set-Alias -Name "spacedesk" -Value "C:\Program Files\datronicsoft\spacedesk\spacedeskConsole.exe"
