@@ -8,7 +8,7 @@ BASE_URL="https://raw.githubusercontent.com/hanato238/My_init_setting/main/andro
 # (curl | bash would otherwise block interactive prompts like bw login)
 run_script() {
     local tmp
-    tmp=$(mktemp /tmp/setup_XXXXXX.sh)
+    tmp=$(mktemp "${TMPDIR:-/tmp}/setup_XXXXXX.sh")
     curl -fsSL "$1" -o "$tmp"
     bash "$tmp"
     rm -f "$tmp"
