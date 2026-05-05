@@ -4,14 +4,23 @@ set -e
 
 BASE_URL="https://raw.githubusercontent.com/hanato238/My_init_setting/main/android/termux"
 
-# Download to a temp file and run so that stdin remains the terminal
-# (curl | bash would otherwise block interactive prompts like bw login)
-run_script() {
-    local tmp
-    tmp=$(mktemp "${TMPDIR:-/tmp}/setup_XXXXXX.sh")
-    curl -fsSL "$1" -o "$tmp"
-    bash "$tmp"
-    rm -f "$tmp"
+# Function to run scripts locally if available, otherwise download
+run_task() {
+    local script_rel_path="$1"
+    local script_url="$BASE_URL/$script_rel_path"
+    local local_script="$(dirname "$0")/$script_rel_path"
+
+    if [ -f "$local_script" ]; then
+        echo "--- Running local script: $script_rel_path ---"
+        bash "$local_script"
+    else
+        echo "--- Downloading and running: $script_rel_path ---"
+        local tmp
+        tmp=$(mktemp "${TMPDIR:-/tmp}/setup_XXXXXX.sh")
+        curl -fsSL "$script_url" -o "$tmp"
+        bash "$tmp"
+        rm -f "$tmp"
+    fi
 }
 
 echo "--- Starting Termux Environment Setup ---"
@@ -24,16 +33,19 @@ else
 fi
 
 echo "[1/4] Installing LLM CLI and extensions..."
-run_script "$BASE_URL/installer/install_llm_cli.sh"
+run_task "installer/install_llm_cli.sh"
 
 echo "[2/4] Initializing Bitwarden security..."
-run_script "$BASE_URL/installer/initialize_security.sh"
+run_task "installer/initialize_security.sh"
 
 echo "[3/4] Setting up workspace..."
-run_script "$BASE_URL/settings/set_workspace.sh"
+run_task "settings/set_workspace.sh"
 
 echo "[4/4] Setting up aliases and profile..."
-run_script "$BASE_URL/settings/set_aliases.sh"
+run_task "settings/set_aliases.sh"
+
+echo "[5/5] Registering MCP servers..."
+run_task "settings/set_mcp_servers.sh"
 
 echo "--- Setup Complete! ---"
 echo "Please run 'source ~/.bash_profile' to apply changes."

@@ -38,16 +38,21 @@ fi
 
 echo "Updating $SECRETS_FILE..."
 bw list items --folderid "$FOLDER_ID" --session "$BW_SESSION" | python3 -c "
-import sys, json
+import sys, json, re
 items = json.load(sys.stdin)
 for item in items:
-    name = item.get('name')
+    name = item.get('name', '')
+    # Replace spaces, dashes, and other non-alphanumeric chars with underscores
+    safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+    
     val = item.get('login', {}).get('password')
     if not val and item.get('fields'):
         val = next((f.get('value') for f in item['fields'] if f.get('name') in ['value', 'api_key', 'secret', 'password', 'key']), None)
     
     if val:
-        print(f'export {name}=\"{val}\"')
+        # Escape double quotes in value if any
+        safe_val = val.replace('\"', '\\\"')
+        print(f'export {safe_name}=\"{safe_val}\"')
 " > "$SECRETS_FILE"
 
 chmod 600 "$SECRETS_FILE"

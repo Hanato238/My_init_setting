@@ -58,13 +58,13 @@ install_ext() {
 EXTENSIONS=(
     "context7"
     "github"
-    "desktop-commander"
     "google-workspace-cli"
     "hardening-agent"
     "observability"
     "todoist"
     "markitdown"
     "perplexity-mcp"
+    "gyaru"
 )
 
 for ext in "${EXTENSIONS[@]}"; do

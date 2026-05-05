@@ -1,0 +1,70 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/context7/dist/index.js"
+      ]
+    },
+    "github": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/github/dist/index.js"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "google-workspace-cli": {
+      "command": "gws",
+      "args": [
+        "mcp"
+      ]
+    },
+    "hardening-agent": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/hardening-agent/dist/index.js"
+      ]
+    },
+    "observability": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/observability/dist/index.js"
+      ]
+    },
+    "todoist": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/todoist/dist/index.js"
+      ],
+      "env": {
+        "TODOIST_API_KEY": "$TODOIST_API_KEY"
+      }
+    },
+    "markitdown": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "$HOME/workspace/mcp-servers/markitdown/packages/markitdown-mcp",
+        "mcp-server-markitdown"
+      ]
+    },
+    "perplexity-mcp": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/perplexity-mcp/dist/index.js"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "$PERPLEXITY_API_KEY"
+      }
+    },
+    "gyaru": {
+      "command": "node",
+      "args": [
+        "$HOME/workspace/mcp-servers/gyaru/dist/index.js"
+      ]
+    }
+  }
+}
