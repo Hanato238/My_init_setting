@@ -17,7 +17,7 @@ function Ensure-JsonFile($path) {
 
 function Merge-McpServers($targetPath, $srcPath) {
   Ensure-JsonFile $targetPath
-  $jqFilter = '.mcpServers = ((.mcpServers // {}) + ($src[0].mcpServers // {}))'
+  $jqFilter = '.mcpServers = ($src[0].mcpServers // {})'
   $result = & jq --slurpfile src $srcPath $jqFilter $targetPath
   if ($LASTEXITCODE -ne 0) {
     throw "jq failed to merge into $targetPath"
@@ -48,7 +48,7 @@ Merge-McpServers $GeminiPath $ServersPath
 Write-Host "Updated/Added: $serverNames and start install gemini extensions"
 gemini extensions install https://github.com/googleworkspace/cli
 gemini extensions install https://github.com/gemini-cli-extensions/security
-gemini extensions install https://github.com/google/clasp
+
 Write-Host "Installed: gemini extensions installed"
 
 Write-Host ""

@@ -122,8 +122,8 @@
     },
     "observability": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["observability-mcp"],
+      "command": "npx",
+      "args": ["-y", "@google-cloud/observability-mcp"],
       "env": {}
     },
     "markitdown": {
@@ -164,6 +164,14 @@
     "clasp": {
       "command": "npx",
       "args": ["-y", "@google/clasp", "mcp"]
+    },
+    "raindrop": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@adeze/raindrop-mcp@latest"],
+      "env": {
+        "RAINDROP_ACCESS_TOKEN": "${YOUR_RAINDROP_ACCESS_TOKEN}"
+      }
     }
   }
 }
