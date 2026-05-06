@@ -1,23 +1,24 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # install cli tools
-npm install -g @anthropic-ai/claude-code
+npm install -g @anthropic-ai/claude-code -y
+npm install -g @anthropic-ai/sdk -y
 npm install -g @google/gemini-cli -y
 refreshenv
 
 # === Standard MCP servers ===
 
 # Gemini
-gemini mcp add filesystem npx -y @modelcontextprotocol/server-filesystem -s user
-gemini mcp add memory npx -y @modelcontextprotocol/server-memory -s user
-gemini mcp add sequential-thinking npx -y @modelcontextprotocol/server-sequential-thinking -s user
+gemini mcp add filesystem npx @modelcontextprotocol/server-filesystem -s user
+gemini mcp add memory npx @modelcontextprotocol/server-memory -s user
+gemini mcp add sequential-thinking npx @modelcontextprotocol/server-sequential-thinking -s user
 gemini mcp add fetch uvx mcp-server-fetch -s user
 gemini mcp add git uvx mcp-server-git -s user
 
 # Claude
-claude mcp add filesystem -s user -- npx -y @modelcontextprotocol/server-filesystem
-claude mcp add memory -s user -- npx -y @modelcontextprotocol/server-memory
-claude mcp add sequential-thinking -s user -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add filesystem -s user -- npx @modelcontextprotocol/server-filesystem
+claude mcp add memory -s user -- npx @modelcontextprotocol/server-memory
+claude mcp add sequential-thinking -s user -- npx @modelcontextprotocol/server-sequential-thinking
 claude mcp add fetch -s user -- uvx mcp-server-fetch
 claude mcp add git -s user -- uvx mcp-server-git
 
@@ -31,6 +32,14 @@ cd $mcpServersDir
 git pull
 git submodule update --init --recursive
 
+# === Env vars required by specific Claude MCP servers ===
+# Add entries here for servers that need environment variables.
+$claudeMcpEnv = @{
+    "brightdata"   = @{ "API_TOKEN"          = $env:BRIGHTDATA_API_TOKEN }
+    "perplexity"   = @{ "PERPLEXITY_API_KEY" = $env:PERPLEXITY_API_KEY }
+    "openevidence" = @{ "OE_MCP_ROOT_DIR"    = "$env:USERPROFILE\.openevidence-mcp" }
+}
+
 # === Install extension: build + register to Gemini and Claude ===
 function Install-Extension($path) {
     $fullPath = Join-Path $mcpServersDir $path
@@ -40,9 +49,10 @@ function Install-Extension($path) {
     }
 
     Write-Host "`n--- Setting up extension: $path ---"
-    cd $fullPath
+    Set-Location $fullPath
 
     # Build phase (shared)
+    $pkg = $null
     if (Test-Path "package.json") {
         npm install --silent
         $pkg = Get-Content "package.json" | ConvertFrom-Json
@@ -59,39 +69,64 @@ function Install-Extension($path) {
     # Register to Gemini
     gemini extensions install . --consent
 
-    # Register to Claude (read mcpServers from gemini-extension.json)
-    $extFile = Join-Path $fullPath "gemini-extension.json"
-    if (-not (Test-Path $extFile)) { return }
+    # Register to Claude: detect entry point from local project files
+    # Server name: lowercase directory name, strip trailing -mcp suffix
+    $serverName = (Split-Path $path -Leaf).ToLower() -replace '-mcp$', ''
 
-    $ext = Get-Content $extFile -Raw -Encoding utf8 | ConvertFrom-Json
-    $dirFwd = $fullPath -replace '\\', '/'
+    $claudeCommand = $null
+    $claudeArgs = @()
 
-    foreach ($serverName in $ext.mcpServers.PSObject.Properties.Name) {
-        $server = $ext.mcpServers.$serverName
+    if (Test-Path "package.json") {
+        $entry = $null
 
-        # Resolve ${extensionPath} and ${/}
-        $resolvedArgs = $server.args | ForEach-Object {
-            $_ -replace '\$\{extensionPath\}\$\{/\}', "$dirFwd/" `
-               -replace '\$\{extensionPath\}/', "$dirFwd/" `
-               -replace '\$\{extensionPath\}', $dirFwd
+        # Priority: bin > main > common build output locations
+        if ($pkg.bin) {
+            $entry = if ($pkg.bin -is [string]) { $pkg.bin }
+                     else { ($pkg.bin.PSObject.Properties | Select-Object -First 1).Value }
         }
-
-        # Resolve env vars like ${VAR_NAME}
-        $envArgs = @()
-        if ($server.env) {
-            foreach ($envProp in $server.env.PSObject.Properties) {
-                $envVal = [regex]::Replace($envProp.Value, '\$\{(\w+)\}', {
-                    param($m)
-                    $v = [System.Environment]::GetEnvironmentVariable($m.Groups[1].Value)
-                    if ($v) { $v } else { $m.Value }
-                })
-                $envArgs += @("-e", "$($envProp.Name)=$envVal")
+        if (-not $entry -and $pkg.main) { $entry = $pkg.main }
+        foreach ($fallback in @("dist/index.js", "build/index.js", "index.js")) {
+            if (-not $entry -and (Test-Path (Join-Path $fullPath $fallback))) {
+                $entry = $fallback
             }
         }
 
-        Write-Host "  [Claude] Adding MCP server: $serverName"
-        & claude (@("mcp", "add", $serverName) + $envArgs + @("-s", "user", "--", $server.command) + $resolvedArgs)
+        if ($entry -and (Test-Path (Join-Path $fullPath $entry))) {
+            $claudeCommand = "node"
+            $claudeArgs = @((Join-Path $fullPath $entry))
+        } else {
+            Write-Warning "  [Claude] No built entry point found for: $path"
+        }
+    } elseif (Test-Path "pyproject.toml") {
+        $pyContent = Get-Content "pyproject.toml" -Raw
+        if ($pyContent -match 'name\s*=\s*"([^"]+)"') {
+            $claudeCommand = "uv"
+            $claudeArgs = @("run", "--directory", $fullPath, $Matches[1])
+        } else {
+            Write-Warning "  [Claude] Could not parse module name from pyproject.toml: $path"
+        }
+    } else {
+        Write-Warning "  [Claude] No package.json or pyproject.toml found: $path"
     }
+
+    if (-not $claudeCommand) { return }
+
+    # Build --env arguments from $claudeMcpEnv table
+    $envArgs = @()
+    if ($claudeMcpEnv.ContainsKey($serverName)) {
+        foreach ($key in $claudeMcpEnv[$serverName].Keys) {
+            $val = $claudeMcpEnv[$serverName][$key]
+            if ($val) {
+                $envArgs += '--env'
+                $envArgs += "$key=$val"
+            } else {
+                Write-Warning "  [Claude] Env var '$key' for '$serverName' is not set"
+            }
+        }
+    }
+
+    & claude mcp add $serverName -s user @envArgs -- $claudeCommand @claudeArgs
+    Write-Host "  [Claude] Registered: $serverName -> $claudeCommand $($claudeArgs -join ' ')"
 }
 
 $extensions = @(

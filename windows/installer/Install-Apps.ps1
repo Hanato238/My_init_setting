@@ -86,3 +86,8 @@ choco upgrade all -y
 
 Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
 Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
+
+# install cli tools
+npm install -g @anthropic-ai/claude-code -y
+npm install -g @anthropic-ai/sdk -y
+npm install -g @google/gemini-cli -y

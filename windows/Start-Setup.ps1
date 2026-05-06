@@ -14,6 +14,7 @@ iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windo
 # set workspace and aliases
 & "$PSScriptRoot\settings\Set-Workspace.ps1"
 & "$PSScriptRoot\settings\Set-Aliases.ps1"
+& "$PSScriptRoot\settings\Set-DockerDesktop.ps1"
 
 # setup LLM CLI tools + MCP extensions (Gemini & Claude)
 & "$PSScriptRoot\installer\Initialize-Security.ps1"  # 秘密情報をBitwardenから取得

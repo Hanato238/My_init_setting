@@ -1,89 +1,55 @@
 param(
-  [string]$ServersPath = "$env:USERPROFILE\workspace\My_init_setting/windows/settings/mcp_servers.json",
+  [string]$ServersPath = "$PSScriptRoot\.mcp.json",
   [string]$ClaudePath = "$env:USERPROFILE\.claude.json",
   [string]$GeminiPath = "$env:USERPROFILE\.gemini\settings.json"
 )
 
-function Load-OrCreate($path) {
-  if (Test-Path $path) {
-    $content = [System.IO.File]::ReadAllText($path, (New-Object System.Text.UTF8Encoding $false))
-    $content.TrimStart([char]0xFEFF) | ConvertFrom-Json
-  }
-  else {
-    [PSCustomObject]@{}
-  }
-}
-
-function Save-Json($obj, $path) {
+function Ensure-JsonFile($path) {
   $dir = Split-Path $path
-  if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-  $tmp = [System.IO.Path]::GetTempFileName()
-  try {
-    $raw = $obj | ConvertTo-Json -Depth 10 -Compress
+  if ($dir -and -not (Test-Path $dir)) {
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+  }
+  if (-not (Test-Path $path)) {
     $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($tmp, $raw, $utf8NoBom)
-    node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));fs.writeFileSync(process.argv[2],JSON.stringify(o,null,2),'utf8')" $tmp $path
-  }
-  finally {
-    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    [System.IO.File]::WriteAllText($path, '{}', $utf8NoBom)
   }
 }
 
-# %USERPROFILE% を展開しながら mcp_servers.json を読み込む
-$rawJson = (Get-Content $ServersPath -Raw -Encoding utf8) `
-  -replace '%USERPROFILE%', ($env:USERPROFILE -replace '\\', '\\')
-
-# 秘密情報の取得と展開 (SecretStore または環境変数から)
-function Get-McpSecret($name) {
-  # Try environment variable first
-  $val = [System.Environment]::GetEnvironmentVariable($name)
-  if (-not $val) {
-    # Try SecretStore
-    $val = Get-Secret -Name $name -AsPlainText -ErrorAction SilentlyContinue
+function Merge-McpServers($targetPath, $srcPath) {
+  Ensure-JsonFile $targetPath
+  $jqFilter = '.mcpServers = ((.mcpServers // {}) + ($src[0].mcpServers // {}))'
+  $result = & jq --slurpfile src $srcPath $jqFilter $targetPath
+  if ($LASTEXITCODE -ne 0) {
+    throw "jq failed to merge into $targetPath"
   }
-  return $val
+  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($targetPath, ($result -join "`n") + "`n", $utf8NoBom)
 }
 
-# $VARIABLE 形式を正規表現で置換
-$pattern = '\$(\w+)'
-$callback = {
-  param($match)
-  $name = $match.Groups[1].Value
-  $val = Get-McpSecret $name
-  if ($val) { return $val }
-  return $match.Value
+if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
+  Write-Error "jq is required but not found in PATH."
+  exit 1
 }
-$rawJson = [regex]::Replace($rawJson, $pattern, $callback)
-$src = $rawJson | ConvertFrom-Json
 
-# --- Claude ---
+if (-not (Test-Path $ServersPath)) {
+  Write-Error "Source MCP file not found: $ServersPath"
+  exit 1
+}
+
+$serverNames = (& jq -r '.mcpServers | keys | join(", ")' $ServersPath)
+
 Write-Host "[ Claude ] $ClaudePath"
-$claude = Load-OrCreate $ClaudePath
-if (-not $claude.PSObject.Properties['mcpServers']) {
-  $claude | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value [PSCustomObject]@{}
-}
+Merge-McpServers $ClaudePath $ServersPath
+Write-Host "Updated/Added: $serverNames"
 
-# Merge servers
-foreach ($prop in $src.mcpServers.PSObject.Properties) {
-  $claude.mcpServers | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
-}
-Write-Host "Updated/Added: $($src.mcpServers.PSObject.Properties.Name -join ', ')"
-Save-Json $claude $ClaudePath
-
-# --- Gemini ---
 Write-Host ""
 Write-Host "[ Gemini ] $GeminiPath"
-$gemini = Load-OrCreate $GeminiPath
-if (-not $gemini.PSObject.Properties['mcpServers']) {
-  $gemini | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value [PSCustomObject]@{}
-}
-
-# Merge servers
-foreach ($prop in $src.mcpServers.PSObject.Properties) {
-  $gemini.mcpServers | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
-}
-Write-Host "Updated/Added: $($src.mcpServers.PSObject.Properties.Name -join ', ')"
-Save-Json $gemini $GeminiPath
+Merge-McpServers $GeminiPath $ServersPath
+Write-Host "Updated/Added: $serverNames and start install gemini extensions"
+gemini extensions install https://github.com/googleworkspace/cli
+gemini extensions install https://github.com/gemini-cli-extensions/security
+gemini extensions install https://github.com/google/clasp
+Write-Host "Installed: gemini extensions installed"
 
 Write-Host ""
-Write-Host "Done: MCP servers have been overwritten." -ForegroundColor Green
+Write-Host "Done: MCP servers have been merged." -ForegroundColor Green
