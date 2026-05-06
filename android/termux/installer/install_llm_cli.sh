@@ -2,10 +2,6 @@
 # install_llm_cli.sh - Install gemini-cli and extensions optimized for Termux
 set -e
 
-# Storage setup
-if [ ! -d "$HOME/storage" ]; then
-    termux-setup-storage
-fi
 
 pkg update -y
 pkg install -y nodejs-lts python git vim zip uv
