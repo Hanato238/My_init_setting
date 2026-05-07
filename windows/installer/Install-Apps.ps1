@@ -16,8 +16,8 @@ choco install git -y
 
 # install python 3.9, 3.10, 3.11, 3.12, 3.13
 choco install python39 python310 python311 python312 python313 python314 -y
-# install uv
-choco install uv -y
+# install uv jq
+choco install uv jq -y
 # install nodejs-lts
 choco install nodejs-lts -y
 # install vscode
@@ -44,7 +44,7 @@ choco install spacedesk-server
 # install OneDrive
 choco install onedrive -y
 # install zoom
-choco install zoom -y
+choco install zoom telegram -y
 # install LINE
 choco install line --ignore-checksums -y
 # install Kindle

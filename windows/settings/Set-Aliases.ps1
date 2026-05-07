@@ -30,6 +30,7 @@ function su { Start-Process powershell -Verb runas }
 Set-Alias -Name "chrome" -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
 Set-Alias -Name "line" -Value "$env:USERPROFILE\AppData\Local\LINE\bin\LineLauncher.exe"
 Set-Alias -Name "zoom" -Value "C:\Program Files\Zoom\bin\Zoom.exe"
+Set-Alias -Name "telegram" -Value "C:\Users\lesen\AppData\Roaming\Telegram Desktop\Telegram.exe"
 Set-Alias -Name "vscode" -Value "C:\Program Files\Microsoft VS Code\Code.exe"
 Set-Alias -Name "vpn" -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
 Set-Alias -Name "kindle" -Value "C:\Program Files (x86)\Amazon\Kindle\Kindle.exe"
@@ -77,6 +78,7 @@ function asc { & chrome 'https://sellercentral.amazon.co.jp/home' }
 Set-Alias -Name "vectra" -Value "C:\Vectra\bin\vectra.exe"
 Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbManager\bin\dbmanager.exe"
 function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB"}
+Set-Location "`$env:USERPROFILE\workspace"
 "@
 
 # Inject secret store to environment variables in $PROFILE
@@ -115,8 +117,6 @@ function Sync-ApiKeys {
 
 # Configure SecretStore
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
-# Set the startup directory
-$setLocationLine = 'Set-Location "C:\Users\lesen\workspace"'
 
-Write-Host "PowerShell profile has been overwritten with new aliases." -ForegroundColor Green
+Write-Host "PowerShell profile has been overwritten with new aliases and workspace location." -ForegroundColor Green
 Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
