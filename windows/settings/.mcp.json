@@ -77,7 +77,7 @@
     "todoist": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://ai.todoist.net/mcp"],
+      "args": ["-y", "@doist/todoist-ai"],
       "env": { "TODOIST_API_KEY": "${TODOIST_API_KEY}" }
     },
     "figma": {
@@ -168,9 +168,9 @@
     "raindrop": {
       "type": "stdio",
       "command": "npx",
-      "args": ["@adeze/raindrop-mcp@latest"],
+      "args": ["-y", "@adeze/raindrop-mcp@latest"],
       "env": {
-        "RAINDROP_ACCESS_TOKEN": "${YOUR_RAINDROP_ACCESS_TOKEN}"
+        "RAINDROP_ACCESS_TOKEN": "${RAINDROP_ACCESS_TOKEN}"
       }
     }
   }
