@@ -10,14 +10,22 @@ if (-not (Get-Module -ListAvailable Microsoft.PowerShell.SecretStore)) {
 if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
     Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
 }
-Set-SecretStoreConfiguration -Authentication None -Interaction None
+# Suppress confirmation prompt
+Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 
-# 2. Bitwarden Unlock
-[string]$session = (bw unlock --raw).Trim()
-if (-not $session) {
-    Write-Error "Bitwarden unlock failed."
+# 2. Bitwarden Login & Unlock
+$status = bw status | ConvertFrom-Json
+if ($status.status -eq "unauthenticated") {
+    Write-Host "You are not logged in. Starting Bitwarden login..." -ForegroundColor Cyan
+    bw login
+}
+
+$unlockOutput = bw unlock --raw
+if ($null -eq $unlockOutput -or [string]::IsNullOrWhiteSpace($unlockOutput)) {
+    Write-Error "Bitwarden unlock failed. Please ensure you are logged in using 'bw login' and try again."
     exit 1
 }
+[string]$session = $unlockOutput.Trim()
 $env:BW_SESSION = $session
 Write-Host "Syncing Bitwarden..." -ForegroundColor Gray
 bw sync --session $env:BW_SESSION | Out-Null

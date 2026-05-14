@@ -6,88 +6,18 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     return
 }
 
-# install Google Chrome
-choco install googlechrome -y
-# install Google Drive
-choco install googledrive --ignore-checksums -y
-choco install google-drive-file-stream --ignore-checksums -y
-# install Git
-choco install git -y
-
-# install python 3.9, 3.10, 3.11, 3.12, 3.13
-choco install python39 python310 python311 python312 python313 python314 -y
-# install uv jq
-choco install uv jq -y
-# install nodejs-lts
-choco install nodejs-lts -y
-# install vscode
-choco install vscode -y
-# install ubuntu 22.04
-choco install wsl-ubuntu-2204 -y
-# install docker desktop
-choco install docker-desktop -y
-# install gcloud SDK
-choco install gcloudsdk --ignore-checksums -y
-# install windows-sdk
-choco install windows-sdk-10.1 -y
-# install aws-cli
-choco install awscli -y
-# install ngrok
-choco install ngrok -y
-
-# install Bitwarden
-choco install bitwarden bitwarden-chrome bitwarden-cli -y
-# install spacedesk-server
-choco install spacedesk-server
-
-
-# install OneDrive
-choco install onedrive -y
-# install zoom
-choco install zoom telegram -y
-# install LINE
-choco install line --ignore-checksums -y
-# install Kindle
-choco install kindle -y
-# install TeamViewer
-choco install teamviewer -y
-# install teamviewer.host
-choco install teamviewer.host --ignore-checksums -y
-
-
-# install Vim
-choco install vim -y
-# install curl
-choco install curl -y
-# install ExpressVPN
-choco install expressvpn -y
-# install vscode material icon theme
-choco install materialicon-vscode -y
-# install powertoys
-choco install powertoys -y
-# install gsudo
-choco install gsudo -y
-# install mingw
-choco install mingw -y
-# install winget
-choco install winget -y
-# install tree
-choco install tree -y
-# install procmon wireshark
-choco install procmon wireshark -y
-
-
-# install choco cleaner
-choco install choco-cleaner -y
+# Install all packages in one command
+Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
+choco install googlechrome googledrive google-drive-file-stream gcloudsdk python39 python310 python311 python312 python313 python314 vim curl gsudo mingw winget tree procmon wireshark powertoys expressvpn uv jq git nodejs-lts vscode materialicon-vscode ngrok wsl-ubuntu-2204 docker-desktop windows-sdk-10.1 awscli bitwarden bitwarden-chrome bitwarden-cli spacedesk-server choco-cleaner --ignore-checksums -y
 
 # upgrade all packages
 choco upgrade all -y
 
-
+# Setup PowerShell Secret Management
+Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
 Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
 Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
 
-# install cli tools
-npm install -g @anthropic-ai/claude-code -y
-npm install -g @anthropic-ai/sdk -y
-npm install -g @google/gemini-cli -y
+# install cli tools via npm
+Write-Host "Installing global npm packages..." -ForegroundColor Cyan
+npm install -g @anthropic-ai/claude-code @anthropic-ai/sdk @google/gemini-cli
