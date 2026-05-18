@@ -18,7 +18,7 @@ if (-not $PSScriptRoot) {
 
     Write-Host "Restarting from local copy..." -ForegroundColor Yellow
     & "$tempDir\windows\Start-Setup.ps1"
-    exit
+    return
 }
 
 # installer スクリプトを順番に実行（依存関係があるため順序固定）
