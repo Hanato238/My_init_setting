@@ -2,21 +2,29 @@
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# install Chocolatey and else
-iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/Install-Chocolatey.ps1")
+# installer スクリプトを順番に実行（依存関係があるため順序固定）
+# 新しいスクリプトを追加する場合はこのリストに追記する
+$installerOrder = @(
+    "Install-Chocolatey.ps1",
+    "Install-Apps.ps1",
+    "Install-Office.ps1",
+    "Install-Wsl.ps1",
+    "Initialize-Security.ps1",
+    "Install-LlmCli.ps1"
+)
 
-# install apps
-iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/Install-Apps.ps1")
+foreach ($script in $installerOrder) {
+    $path = "$PSScriptRoot\installer\$script"
+    if (Test-Path $path) {
+        Write-Host "`n=== Running installer: $script ===" -ForegroundColor Cyan
+        & $path
+    } else {
+        Write-Warning "Script not found, skipping: $path"
+    }
+}
 
-# install office
-iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windows/installer/Install-Office.ps1")
-
-# set workspace and aliases
-& "$PSScriptRoot\settings\Set-Workspace.ps1"
-& "$PSScriptRoot\settings\Set-Aliases.ps1"
-& "$PSScriptRoot\settings\Set-DockerDesktop.ps1"
-
-# setup LLM CLI tools + MCP extensions (Gemini & Claude)
-& "$PSScriptRoot\installer\Initialize-Security.ps1"  # 秘密情報をBitwardenから取得
-& "$PSScriptRoot\installer\Install-LlmCli.ps1"        # CLI + MCP extensions + standard servers
-& "$PSScriptRoot\settings\Set-McpServers.ps1"         # mcp_servers.json からの追加サーバー登録
+# settings スクリプトをすべて自動検出して実行
+Get-ChildItem "$PSScriptRoot\settings\*.ps1" | Sort-Object Name | ForEach-Object {
+    Write-Host "`n=== Running settings: $($_.Name) ===" -ForegroundColor Cyan
+    & $_.FullName
+}

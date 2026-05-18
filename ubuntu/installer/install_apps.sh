@@ -31,12 +31,13 @@ sudo add-apt-repository ppa:deadsnakes/ppa -y
 sudo apt-get update
 sudo apt-get install -y python3.12
 
-# Node.js (LTS)
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-# Remove conflicting system Node.js packages (Ubuntu default repos ship older versions
-# that own overlapping file paths, causing dpkg conflicts with nodesource packages)
-sudo apt-get remove -y nodejs libnode-dev libnode72 nodejs-doc 2>/dev/null || true
-sudo apt-get install -y nodejs
+# Node.js (LTS via nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+# shellcheck source=/dev/null
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm use --lts
 
 # Cleanup
 sudo apt-get autoremove -y
