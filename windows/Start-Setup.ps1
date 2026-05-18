@@ -10,7 +10,7 @@ if (-not $PSScriptRoot) {
 
     Write-Host "Downloading repository..." -ForegroundColor Yellow
     $zipPath = "$tempDir.zip"
-    Invoke-WebRequest -Uri "https://github.com/hanato238/My_init_setting/archive/refs/heads/main.zip" `
+    Invoke-WebRequest -Uri "https://github.com/Hanato238/My_init_setting/archive/refs/heads/main.zip" `
         -OutFile $zipPath -UseBasicParsing
     Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
     Remove-Item $zipPath
@@ -18,32 +18,31 @@ if (-not $PSScriptRoot) {
 
     Write-Host "Restarting from local copy..." -ForegroundColor Yellow
     & "$tempDir\windows\Start-Setup.ps1"
-    return
-}
+} else {
+    # installer スクリプトを順番に実行（依存関係があるため順序固定）
+    # 新しいスクリプトを追加する場合はこのリストに追記する
+    $installerOrder = @(
+        "Install-Chocolatey.ps1",
+        "Install-Apps.ps1",
+        "Install-Office.ps1",
+        "Install-Wsl.ps1",
+        "Initialize-Security.ps1",
+        "Install-LlmCli.ps1"
+    )
 
-# installer スクリプトを順番に実行（依存関係があるため順序固定）
-# 新しいスクリプトを追加する場合はこのリストに追記する
-$installerOrder = @(
-    "Install-Chocolatey.ps1",
-    "Install-Apps.ps1",
-    "Install-Office.ps1",
-    "Install-Wsl.ps1",
-    "Initialize-Security.ps1",
-    "Install-LlmCli.ps1"
-)
-
-foreach ($script in $installerOrder) {
-    $path = "$PSScriptRoot\installer\$script"
-    if (Test-Path $path) {
-        Write-Host "`n=== Running installer: $script ===" -ForegroundColor Cyan
-        & $path
-    } else {
-        Write-Warning "Script not found, skipping: $path"
+    foreach ($script in $installerOrder) {
+        $path = "$PSScriptRoot\installer\$script"
+        if (Test-Path $path) {
+            Write-Host "`n=== Running installer: $script ===" -ForegroundColor Cyan
+            & $path
+        } else {
+            Write-Warning "Script not found, skipping: $path"
+        }
     }
-}
 
-# settings スクリプトをすべて自動検出して実行
-Get-ChildItem "$PSScriptRoot\settings\*.ps1" | Sort-Object Name | ForEach-Object {
-    Write-Host "`n=== Running settings: $($_.Name) ===" -ForegroundColor Cyan
-    & $_.FullName
+    # settings スクリプトをすべて自動検出して実行
+    Get-ChildItem "$PSScriptRoot\settings\*.ps1" | Sort-Object Name | ForEach-Object {
+        Write-Host "`n=== Running settings: $($_.Name) ===" -ForegroundColor Cyan
+        & $_.FullName
+    }
 }
