@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+LOG_FILE="$HOME/install_apps.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "=== Install started: $(date) ==="
+
 # Update and Upgrade
 sudo apt-get update
 sudo apt-get upgrade -y
@@ -29,6 +33,9 @@ sudo apt-get install -y python3.12
 
 # Node.js (LTS)
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+# Remove conflicting system Node.js packages (Ubuntu default repos ship older versions
+# that own overlapping file paths, causing dpkg conflicts with nodesource packages)
+sudo apt-get remove -y nodejs libnode-dev libnode72 nodejs-doc 2>/dev/null || true
 sudo apt-get install -y nodejs
 
 # Cleanup
@@ -46,6 +53,7 @@ source "$HOME/.cargo/env"
 npm install -g @anthropic-ai/claude-code
 npm install -g @google/gemini-cli
 
+echo "=== Install finished: $(date) ==="
 echo "Setup complete."
 echo "  Restart your shell (or run: source ~/.bashrc) to reload PATH."
 echo "  tmux:   tmux -V"

@@ -1,0 +1,5 @@
+# Shell scripts must use LF (not CRLF) to run correctly on Linux/WSL
+*.sh text eol=lf
+
+# Default: normalize line endings on commit, use platform native on checkout
+* text=auto
