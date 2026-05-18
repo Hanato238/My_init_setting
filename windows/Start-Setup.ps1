@@ -10,8 +10,7 @@ if (-not $PSScriptRoot) {
 
     Write-Host "Downloading repository..." -ForegroundColor Yellow
     $zipPath = "$tempDir.zip"
-    Invoke-WebRequest -Uri "https://github.com/Hanato238/My_init_setting/archive/refs/heads/main.zip" `
-        -OutFile $zipPath -UseBasicParsing
+    Invoke-WebRequest -Uri "https://github.com/Hanato238/My_init_setting/archive/refs/heads/main.zip" -OutFile $zipPath -UseBasicParsing
     Expand-Archive -Path $zipPath -DestinationPath $env:TEMP -Force
     Remove-Item $zipPath
     Rename-Item "$env:TEMP\My_init_setting-main" $tempDir
