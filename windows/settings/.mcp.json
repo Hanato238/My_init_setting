@@ -172,6 +172,14 @@
       "env": {
         "RAINDROP_ACCESS_TOKEN": "${RAINDROP_ACCESS_TOKEN}"
       }
+    },
+    "gemini-cli": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "gemini-mcp-tool"],
+      "env": {
+        "GEMINI_MODEL": "${GEMINI_MODEL}"
+      }
     }
   }
 }

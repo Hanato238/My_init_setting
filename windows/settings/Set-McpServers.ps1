@@ -1,7 +1,6 @@
 param(
   [string]$ServersPath = "$PSScriptRoot\.mcp.json",
-  [string]$ClaudePath = "$env:USERPROFILE\.claude.json",
-  [string]$GeminiPath = "$env:USERPROFILE\.gemini\settings.json"
+  [string]$ClaudePath  = "$env:USERPROFILE\.claude.json"
 )
 
 function Ensure-JsonFile($path) {
@@ -41,15 +40,6 @@ $serverNames = (& jq -r '.mcpServers | keys | join(", ")' $ServersPath)
 Write-Host "[ Claude ] $ClaudePath"
 Merge-McpServers $ClaudePath $ServersPath
 Write-Host "Updated/Added: $serverNames"
-
-Write-Host ""
-Write-Host "[ Gemini ] $GeminiPath"
-Merge-McpServers $GeminiPath $ServersPath
-Write-Host "Updated/Added: $serverNames and start install gemini extensions"
-gemini extensions install https://github.com/googleworkspace/cli
-gemini extensions install https://github.com/gemini-cli-extensions/security
-
-Write-Host "Installed: gemini extensions installed"
 
 Write-Host ""
 Write-Host "Done: MCP servers have been merged." -ForegroundColor Green
