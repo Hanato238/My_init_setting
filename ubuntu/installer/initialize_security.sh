@@ -63,8 +63,21 @@ echo "Found $ITEM_COUNT items in 'api_keys'."
 } > "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
 
+# Ensure ~/.secrets is auto-loaded in new shells
+BASHRC_SOURCE_LINE='[ -f "$HOME/.secrets" ] && source "$HOME/.secrets"'
+if ! grep -qF '.secrets' "$HOME/.bashrc" 2>/dev/null; then
+    {
+        echo ""
+        echo "# Load API keys (written by initialize_security.sh)"
+        echo "$BASHRC_SOURCE_LINE"
+    } >> "$HOME/.bashrc"
+    echo "Added source line to ~/.bashrc"
+else
+    echo "~/.bashrc already sources ~/.secrets — skipped."
+fi
+
 SAVED=$(grep -c '^export ' "$SECRETS_FILE" || true)
 echo ""
 echo "--- Summary ---"
 echo "$SAVED secret(s) written to $SECRETS_FILE"
-echo "Run: source $SECRETS_FILE  (or restart your shell)"
+echo "Run: source ~/.bashrc  (または新しいターミナルを開いてから Claude Code を再起動)"
