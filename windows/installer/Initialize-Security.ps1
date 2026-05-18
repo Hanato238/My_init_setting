@@ -5,7 +5,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # 1. Setup SecretStore
 if (-not (Get-Module -ListAvailable Microsoft.PowerShell.SecretStore)) {
     Write-Error "SecretStore module not found."
-    exit 1
+    return
 }
 if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
     Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
@@ -23,7 +23,7 @@ if ($status.status -eq "unauthenticated") {
 $unlockOutput = bw unlock --raw
 if ($null -eq $unlockOutput -or [string]::IsNullOrWhiteSpace($unlockOutput)) {
     Write-Error "Bitwarden unlock failed. Please ensure you are logged in using 'bw login' and try again."
-    exit 1
+    return
 }
 [string]$session = $unlockOutput.Trim()
 $env:BW_SESSION = $session
@@ -36,7 +36,7 @@ $targetFolders = $foldersJson | ConvertFrom-Json | Where-Object { $_.name -eq "a
 
 if (-not $targetFolders) {
     Write-Error "Folder 'api_keys' not found."
-    exit 1
+    return
 }
 
 $allFoundItems = @()

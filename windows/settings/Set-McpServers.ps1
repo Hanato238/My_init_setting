@@ -27,12 +27,12 @@ function Merge-McpServers($targetPath, $srcPath) {
 
 if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
   Write-Error "jq is required but not found in PATH."
-  exit 1
+  return
 }
 
 if (-not (Test-Path $ServersPath)) {
   Write-Error "Source MCP file not found: $ServersPath"
-  exit 1
+  return
 }
 
 $serverNames = (& jq -r '.mcpServers | keys | join(", ")' $ServersPath)

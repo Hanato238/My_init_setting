@@ -6,7 +6,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Write-Host "Administrative privileges required. Elevating..." -ForegroundColor Yellow
     # Request elevation while maintaining the bypass policy
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
+    return
 }
 
 Write-Host "Running with administrative privileges..." -ForegroundColor Green

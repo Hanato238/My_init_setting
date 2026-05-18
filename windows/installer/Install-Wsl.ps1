@@ -16,7 +16,7 @@ if ($wslVersion -eq $null) {
     Write-Host "WSL is not activated"
 } else {
     Write-Host "WSL has already been activated"
-    exit
+    return
 }
 
 
