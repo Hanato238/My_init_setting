@@ -54,6 +54,7 @@ source "$HOME/.cargo/env"
 # Global npm tools
 npm install -g @anthropic-ai/claude-code
 npm install -g @google/gemini-cli
+npm install -g @line/liff-cli
 
 # GitHub CLI
 sudo snap install gh --classic
@@ -68,3 +69,4 @@ echo "  claude: claude --version"
 echo "  gemini: gemini --version"
 echo "  uv:     uv --version"
 echo "  gh:     gh --version"
+echo "  liff:   liff-cli --help"
