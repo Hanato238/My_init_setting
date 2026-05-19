@@ -100,4 +100,10 @@ SAVED=$(grep -c '^export ' "$SECRETS_FILE" || true)
 echo ""
 echo "--- Summary ---"
 echo "$SAVED secret(s) written to $SECRETS_FILE"
+echo ""
+echo "Loaded variables:"
+grep '^export ' "$SECRETS_FILE" | sed 's/^export \([^=]*\)=.*/\1/' | while read -r varname; do
+    echo "  $varname"
+done
+echo ""
 echo "Run: source ~/.bashrc  (または新しいターミナルを開いてから Claude Code を再起動)"
