@@ -7,10 +7,11 @@ WSL2 上の Ubuntu で、devcontainer / Docker を使ったコード開発環境
 新規セットアップ時は以下の順番で実行する:
 
 ```bash
-bash install_apps.sh          # 1. パッケージ・言語ランタイム
-bash setup_workspace.sh       # 2. 作業ディレクトリ
-bash setup_aliases.sh         # 3. シェルエイリアス・環境変数ロード
-bash initialize_security.sh   # 4. Bitwarden → ~/.secrets
+bash installer/install_apps.sh          # 1. パッケージ・言語ランタイム
+bash settings/set_workspace.sh         # 2. 作業ディレクトリ
+bash settings/set_aliases.sh           # 3. シェルエイリアス・環境変数ロード
+bash installer/initialize_security.sh  # 4. Bitwarden → ~/.secrets
+bash installer/install_docker.sh       # 5. Docker Desktop + devcontainer CLI
 ```
 
 ---
@@ -116,6 +117,36 @@ Bitwarden (クラウド)
 sync_api_keys        # エイリアス経由（setup_aliases.sh セットアップ後）
 # または直接
 bash initialize_security.sh && source ~/.secrets
+```
+
+---
+
+### `install_docker.sh` — Docker Engine (WSL2 ネイティブ)
+
+Docker Desktop 不要。WSL2 の Ubuntu に Docker Engine を直接インストールする。ターミナルから `docker run` でコンテナを起動して隔離環境を作るための設計。
+
+**スクリプトの処理（冪等）:**
+1. systemd が未起動の場合 → `/etc/wsl.conf` に `systemd=true` を追記し、WSL 再起動を促して終了
+2. Docker Engine を公式リポジトリからインストール
+3. `docker` グループへ追加（sudo なしで使えるようにする）
+4. Docker サービスを有効化・起動
+
+```bash
+bash installer/install_docker.sh
+# ※ 初回は WSL 再起動後に再実行が必要な場合あり
+
+# 確認
+docker run --rm hello-world
+```
+
+**基本的な使い方:**
+```bash
+# プロジェクトディレクトリをマウントしてコンテナに入る
+docker run -it --rm -v $(pwd):/workspace -w /workspace node:20 bash
+
+# コンテナ内で Claude Code を起動
+npm install -g @anthropic-ai/claude-code
+claude
 ```
 
 ---

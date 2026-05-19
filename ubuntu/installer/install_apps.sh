@@ -31,13 +31,14 @@ sudo add-apt-repository ppa:deadsnakes/ppa -y
 sudo apt-get update
 sudo apt-get install -y python3.12
 
-# Node.js (LTS via nvm)
+# Node.js v22 LTS via nvm (v20+ required for File Web API used by gemini-cli)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 # shellcheck source=/dev/null
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-nvm install --lts
-nvm use --lts
+nvm install 22
+nvm use 22
+nvm alias default 22
 
 # Cleanup
 sudo apt-get autoremove -y

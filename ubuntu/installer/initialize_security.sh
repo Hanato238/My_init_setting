@@ -1,23 +1,43 @@
 #!/bin/bash
 set -e
 
+if [ "$EUID" -eq 0 ]; then
+    echo "Error: Do not run this script with sudo. Run as your regular user:" >&2
+    echo "  bash ./installer/initialize_security.sh" >&2
+    exit 1
+fi
+
+# Load nvm so that npm/node installed via nvm are available
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
 SECRETS_FILE="$HOME/.secrets"
 
-# Install Bitwarden CLI if not present
+read -rsp "Bitwarden master password: " BW_PASSWORD
+echo
+export BW_PASSWORD
+
+# Install Bitwarden CLI standalone binary if not present
+# (npm package uses WASM which has getrandom incompatibility on Node.js)
 if ! command -v bw &>/dev/null; then
-    echo "Installing Bitwarden CLI..."
-    npm install -g @bitwarden/cli
+    echo "Installing Bitwarden CLI (standalone binary)..."
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL "https://vault.bitwarden.com/download/?app=cli&platform=linux" -o /tmp/bw.zip
+    unzip -o /tmp/bw.zip bw -d "$HOME/.local/bin/"
+    chmod +x "$HOME/.local/bin/bw"
+    rm -f /tmp/bw.zip
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Login if unauthenticated
 STATUS=$(bw status | jq -r '.status')
 if [ "$STATUS" = "unauthenticated" ]; then
     echo "Not logged in. Starting Bitwarden login..."
-    bw login
+    bw login --passwordenv BW_PASSWORD
 fi
 
-# Unlock and capture session token
-SESSION=$(bw unlock --raw)
+# Unlock and capture session token (BW_PASSWORD is used automatically)
+SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
 if [ -z "$SESSION" ]; then
     echo "Error: Bitwarden unlock failed." >&2
     exit 1
