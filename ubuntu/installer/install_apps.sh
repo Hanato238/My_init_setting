@@ -47,9 +47,9 @@ sudo apt-get autoremove -y
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 
-# Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source "$HOME/.cargo/env"
+# Rust (rustup + cargo)
+sudo snap install rustup --classic
+rustup default stable
 
 # Global npm tools
 npm install -g @anthropic-ai/claude-code
@@ -58,6 +58,9 @@ npm install -g @line/liff-cli
 
 # GitHub CLI
 sudo snap install gh --classic
+
+# ngrok
+sudo snap install ngrok
 
 echo "=== Install finished: $(date) ==="
 echo "Setup complete."
@@ -70,3 +73,4 @@ echo "  gemini: gemini --version"
 echo "  uv:     uv --version"
 echo "  gh:     gh --version"
 echo "  liff:   liff-cli --help"
+echo "  ngrok:  ngrok version"
