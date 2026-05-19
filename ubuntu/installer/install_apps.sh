@@ -55,6 +55,9 @@ source "$HOME/.cargo/env"
 npm install -g @anthropic-ai/claude-code
 npm install -g @google/gemini-cli
 
+# GitHub CLI
+sudo snap install gh --classic
+
 echo "=== Install finished: $(date) ==="
 echo "Setup complete."
 echo "  Restart your shell (or run: source ~/.bashrc) to reload PATH."
@@ -64,3 +67,4 @@ echo "  node:   node --version"
 echo "  claude: claude --version"
 echo "  gemini: gemini --version"
 echo "  uv:     uv --version"
+echo "  gh:     gh --version"
