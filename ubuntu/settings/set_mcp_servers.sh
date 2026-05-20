@@ -3,7 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVERS_PATH="${1:-$SCRIPT_DIR/.mcp.json}"
-CLAUDE_PATH="${2:-$HOME/.claude.json}"
+if [[ -n "${2:-}" ]]; then
+  CLAUDE_PATH="$2"
+elif [[ -n "${SUDO_USER:-}" ]]; then
+  ACTUAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+  CLAUDE_PATH="$ACTUAL_HOME/.claude.json"
+else
+  CLAUDE_PATH="$HOME/.claude.json"
+fi
 
 ensure_json_file() {
   local path="$1"
