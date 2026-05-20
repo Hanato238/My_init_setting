@@ -1,21 +1,28 @@
-gemini extensions install https://github.com/upstash/context7
-gemini extensions install https://github.com/wonderwhy-er/DesktopCommanderMCP
-gemini extensions install https://github.com/googleworkspace/cli
-gemini extensions install https://github.com/gemini-cli-extensions/security
-gemini extensions install https://github.com/google/clasp
-gemini extensions install https://github.com/googlemaps/platform-ai
-gemini extensions install https://github.com/gemini-cli-extensions/web-accessibility
-gemini extensions install https://github.com/gemini-cli-extensions/observability
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-resource-manager
-gemini extensions install https://github.com/gemini-cli-extensions/code-review
-gemini extensions install https://github.com/ChromeDevTools/chrome-devtools-mcp
-gemini extensions install https://github.com/gemini-cli-extensions/mysql
-gemini extensions install https://github.com/gemini-cli-extensions/observability
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-monitoring
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-run
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-storage
-gemini extensions install https://github.com/gemini-cli-extensions/compute-engine
-gemini extensions install https://github.com/gemini-cli-extensions/pubsub
-gemini extensions install https://github.com/gemini-cli-extensions/cloud-logging
-gemini extensions install https://github.com/GoogleCloudPlatform/gcp-hardening-toolkit
-gemini extensions install https://github.com/Hanato238/modelcontextprotocol # perplexity
+{
+  "gcp": [
+    "https://github.com/gemini-cli-extensions/cloud-resource-manager",
+    "https://github.com/gemini-cli-extensions/cloud-run",
+    "https://github.com/gemini-cli-extensions/cloud-storage",
+    "https://github.com/gemini-cli-extensions/cloud-logging",
+    "https://github.com/gemini-cli-extensions/cloud-monitoring",
+    "https://github.com/gemini-cli-extensions/compute-engine",
+    "https://github.com/gemini-cli-extensions/pubsub",
+    "https://github.com/gemini-cli-extensions/observability",
+    "https://github.com/GoogleCloudPlatform/gcp-hardening-toolkit"
+  ],
+  "web_search": [
+    "https://github.com/Hanato238/modelcontextprotocol",
+    "https://github.com/upstash/context7"
+  ],
+  "tools": [
+    "https://github.com/gemini-cli-extensions/security",
+    "https://github.com/gemini-cli-extensions/code-review",
+    "https://github.com/gemini-cli-extensions/web-accessibility",
+    "https://github.com/gemini-cli-extensions/mysql",
+    "https://github.com/wonderwhy-er/DesktopCommanderMCP",
+    "https://github.com/ChromeDevTools/chrome-devtools-mcp",
+    "https://github.com/google/clasp",
+    "https://github.com/googleworkspace/cli",
+    "https://github.com/googlemaps/platform-ai"
+  ]
+}
