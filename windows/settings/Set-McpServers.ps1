@@ -5,7 +5,6 @@ param(
   [string]$GeminiPath     = "$env:USERPROFILE\.gemini\settings.json"
 )
 
-# Gemini に追加する MCP サーバーキー（.mcp.json から抽出）
 $GeminiMcpKeys = @('git', 'fetch', 'memory', 'sequential-thinking')
 
 function Ensure-JsonFile($path) {
@@ -24,7 +23,7 @@ function Write-Utf8NoBom($path, $lines) {
   [System.IO.File]::WriteAllText($path, ($lines -join "`n") + "`n", $utf8NoBom)
 }
 
-# Claude Code: .mcp.json の全サーバーを ~/.claude.json にマージ
+# Claude Code: .mcp.json no all servers to ~/.claude.json
 function Merge-ClaudeMcpServers($targetPath, $srcPath) {
   Ensure-JsonFile $targetPath
   $result = & jq --slurpfile src $srcPath '.mcpServers = ($src[0].mcpServers // {})' $targetPath
@@ -32,24 +31,39 @@ function Merge-ClaudeMcpServers($targetPath, $srcPath) {
   Write-Utf8NoBom $targetPath $result
 }
 
-# Gemini: 指定キーのみ + time サーバーを ~/.gemini/settings.json にマージ
+# Gemini: filtered keys + time -> ~/.gemini/settings.json (PowerShell native to avoid Windows quote issues)
 function Merge-GeminiMcpServers($targetPath, $srcPath, [string[]]$keys) {
   Ensure-JsonFile $targetPath
-  $inExpr = ($keys | ForEach-Object { '"' + $_ + '"' }) -join ','
-  # jq フィルターをファイル経由で渡す（Windows での引数クォート問題を回避）
-  $filterContent = '.mcpServers = (($src[0].mcpServers // {}) | with_entries(select(.key | IN(' + $inExpr + ')))) + {"time":{"type":"stdio","command":"uvx","args":["mcp-server-time"],"env":{}}}'
-  $filterFile = [System.IO.Path]::GetTempFileName()
-  try {
-    [System.IO.File]::WriteAllText($filterFile, $filterContent, (New-Object System.Text.UTF8Encoding $false))
-    $result = & jq --slurpfile src $srcPath -f $filterFile $targetPath
-    if ($LASTEXITCODE -ne 0) { throw "jq failed to merge Gemini servers into $targetPath" }
-    Write-Utf8NoBom $targetPath $result
-  } finally {
-    Remove-Item $filterFile -ErrorAction SilentlyContinue
+
+  $srcData    = Get-Content $srcPath    -Raw | ConvertFrom-Json
+  $targetData = Get-Content $targetPath -Raw | ConvertFrom-Json
+
+  $mcpServers = New-Object PSObject
+  foreach ($k in $keys) {
+    $val = $srcData.mcpServers.PSObject.Properties[$k].Value
+    if ($null -ne $val) {
+      $mcpServers | Add-Member -MemberType NoteProperty -Name $k -Value $val
+    }
   }
+
+  $timeServer = New-Object PSObject
+  $timeServer | Add-Member -MemberType NoteProperty -Name 'type'    -Value 'stdio'
+  $timeServer | Add-Member -MemberType NoteProperty -Name 'command' -Value 'uvx'
+  $timeServer | Add-Member -MemberType NoteProperty -Name 'args'    -Value ([string[]]@('mcp-server-time'))
+  $timeServer | Add-Member -MemberType NoteProperty -Name 'env'     -Value (New-Object PSObject)
+  $mcpServers | Add-Member -MemberType NoteProperty -Name 'time' -Value $timeServer
+
+  if ($targetData.PSObject.Properties['mcpServers']) {
+    $targetData.mcpServers = $mcpServers
+  } else {
+    $targetData | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value $mcpServers
+  }
+
+  $json = $targetData | ConvertTo-Json -Depth 10
+  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($targetPath, $json + "`n", $utf8NoBom)
 }
 
-# --- 前提チェック ---
 if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
   Write-Error "jq is required but not found in PATH."
   return
@@ -60,20 +74,17 @@ if (-not (Test-Path $ServersPath)) {
   return
 }
 
-# --- Claude Code: 全サーバーをマージ ---
-$serverNames = (& jq -r '.mcpServers | keys | join(", ")' $ServersPath)
+$serverNames = (& jq -r '.mcpServers | keys[]' $ServersPath) -join ', '
 Write-Host "[ Claude Code ] $ClaudePath"
 Merge-ClaudeMcpServers $ClaudePath $ServersPath
 Write-Host "Updated/Added: $serverNames"
 Write-Host ""
 
-# --- Gemini: 指定サーバー + time をマージ ---
 Write-Host "[ Gemini MCP ] $GeminiPath"
 Merge-GeminiMcpServers $GeminiPath $ServersPath $GeminiMcpKeys
 Write-Host "Updated/Added: $($GeminiMcpKeys -join ', '), time"
 Write-Host ""
 
-# --- Gemini Extensions インストール ---
 if (Test-Path $ExtensionsPath) {
   Write-Host "[ Gemini Extensions ]"
   if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
