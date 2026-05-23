@@ -3,7 +3,9 @@
     "allow": [
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\")",
+      "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\" 2>&1)"
     ]
   }
 }

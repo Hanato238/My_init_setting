@@ -1,5 +1,55 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
+Write-Host "Installing apps via Winget..."
+
+$wingetPackages = @(
+    "Google.Chrome",
+    "Google.GoogleDrive",
+    "Google.CloudSDK",
+    "Python.Python.3.9",
+    "Python.Python.3.10",
+    "Python.Python.3.11",
+    "Python.Python.3.12",
+    "Python.Python.3.13",
+    "vim.vim",
+    "cURL.cURL",
+    "gerardog.gsudo",
+    "MSYS2.MSYS2",
+    "GnuWin32.Tree",
+    "Microsoft.Sysinternals.ProcessMonitor",
+    "WiresharkFoundation.Wireshark",
+    "Microsoft.PowerToys",
+    "ExpressVPN.ExpressVPN",
+    "astral-sh.uv",
+    "jqlang.jq",
+    "Git.Git",
+    "GitHub.cli",
+    "OpenJS.NodeJS.LTS",
+    "CoreyButler.NVMforWindows",
+    "Microsoft.VisualStudioCode",
+    "Ngrok.Ngrok",
+    "Microsoft.WSL.PreRelease",
+    "Canonical.Ubuntu.2404",
+    "Docker.DockerDesktop",
+    "Docker.DockerCLI",
+    "Docker.sbx",
+    "Rustlang.Rustup",
+    "Microsoft.WindowsSDK",
+    "Amazon.AWSCLI",
+    "Bitwarden.Bitwarden",
+    "Bitwarden.CLI",
+    "Telegram.TelegramDesktop",
+    "Microsoft.WindowsTerminal"
+    "Doist.Todoist"
+)
+
+foreach ($pkg in $wingetPackages) {
+    Write-Host "Installing $pkg..." -ForegroundColor Cyan
+    winget install -e --id $pkg --accept-package-agreements --accept-source-agreements
+}
+
+Write-Host "Installation via Winget has been finished"
+
 # Check if Chocolatey is installed
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
@@ -8,13 +58,11 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 
 # Install all packages in one command
 Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
-choco install googlechrome googledrive google-drive-file-stream gcloudsdk python39 python310 python311 python312 python313 python314 vim curl gsudo mingw winget tree procmon wireshark powertoys expressvpn uv jq git nodejs-lts vscode materialicon-vscode ngrok docker-desktop windows-sdk-10.1 awscli bitwarden bitwarden-chrome bitwarden-cli spacedesk-server choco-cleaner --ignore-checksums -y
-
+choco install materialicon-vscode bitwarden-chrome spacedesk-server --ignore-checksums -y
 # upgrade all packages
-choco upgrade all -y
+# choco upgrade all -y
+Write-Host "Installation via Chocolatey has been finished"
 
-# install Ubuntu
-wsl --install -d Ubuntu26.04
 
 # Setup PowerShell Secret Management
 Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
