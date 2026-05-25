@@ -40,7 +40,6 @@ Set-Alias -Name "powertoys" -Value "C:\Program Files\PowerToys\PowerToys.exe"
 Set-Alias -Name "bitwarden" -Value "$env:USERPROFILE\AppData\Local\Programs\Bitwarden\Bitwarden.exe"
 Set-Alias -Name "spacedesk" -Value "C:\Program Files\datronicsoft\spacedesk\spacedeskConsole.exe"
 Set-Alias -Name "gemini" -Value "$env:USERPROFILE\AppData\Roaming\npm\gemini.ps1"
-Set-Alias -Name "claude" -Value "$env:USERPROFILE\AppData\Roaming\npm\claude.ps1"
 
 Set-Alias -Name "powerpoint" -Value "C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE"
 Set-Alias -Name "word" -Value "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE"
@@ -112,6 +111,15 @@ function Sync-ApiKeys {
         Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
     }
 }
+
+function claude {
+    $response = Read-Host "これはホスト環境です。実行しますか？(y/n)"
+    if ($response -eq 'y' -or $response -eq 'Y') {
+        & "$env:USERPROFILE\AppData\Roaming\npm\claude.ps1" @args
+    }
+}
+
+function sbxcc { sbx run claude @args }
 '@
 
 # Configure SecretStore
