@@ -24,7 +24,6 @@ $wingetPackages = @(
     "jqlang.jq",
     "Git.Git",
     "GitHub.cli",
-    "OpenJS.NodeJS.LTS",
     "CoreyButler.NVMforWindows",
     "Microsoft.VisualStudioCode",
     "Ngrok.Ngrok",
@@ -39,7 +38,7 @@ $wingetPackages = @(
     "Bitwarden.Bitwarden",
     "Bitwarden.CLI",
     "Telegram.TelegramDesktop",
-    "Microsoft.WindowsTerminal"
+    "Microsoft.WindowsTerminal",
     "Doist.Todoist"
 )
 
@@ -68,6 +67,25 @@ Write-Host "Installation via Chocolatey has been finished"
 Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
 Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
 Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
+
+# Refresh PATH and nvm env vars in current session after winget installs
+$machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+$userPath    = [System.Environment]::GetEnvironmentVariable("PATH", "User")
+$env:PATH    = "$machinePath;$userPath"
+foreach ($var in @("NVM_HOME", "NVM_SYMLINK")) {
+    $val = [System.Environment]::GetEnvironmentVariable($var, "Machine")
+    if ($val) { [System.Environment]::SetEnvironmentVariable($var, $val, "Process") }
+}
+
+# Install and activate Node.js via nvm
+$nodeVersion = "22"
+Write-Host "Installing Node.js $nodeVersion via nvm..." -ForegroundColor Cyan
+nvm install $nodeVersion
+nvm use $nodeVersion
+
+# Refresh PATH again so nvm-managed npm is in scope
+$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
+            [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
 # install cli tools via npm
 Write-Host "Installing global npm packages..." -ForegroundColor Cyan
