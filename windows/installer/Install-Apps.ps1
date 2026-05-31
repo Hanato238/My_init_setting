@@ -18,7 +18,6 @@ $wingetPackages = @(
     "GnuWin32.Tree",
     "Microsoft.Sysinternals.ProcessMonitor",
     "WiresharkFoundation.Wireshark",
-    "Microsoft.PowerToys",
     "ExpressVPN.ExpressVPN",
     "astral-sh.uv",
     "jqlang.jq",
@@ -26,7 +25,6 @@ $wingetPackages = @(
     "GitHub.cli",
     "CoreyButler.NVMforWindows",
     "Microsoft.VisualStudioCode",
-    "Ngrok.Ngrok",
     "Microsoft.WSL.PreRelease",
     "Canonical.Ubuntu.2404",
     "Docker.DockerDesktop",
@@ -39,7 +37,7 @@ $wingetPackages = @(
     "Bitwarden.CLI",
     "Telegram.TelegramDesktop",
     "Microsoft.WindowsTerminal",
-    "Doist.Todoist"
+    "Chocolatey.Chocolatey"
 )
 
 foreach ($pkg in $wingetPackages) {
@@ -57,7 +55,7 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 
 # Install all packages in one command
 Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
-choco install materialicon-vscode bitwarden-chrome spacedesk-server --ignore-checksums -y
+choco install vscode materialicon-vscode bitwarden-chrome line ngrok powertoys spacedesk-server --ignore-checksums -y
 # upgrade all packages
 # choco upgrade all -y
 Write-Host "Installation via Chocolatey has been finished"
@@ -67,6 +65,7 @@ Write-Host "Installation via Chocolatey has been finished"
 Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
 Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
 Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
+Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
 
 # Refresh PATH and nvm env vars in current session after winget installs
 $machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
@@ -89,4 +88,4 @@ $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";
 
 # install cli tools via npm
 Write-Host "Installing global npm packages..." -ForegroundColor Cyan
-npm install -g @anthropic-ai/claude-code @anthropic-ai/sdk @google/gemini-cli
+npm install -g @anthropic-ai/claude-code @anthropic-ai/sdk @google/gemini-cli @line/liff
