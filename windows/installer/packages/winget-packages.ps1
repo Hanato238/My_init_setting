@@ -1,4 +1,4 @@
-$wingetPackages = @(
+﻿$wingetPackages = @(
     "Chocolatey.Chocolatey",
     "Google.Chrome",
     "Google.GoogleDrive",

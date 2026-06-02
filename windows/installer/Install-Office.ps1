@@ -1,4 +1,4 @@
-Set-ExecutionPolicy Bypass -Scope Process -Force
+﻿Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # Google Drive File ID for setup.exe
 $fileId = "18vddendGM5lN7Uul9_iNttma0GfiQDiv"

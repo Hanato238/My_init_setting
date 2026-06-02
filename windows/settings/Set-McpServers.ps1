@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$ServersPath    = "$PSScriptRoot\.mcp.json",
   [string]$ExtensionsPath = "$PSScriptRoot\.extensions.json",
   [string]$ClaudePath     = "$env:USERPROFILE\.claude.json",

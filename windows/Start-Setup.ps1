@@ -1,4 +1,4 @@
-# Run PowerShell as Administrator before executing this script
+﻿# Run PowerShell as Administrator before executing this script
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 

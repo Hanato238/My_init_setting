@@ -1,4 +1,4 @@
-# Docker Desktop WSL Integration Setup
+﻿# Docker Desktop WSL Integration Setup
 # This script enables WSL integration for specified distributions in Docker Desktop settings.
 
 $settingsPath = "$env:APPDATA\Docker\settings-store.json"

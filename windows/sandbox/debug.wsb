@@ -1,0 +1,14 @@
+<Configuration>
+  <MappedFolders>
+    <!-- リポジトリを Sandbox にマウント（ホスト側も書き込み可） -->
+    <MappedFolder>
+      <HostFolder>C:\Users\lesen\workspace\My_init_setting</HostFolder>
+      <SandboxFolder>C:\setup</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <!-- Sandbox 起動時に自動実行 -->
+    <Command>powershell -NoProfile -ExecutionPolicy Bypass -File C:\setup\windows\sandbox\Start-InSandbox.ps1</Command>
+  </LogonCommand>
+</Configuration>

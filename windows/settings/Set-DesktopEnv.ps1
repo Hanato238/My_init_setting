@@ -1,4 +1,4 @@
-# 1. Temporarily bypass execution policy for the current process
+﻿# 1. Temporarily bypass execution policy for the current process
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # 2. Check for administrative privileges and auto-elevate if needed

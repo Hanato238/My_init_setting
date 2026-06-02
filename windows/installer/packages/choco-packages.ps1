@@ -1,4 +1,4 @@
-$chocoPackages = @(
+﻿$chocoPackages = @(
     "vscode",
     "materialicon-vscode",
     "bitwarden-chrome",

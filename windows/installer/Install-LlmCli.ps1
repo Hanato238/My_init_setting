@@ -1,39 +1,60 @@
+﻿param([switch]$DryRun)
+
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# install cli tools
-npm install -g @anthropic-ai/claude-code -y
-npm install -g @anthropic-ai/sdk -y
-npm install -g @google/gemini-cli -y
-refreshenv
+# --- CLI tools ---
+if ($DryRun) {
+    Write-Host "[DRY RUN] npm install -g @anthropic-ai/claude-code" -ForegroundColor Yellow
+    Write-Host "[DRY RUN] npm install -g @anthropic-ai/sdk" -ForegroundColor Yellow
+    Write-Host "[DRY RUN] npm install -g @google/gemini-cli" -ForegroundColor Yellow
+} else {
+    npm install -g @anthropic-ai/claude-code -y
+    npm install -g @anthropic-ai/sdk -y
+    npm install -g @google/gemini-cli -y
+    refreshenv
+}
 
 # === Standard MCP servers ===
 
-# Gemini
-gemini mcp add filesystem npx @modelcontextprotocol/server-filesystem -s user
-gemini mcp add memory npx @modelcontextprotocol/server-memory -s user
-gemini mcp add sequential-thinking npx @modelcontextprotocol/server-sequential-thinking -s user
-gemini mcp add fetch uvx mcp-server-fetch -s user
-gemini mcp add git uvx mcp-server-git -s user
+$stdServers = @(
+    @{ tool = "gemini"; cmd = "npx"; pkg = "@modelcontextprotocol/server-filesystem"; name = "filesystem" }
+    @{ tool = "gemini"; cmd = "npx"; pkg = "@modelcontextprotocol/server-memory";     name = "memory" }
+    @{ tool = "gemini"; cmd = "npx"; pkg = "@modelcontextprotocol/server-sequential-thinking"; name = "sequential-thinking" }
+    @{ tool = "gemini"; cmd = "uvx"; pkg = "mcp-server-fetch";                        name = "fetch" }
+    @{ tool = "gemini"; cmd = "uvx"; pkg = "mcp-server-git";                          name = "git" }
+    @{ tool = "claude"; cmd = "npx"; pkg = "@modelcontextprotocol/server-filesystem"; name = "filesystem" }
+    @{ tool = "claude"; cmd = "npx"; pkg = "@modelcontextprotocol/server-memory";     name = "memory" }
+    @{ tool = "claude"; cmd = "npx"; pkg = "@modelcontextprotocol/server-sequential-thinking"; name = "sequential-thinking" }
+    @{ tool = "claude"; cmd = "uvx"; pkg = "mcp-server-fetch";                        name = "fetch" }
+    @{ tool = "claude"; cmd = "uvx"; pkg = "mcp-server-git";                          name = "git" }
+)
 
-# Claude
-claude mcp add filesystem -s user -- npx @modelcontextprotocol/server-filesystem
-claude mcp add memory -s user -- npx @modelcontextprotocol/server-memory
-claude mcp add sequential-thinking -s user -- npx @modelcontextprotocol/server-sequential-thinking
-claude mcp add fetch -s user -- uvx mcp-server-fetch
-claude mcp add git -s user -- uvx mcp-server-git
+foreach ($s in $stdServers) {
+    if ($DryRun) {
+        Write-Host "[DRY RUN] $($s.tool) mcp add $($s.name) $($s.cmd) $($s.pkg)" -ForegroundColor Yellow
+    } elseif ($s.tool -eq "gemini") {
+        gemini mcp add $s.name $s.cmd $s.pkg -s user
+    } else {
+        claude mcp add $s.name -s user -- $s.cmd $s.pkg
+    }
+}
 
 # === Clone/update Hanato238/mcp-servers ===
 $mcpServersDir = "$env:USERPROFILE\workspace\mcp-servers"
-if (!(Test-Path $mcpServersDir)) {
-    cd "$env:USERPROFILE\workspace"
-    git clone https://github.com/Hanato238/mcp-servers.git
+if ($DryRun) {
+    Write-Host "[DRY RUN] git clone https://github.com/Hanato238/mcp-servers.git (if not exists)" -ForegroundColor Yellow
+    Write-Host "[DRY RUN] git pull + submodule update in $mcpServersDir" -ForegroundColor Yellow
+} else {
+    if (!(Test-Path $mcpServersDir)) {
+        Set-Location "$env:USERPROFILE\workspace"
+        git clone https://github.com/Hanato238/mcp-servers.git
+    }
+    Set-Location $mcpServersDir
+    git pull
+    git submodule update --init --recursive
 }
-cd $mcpServersDir
-git pull
-git submodule update --init --recursive
 
 # === Env vars required by specific Claude MCP servers ===
-# Add entries here for servers that need environment variables.
 $claudeMcpEnv = @{
     "brightdata"   = @{ "API_TOKEN"          = $env:BRIGHTDATA_API_TOKEN }
     "perplexity"   = @{ "PERPLEXITY_API_KEY" = $env:PERPLEXITY_API_KEY }
@@ -49,6 +70,14 @@ function Install-Extension($path) {
     }
 
     Write-Host "`n--- Setting up extension: $path ---"
+
+    if ($DryRun) {
+        Write-Host "[DRY RUN] npm install / build in $fullPath" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] gemini extensions install $fullPath" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] claude mcp add (auto-detect entry point) in $fullPath" -ForegroundColor Yellow
+        return
+    }
+
     Set-Location $fullPath
 
     # Build phase (shared)
@@ -70,7 +99,6 @@ function Install-Extension($path) {
     gemini extensions install . --consent
 
     # Register to Claude: detect entry point from local project files
-    # Server name: lowercase directory name, strip trailing -mcp suffix
     $serverName = (Split-Path $path -Leaf).ToLower() -replace '-mcp$', ''
 
     $claudeCommand = $null
@@ -79,7 +107,6 @@ function Install-Extension($path) {
     if (Test-Path "package.json") {
         $entry = $null
 
-        # Priority: bin > main > common build output locations
         if ($pkg.bin) {
             $entry = if ($pkg.bin -is [string]) { $pkg.bin }
                      else { ($pkg.bin.PSObject.Properties | Select-Object -First 1).Value }
@@ -111,7 +138,6 @@ function Install-Extension($path) {
 
     if (-not $claudeCommand) { return }
 
-    # Build --env arguments from $claudeMcpEnv table
     $envArgs = @()
     if ($claudeMcpEnv.ContainsKey($serverName)) {
         foreach ($key in $claudeMcpEnv[$serverName].Keys) {
@@ -155,11 +181,14 @@ foreach ($ext in $extensions) {
 }
 
 # Special setup for OpenEvidence (requires Chromium)
-cd (Join-Path $mcpServersDir "openevidence-mcp")
-npx playwright install chromium
+if ($DryRun) {
+    Write-Host "[DRY RUN] npx playwright install chromium (openevidence-mcp)" -ForegroundColor Yellow
+    Write-Host "[DRY RUN] uv tool install notebooklm-mcp-cli --force" -ForegroundColor Yellow
+} else {
+    Set-Location (Join-Path $mcpServersDir "openevidence-mcp")
+    npx playwright install chromium
+    uv tool install notebooklm-mcp-cli --force
+    Set-Location "$env:USERPROFILE\workspace"
+}
 
-# NotebookLM CLI tool
-uv tool install notebooklm-mcp-cli --force
-
-cd "$env:USERPROFILE\workspace"
 Write-Host "`n[SUCCESS] LLM CLI setup complete. (Gemini + Claude)"

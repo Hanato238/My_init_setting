@@ -1,4 +1,4 @@
-Set-ExecutionPolicy Bypass -Scope Process -Force
+﻿Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # get workspacepath and if not exist, create it
 $workspacePath = Join-Path -Path $HOME -ChildPath "workspace"
