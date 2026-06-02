@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "gemini-cli": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "gemini-mcp-tool"],
+      "env": {
+        "GEMINI_MODEL": "${GEMINI_MODEL}"
+      }
+    },
+    "perplexity": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "env": { "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}" }
+    },
+    "huggingface": {
+      "type": "http",
+      "url": "https://huggingface.co/mcp?login",
+      "env": {}
+    },
+    "openevidence": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "openevidence-mcp"],
+      "env": {}
+    }
+  }
+}

@@ -1,73 +1,18 @@
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-Write-Host "Installing apps via Winget..."
+. "$PSScriptRoot\packages\winget-packages.ps1"
+. "$PSScriptRoot\packages\choco-packages.ps1"
+. "$PSScriptRoot\packages\npm-packages.ps1"
 
-$wingetPackages = @(
-    "Google.Chrome",
-    "Google.GoogleDrive",
-    "Google.CloudSDK",
-    "Python.Python.3.9",
-    "Python.Python.3.10",
-    "Python.Python.3.11",
-    "Python.Python.3.12",
-    "Python.Python.3.13",
-    "vim.vim",
-    "cURL.cURL",
-    "gerardog.gsudo",
-    "MSYS2.MSYS2",
-    "GnuWin32.Tree",
-    "Microsoft.Sysinternals.ProcessMonitor",
-    "WiresharkFoundation.Wireshark",
-    "ExpressVPN.ExpressVPN",
-    "astral-sh.uv",
-    "jqlang.jq",
-    "Git.Git",
-    "GitHub.cli",
-    "CoreyButler.NVMforWindows",
-    "Microsoft.VisualStudioCode",
-    "Microsoft.WSL.PreRelease",
-    "Canonical.Ubuntu.2404",
-    "Docker.DockerDesktop",
-    "Docker.DockerCLI",
-    "Docker.sbx",
-    "Rustlang.Rustup",
-    "Microsoft.WindowsSDK",
-    "Amazon.AWSCLI",
-    "Bitwarden.Bitwarden",
-    "Bitwarden.CLI",
-    "Telegram.TelegramDesktop",
-    "Microsoft.WindowsTerminal",
-    "Chocolatey.Chocolatey"
-)
-
+# --- winget (includes Chocolatey) ---
+Write-Host "Installing apps via Winget..." -ForegroundColor Cyan
 foreach ($pkg in $wingetPackages) {
     Write-Host "Installing $pkg..." -ForegroundColor Cyan
     winget install -e --id $pkg --accept-package-agreements --accept-source-agreements
 }
-
 Write-Host "Installation via Winget has been finished"
 
-# Check if Chocolatey is installed
-if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host "Chocolatey is not installed. Please install Chocolatey first." -ForegroundColor Red
-    return
-}
-
-# Install all packages in one command
-Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
-choco install vscode materialicon-vscode bitwarden-chrome line ngrok powertoys spacedesk-server --ignore-checksums -y
-# upgrade all packages
-# choco upgrade all -y
-Write-Host "Installation via Chocolatey has been finished"
-
-
-# Setup PowerShell Secret Management
-Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
-Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
-Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
-Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
-
-# Refresh PATH and nvm env vars in current session after winget installs
+# Refresh PATH and nvm env vars so subsequent commands can find nvm/choco
 $machinePath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
 $userPath    = [System.Environment]::GetEnvironmentVariable("PATH", "User")
 $env:PATH    = "$machinePath;$userPath"
@@ -76,7 +21,18 @@ foreach ($var in @("NVM_HOME", "NVM_SYMLINK")) {
     if ($val) { [System.Environment]::SetEnvironmentVariable($var, $val, "Process") }
 }
 
-# Install and activate Node.js via nvm
+# --- Chocolatey ---
+Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
+choco install @chocoPackages --ignore-checksums -y
+Write-Host "Installation via Chocolatey has been finished"
+
+# --- PowerShell modules ---
+Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
+Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
+Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
+Register-SecretVault -Name LocalStore -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault
+
+# --- Node.js via nvm ---
 $nodeVersion = "22"
 Write-Host "Installing Node.js $nodeVersion via nvm..." -ForegroundColor Cyan
 nvm install $nodeVersion
@@ -86,6 +42,6 @@ nvm use $nodeVersion
 $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
             [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
-# install cli tools via npm
+# --- npm global packages ---
 Write-Host "Installing global npm packages..." -ForegroundColor Cyan
-npm install -g @anthropic-ai/claude-code @anthropic-ai/sdk @google/gemini-cli @line/liff
+npm install -g @npmPackages

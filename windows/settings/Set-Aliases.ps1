@@ -120,7 +120,35 @@ function claude {
     }
 }
 
-function sbxcc { sbx run claude @args }
+function sbxcc {
+    $currentDirName = Split-Path -Leaf (Get-Location).Path
+
+    # Convert Windows path (C:\foo\bar) to Linux path (/c/foo/bar)
+    $winPath = (Get-Location).Path
+    $linuxPath = "/" + $winPath[0].ToString().ToLower() + ($winPath.Substring(2) -replace '\\', '/')
+
+    # Check if a sandbox associated with the current directory is already running
+    $listOutput = sbx list 2>&1
+    $sandboxName = $null
+
+    if ($LASTEXITCODE -eq 0) {
+        foreach ($line in $listOutput) {
+            if ($line -match $currentDirName -and $line -match "running") {
+                $sandboxName = ($line.Trim() -split '\s+')[0]
+                break
+            }
+        }
+    }
+
+    $claudeArgs = if ($args.Count -gt 0) { $args -join ' ' } else { '' }
+    $cmd = "cd '$linuxPath' && exec claude --dangerously-skip-permissions $claudeArgs".Trim()
+
+    if ($sandboxName) {
+        sbx exec -it $sandboxName bash -c $cmd
+    } else {
+        sbx run --dangerously-skip-permissions bash -c $cmd
+    }
+}
 '@
 
 # Configure SecretStore

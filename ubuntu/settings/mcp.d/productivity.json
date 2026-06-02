@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_MCP_PAT": "${GITHUB_MCP_PAT}" }
+    },
+    "todoist": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@doist/todoist-ai"],
+      "env": { "TODOIST_API_KEY": "${TODOIST_API_KEY}" }
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "env": {}
+    },
+    "markitdown": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["markitdown-mcp"],
+      "env": {}
+    },
+    "raindrop": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@adeze/raindrop-mcp@latest"],
+      "env": {
+        "RAINDROP_ACCESS_TOKEN": "${RAINDROP_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

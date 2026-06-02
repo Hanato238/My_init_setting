@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "aws-iam": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["awslabs.iam-mcp-server@latest"],
+      "env": {}
+    }
+  }
+}

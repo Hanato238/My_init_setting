@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "amazon-seller": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "amazon-sp-api-mcp-server"],
+      "env": {}
+    },
+    "keepa": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "keepa-mcp-server"],
+      "env": { "KEEPA_API_KEY": "${KEEPA_API_KEY}" }
+    }
+  }
+}
