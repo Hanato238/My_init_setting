@@ -10,9 +10,12 @@ $chocoPackages = @(
     "python313",
     "gsudo",
     "vim",
+    "nvm",
     "uv",
     "jq",
     "curl",
     "tree",
-    "ngrok"
+    "ngrok",
+    "wireshark",
+    "procmon"
 )
