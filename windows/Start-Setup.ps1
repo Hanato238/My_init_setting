@@ -21,6 +21,7 @@ if (-not $PSScriptRoot) {
     # installer スクリプトを順番に実行（依存関係があるため順序固定）
     # 新しいスクリプトを追加する場合はこのリストに追記する
     $installerOrder = @(
+        "Enable-WindowsFeatures.ps1",
         "Install-Chocolatey.ps1",
         "Install-Apps.ps1",
         "Install-Office.ps1",
