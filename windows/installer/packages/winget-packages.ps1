@@ -4,7 +4,6 @@ $wingetPackages = @(
     "Google.GoogleDrive",
     "Google.CloudSDK",
     "MSYS2.MSYS2",
-    "Microsoft.PowerToys",
     "ExpressVPN.ExpressVPN",
     "Git.Git",
     "GitHub.cli",
@@ -19,6 +18,5 @@ $wingetPackages = @(
     "Bitwarden.Bitwarden",
     "Bitwarden.CLI",
     "Telegram.TelegramDesktop",
-    "Microsoft.WindowsTerminal",
-    "Doist.Todoist"
+    "Microsoft.WindowsTerminal"
 )
