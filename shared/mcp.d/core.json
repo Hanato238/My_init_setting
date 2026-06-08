@@ -41,5 +41,10 @@
       "mcp-server-git"
     ],
     "env": {}
+  },
+  "gemini-cli": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["gemini-mcp-tool"]
   }
 }

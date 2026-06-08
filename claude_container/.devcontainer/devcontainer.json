@@ -1,0 +1,9 @@
+{
+  "name": "Claude Template",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "node",
+  "workspaceFolder": "/workspace",
+  "postStartCommand": "claude --dangerously-skip-permissions",
+  "containerUser": "node",
+  "remoteUser": "node"
+}

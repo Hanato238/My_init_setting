@@ -121,9 +121,16 @@ function Setup-Windows {
 function claude {
     param(
         [switch]$AsHost,
+        [switch]$Rebuild,
+        [switch]$Sbx,
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]]$Rest
     )
+
+    if ($Sbx) {
+        sbx run claude @Rest
+        return
+    }
 
     if ($AsHost) {
         $exe = Get-Command claude -CommandType Application -ErrorAction SilentlyContinue |
@@ -138,7 +145,24 @@ function claude {
         $container = (Get-Item .).Name
 
         $status = docker inspect --format '{{.State.Status}}' $container 2>$null
-        if ($status -ne 'running') {
+
+        if ($Rebuild) {
+            Write-Host "Rebuilding container..." -ForegroundColor Cyan
+            docker compose -f $compose up --build -d
+            if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to rebuild container'; return }
+
+            $ready = $false
+            for ($i = 0; $i -lt 30; $i++) {
+                $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+                if ($status -eq 'running') { $ready = $true; break }
+                Start-Sleep -Seconds 2
+            }
+            if (-not $ready) {
+                Write-Error "$container did not start"
+                docker compose -f $compose logs node
+                return
+            }
+        } elseif ($status -ne 'running') {
             Write-Host "Starting container..." -ForegroundColor Cyan
             docker compose -f $compose up -d
             if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
