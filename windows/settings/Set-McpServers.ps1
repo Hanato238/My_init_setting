@@ -1,11 +1,13 @@
 ﻿param(
-  [string]$ServersPath    = "$PSScriptRoot\.mcp.json",
-  [string]$ExtensionsPath = "$PSScriptRoot\.extensions.json",
-  [string]$ClaudePath     = "$env:USERPROFILE\.claude.json",
-  [string]$GeminiPath     = "$env:USERPROFILE\.gemini\settings.json"
+  [switch]$DryRun,
+  [string]$McpDir          = "$PSScriptRoot\..\..\shared\mcp.d",
+  [string]$ExtensionsPath  = "$PSScriptRoot\..\..\shared\.extensions.json",
+  [string]$ClaudePath      = "$env:USERPROFILE\.claude.json",
+  [string]$GeminiPath      = "$env:USERPROFILE\.gemini\settings.json"
 )
 
-$GeminiMcpKeys = @('git', 'fetch', 'memory', 'sequential-thinking')
+$ClaudeMcpKeys = @('filesystem', 'git', 'fetch', 'memory', 'sequential-thinking')
+$GeminiMcpKeys = @('filesystem', 'git', 'fetch', 'memory', 'sequential-thinking')
 
 function Ensure-JsonFile($path) {
   $dir = Split-Path $path
@@ -18,40 +20,28 @@ function Ensure-JsonFile($path) {
   }
 }
 
-function Write-Utf8NoBom($path, $lines) {
-  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-  [System.IO.File]::WriteAllText($path, ($lines -join "`n") + "`n", $utf8NoBom)
+function Merge-McpDir($dirPath) {
+  $combined = New-Object PSObject
+  foreach ($file in Get-ChildItem $dirPath -Filter '*.json' | Sort-Object Name) {
+    $data = Get-Content $file.FullName -Raw | ConvertFrom-Json
+    foreach ($prop in $data.PSObject.Properties) {
+      $combined | Add-Member -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
+    }
+  }
+  return $combined
 }
 
-# Claude Code: .mcp.json no all servers to ~/.claude.json
-function Merge-ClaudeMcpServers($targetPath, $srcPath) {
+function Set-McpServers($targetPath, $srcServers, [string[]]$keys) {
   Ensure-JsonFile $targetPath
-  $result = & jq --slurpfile src $srcPath '.mcpServers = ($src[0].mcpServers // {})' $targetPath
-  if ($LASTEXITCODE -ne 0) { throw "jq failed to merge into $targetPath" }
-  Write-Utf8NoBom $targetPath $result
-}
-
-# Gemini: filtered keys + time -> ~/.gemini/settings.json (PowerShell native to avoid Windows quote issues)
-function Merge-GeminiMcpServers($targetPath, $srcPath, [string[]]$keys) {
-  Ensure-JsonFile $targetPath
-
-  $srcData    = Get-Content $srcPath    -Raw | ConvertFrom-Json
   $targetData = Get-Content $targetPath -Raw | ConvertFrom-Json
 
   $mcpServers = New-Object PSObject
   foreach ($k in $keys) {
-    $val = $srcData.mcpServers.PSObject.Properties[$k].Value
+    $val = $srcServers.PSObject.Properties[$k].Value
     if ($null -ne $val) {
       $mcpServers | Add-Member -MemberType NoteProperty -Name $k -Value $val
     }
   }
-
-  $timeServer = New-Object PSObject
-  $timeServer | Add-Member -MemberType NoteProperty -Name 'type'    -Value 'stdio'
-  $timeServer | Add-Member -MemberType NoteProperty -Name 'command' -Value 'uvx'
-  $timeServer | Add-Member -MemberType NoteProperty -Name 'args'    -Value ([string[]]@('mcp-server-time'))
-  $timeServer | Add-Member -MemberType NoteProperty -Name 'env'     -Value (New-Object PSObject)
-  $mcpServers | Add-Member -MemberType NoteProperty -Name 'time' -Value $timeServer
 
   if ($targetData.PSObject.Properties['mcpServers']) {
     $targetData.mcpServers = $mcpServers
@@ -59,38 +49,51 @@ function Merge-GeminiMcpServers($targetPath, $srcPath, [string[]]$keys) {
     $targetData | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value $mcpServers
   }
 
-  $json = $targetData | ConvertTo-Json -Depth 10
   $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-  [System.IO.File]::WriteAllText($targetPath, $json + "`n", $utf8NoBom)
+  [System.IO.File]::WriteAllText($targetPath, ($targetData | ConvertTo-Json -Depth 10) + "`n", $utf8NoBom)
 }
 
-if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
-  Write-Error "jq is required but not found in PATH."
+if (-not (Test-Path $McpDir)) {
+  Write-Error "MCP directory not found: $McpDir"
   return
 }
 
-if (-not (Test-Path $ServersPath)) {
-  Write-Error "Source MCP file not found: $ServersPath"
-  return
+# === Prerequisite tool installs ===
+Write-Host "[ Prerequisite tools ]"
+if ($DryRun) {
+  Write-Host "[DRY RUN] npx playwright install chromium" -ForegroundColor Yellow
+  Write-Host "[DRY RUN] uv tool install notebooklm-mcp-cli --force" -ForegroundColor Yellow
+} else {
+  npx playwright install chromium
+  uv tool install notebooklm-mcp-cli --force
 }
+Write-Host ""
 
-$serverNames = (& jq -r '.mcpServers | keys[]' $ServersPath) -join ', '
+$allServers = Merge-McpDir $McpDir
+
 Write-Host "[ Claude Code ] $ClaudePath"
-Merge-ClaudeMcpServers $ClaudePath $ServersPath
-Write-Host "Updated/Added: $serverNames"
+Set-McpServers $ClaudePath $allServers $ClaudeMcpKeys
+Write-Host "Updated/Added: $($ClaudeMcpKeys -join ', ')"
 Write-Host ""
 
 Write-Host "[ Gemini MCP ] $GeminiPath"
-Merge-GeminiMcpServers $GeminiPath $ServersPath $GeminiMcpKeys
-Write-Host "Updated/Added: $($GeminiMcpKeys -join ', '), time"
+Set-McpServers $GeminiPath $allServers $GeminiMcpKeys
+Write-Host "Updated/Added: $($GeminiMcpKeys -join ', ')"
 Write-Host ""
 
 if (Test-Path $ExtensionsPath) {
   Write-Host "[ Gemini Extensions ]"
-  if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
+  $ext = Get-Content $ExtensionsPath -Raw | ConvertFrom-Json
+  if ($DryRun) {
+    foreach ($category in $ext.PSObject.Properties) {
+      Write-Host "  [$($category.Name)]"
+      foreach ($url in $category.Value) {
+        Write-Host "  [DRY RUN] gemini extensions install $url" -ForegroundColor Yellow
+      }
+    }
+  } elseif (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
     Write-Warning "gemini command not found. Skipping extensions install."
   } else {
-    $ext = Get-Content $ExtensionsPath -Raw | ConvertFrom-Json
     foreach ($category in $ext.PSObject.Properties) {
       Write-Host "  [$($category.Name)]"
       foreach ($url in $category.Value) {

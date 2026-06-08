@@ -1,0 +1,20 @@
+{
+  "playwright": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@playwright/mcp@latest"],
+    "env": {}
+  },
+  "browser": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@browsermcp/mcp@latest"],
+    "env": {}
+  },
+  "desktop-commander": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@wonderwhy-er/desktop-commander"],
+    "env": {}
+  }
+}

@@ -1,4 +1,4 @@
-﻿param([switch]$DryRun)
+﻿param([switch]$Update, [switch]$DryRun)
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
@@ -6,17 +6,19 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 . "$PSScriptRoot\packages\choco-packages.ps1"
 . "$PSScriptRoot\packages\npm-packages.ps1"
 
-# --- winget (includes Chocolatey) ---
-Write-Host "Installing apps via Winget..." -ForegroundColor Cyan
+# --- winget ---
+$wingetAction = if ($Update) { "Upgrading" } else { "Installing" }
+$wingetCmd    = if ($Update) { "upgrade" }   else { "install" }
+Write-Host "$wingetAction apps via Winget..." -ForegroundColor Cyan
 foreach ($pkg in $wingetPackages) {
     if ($DryRun) {
-        Write-Host "[DRY RUN] winget install -e --id $pkg" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] winget $wingetCmd -e --id $pkg" -ForegroundColor Yellow
     } else {
-        Write-Host "Installing $pkg..." -ForegroundColor Cyan
-        winget install -e --id $pkg --accept-package-agreements --accept-source-agreements
+        Write-Host "$wingetAction $pkg..." -ForegroundColor Cyan
+        winget $wingetCmd -e --id $pkg --accept-package-agreements --accept-source-agreements
     }
 }
-Write-Host "Installation via Winget has been finished"
+Write-Host "$wingetAction via Winget has been finished"
 
 # Refresh PATH and nvm env vars so subsequent commands can find nvm/choco
 if (-not $DryRun) {
@@ -30,20 +32,30 @@ if (-not $DryRun) {
 }
 
 # --- Chocolatey ---
-Write-Host "Installing apps via Chocolatey..." -ForegroundColor Cyan
+$chocoAction = if ($Update) { "Upgrading" } else { "Installing" }
+$chocoCmd    = if ($Update) { "upgrade" }   else { "install" }
+Write-Host "$chocoAction apps via Chocolatey..." -ForegroundColor Cyan
 if ($DryRun) {
-    $chocoPackages | ForEach-Object { Write-Host "[DRY RUN] choco install $_" -ForegroundColor Yellow }
+    $chocoPackages | ForEach-Object { Write-Host "[DRY RUN] choco $chocoCmd $_" -ForegroundColor Yellow }
 } else {
-    choco install @chocoPackages --ignore-checksums -y
+    choco $chocoCmd @chocoPackages --ignore-checksums -y
 }
-Write-Host "Installation via Chocolatey has been finished"
+Write-Host "$chocoAction via Chocolatey has been finished"
 
 # --- PowerShell modules ---
-Write-Host "Installing PowerShell modules..." -ForegroundColor Cyan
+Write-Host "$(if ($Update) { 'Updating' } else { 'Installing' }) PowerShell modules..." -ForegroundColor Cyan
 if ($DryRun) {
-    Write-Host "[DRY RUN] Install-Module Microsoft.PowerShell.SecretManagement" -ForegroundColor Yellow
-    Write-Host "[DRY RUN] Install-Module Microsoft.PowerShell.SecretStore" -ForegroundColor Yellow
-    Write-Host "[DRY RUN] Register-SecretVault -Name LocalStore" -ForegroundColor Yellow
+    if ($Update) {
+        Write-Host "[DRY RUN] Update-Module Microsoft.PowerShell.SecretManagement" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] Update-Module Microsoft.PowerShell.SecretStore" -ForegroundColor Yellow
+    } else {
+        Write-Host "[DRY RUN] Install-Module Microsoft.PowerShell.SecretManagement" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] Install-Module Microsoft.PowerShell.SecretStore" -ForegroundColor Yellow
+        Write-Host "[DRY RUN] Register-SecretVault -Name LocalStore" -ForegroundColor Yellow
+    }
+} elseif ($Update) {
+    Update-Module Microsoft.PowerShell.SecretManagement -Force
+    Update-Module Microsoft.PowerShell.SecretStore -Force
 } else {
     Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser -Force
     Install-Module Microsoft.PowerShell.SecretStore -Scope CurrentUser -Force
@@ -52,14 +64,13 @@ if ($DryRun) {
 
 # --- Node.js via nvm ---
 $nodeVersion = "22"
-Write-Host "Installing Node.js $nodeVersion via nvm..." -ForegroundColor Cyan
+Write-Host "$(if ($Update) { 'Restoring' } else { 'Installing' }) Node.js $nodeVersion via nvm..." -ForegroundColor Cyan
 if ($DryRun) {
-    Write-Host "[DRY RUN] nvm install $nodeVersion" -ForegroundColor Yellow
+    if (-not $Update) { Write-Host "[DRY RUN] nvm install $nodeVersion" -ForegroundColor Yellow }
     Write-Host "[DRY RUN] nvm use $nodeVersion" -ForegroundColor Yellow
 } else {
-    nvm install $nodeVersion
+    if (-not $Update) { nvm install $nodeVersion }
     nvm use $nodeVersion
-    # Refresh PATH again so nvm-managed npm is in scope
     $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" +
                 [System.Environment]::GetEnvironmentVariable("PATH", "User")
 }

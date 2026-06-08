@@ -1,0 +1,39 @@
+{
+  "todoist": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@doist/todoist-ai"],
+    "env": { "TODOIST_API_KEY": "${TODOIST_API_KEY}" }
+  },
+  "raindrop": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@adeze/raindrop-mcp@latest"],
+    "env": {
+      "RAINDROP_ACCESS_TOKEN": "${RAINDROP_ACCESS_TOKEN}"
+    }
+  },
+  "markitdown": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["markitdown-mcp"],
+    "env": {}
+  },
+  "notebooklm-mcp": {
+    "type": "stdio",
+    "command": "notebooklm-mcp",
+    "args": [],
+    "env": {}
+  },
+  "drawio": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@drawio/mcp"],
+    "env": {}
+  },
+  "figma": {
+    "type": "http",
+    "url": "https://mcp.figma.com/mcp",
+    "env": {}
+  }
+}

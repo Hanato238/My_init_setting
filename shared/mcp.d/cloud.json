@@ -1,0 +1,14 @@
+{
+  "github": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": { "GITHUB_MCP_PAT": "${GITHUB_MCP_PAT}" }
+  },
+  "aws-iam": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": ["awslabs.iam-mcp-server@latest"],
+    "env": {}
+  }
+}

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERVERS_PATH="${1:-$SCRIPT_DIR/.mcp.json}"
+MCP_DIR="$SCRIPT_DIR/../../shared/mcp.d"
+
 if [[ -n "${2:-}" ]]; then
   CLAUDE_PATH="$2"
 elif [[ -n "${SUDO_USER:-}" ]]; then
@@ -11,6 +12,8 @@ elif [[ -n "${SUDO_USER:-}" ]]; then
 else
   CLAUDE_PATH="$HOME/.claude.json"
 fi
+
+CLAUDE_KEYS='["filesystem","git","fetch","memory","sequential-thinking"]'
 
 ensure_json_file() {
   local path="$1"
@@ -26,10 +29,12 @@ ensure_json_file() {
 
 merge_mcp_servers() {
   local target_path="$1"
-  local src_path="$2"
+  local src_json="$2"
   ensure_json_file "$target_path"
   local result
-  result=$(jq --slurpfile src "$src_path" '.mcpServers = ($src[0].mcpServers // {})' "$target_path")
+  result=$(jq --argjson src "$src_json" --argjson keys "$CLAUDE_KEYS" \
+    '.mcpServers = ($src.mcpServers // {} | with_entries(select(.key as $k | $keys | contains([$k]))))' \
+    "$target_path")
   printf '%s\n' "$result" > "$target_path"
 }
 
@@ -38,16 +43,17 @@ if ! command -v jq &>/dev/null; then
   exit 1
 fi
 
-if [[ ! -f "$SERVERS_PATH" ]]; then
-  echo "Error: Source MCP file not found: $SERVERS_PATH" >&2
+if [[ ! -d "$MCP_DIR" ]]; then
+  echo "Error: MCP directory not found: $MCP_DIR" >&2
   exit 1
 fi
 
-server_names=$(jq -r '.mcpServers | keys | join(", ")' "$SERVERS_PATH")
+# Merge all mcp.d JSON files into a combined mcpServers structure
+combined_json=$(jq -s 'reduce .[] as $f ({}; . * $f) | {"mcpServers": .}' "$MCP_DIR"/*.json)
 
 echo "[ Claude ] $CLAUDE_PATH"
-merge_mcp_servers "$CLAUDE_PATH" "$SERVERS_PATH"
-echo "Updated/Added: $server_names"
+merge_mcp_servers "$CLAUDE_PATH" "$combined_json"
+echo "Updated/Added: $(echo "$combined_json" | jq -r --argjson keys "$CLAUDE_KEYS" '.mcpServers | with_entries(select(.key as $k | $keys | contains([$k]))) | keys | join(", ")')"
 
 echo ""
 echo "Done: MCP servers have been merged."

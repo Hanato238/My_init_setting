@@ -1,0 +1,38 @@
+{
+  "gemini-cli": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "gemini-mcp-tool"],
+    "env": {
+      "GEMINI_MODEL": "${GEMINI_MODEL}"
+    }
+  },
+  "huggingface": {
+    "type": "http",
+    "url": "https://huggingface.co/mcp?login",
+    "env": {}
+  },
+  "perplexity": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@perplexity-ai/mcp-server"],
+    "env": { "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}" }
+  },
+  "serena": {
+    "type": "stdio",
+    "command": "uvx",
+    "args": [
+      "git+https://github.com/oraios/serena",
+      "serena-mcp-server",
+      "--port",
+      "32123"
+    ],
+    "env": {}
+  },
+  "openevidence": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "openevidence-mcp"],
+    "env": {}
+  }
+}
