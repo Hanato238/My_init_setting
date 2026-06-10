@@ -1,4 +1,6 @@
-﻿Set-ExecutionPolicy Bypass -Scope Process -Force
+﻿param([string]$ProfileType = '')
+
+Set-ExecutionPolicy Bypass -Scope Process -Force
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "Administrative privileges required. Elevating..." -ForegroundColor Yellow
@@ -83,6 +85,30 @@ Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbM
 function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB" }
 "@
 
+$part1Clinic = @"
+`$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+`$workspace = "`$env:USERPROFILE\workspace"
+Set-Location `$workspace
+
+function su { Start-Process powershell -Verb runas }
+Set-Alias -Name "chrome"    -Value "C:\Program Files\Google\Chrome\Application\chrome.exe"
+Set-Alias -Name "vscode"    -Value "`$env:USERPROFILE\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+Set-Alias -Name "vpn"       -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
+Set-Alias -Name "git-bash"  -Value "C:\Program Files\Git\git-bash.exe"
+Set-Alias -Name "vim"       -Value "C:\Program Files\Vim\vim92\vim.exe"
+Set-Alias -Name "powertoys" -Value "C:\Program Files\PowerToys\PowerToys.exe"
+Set-Alias -Name "vectra"    -Value "C:\Vectra\bin\vectra.exe"
+Set-Alias -Name "dbManager" -Value "C:\Program Files\Canfield Scientific Inc\DbManager\bin\dbmanager.exe"
+
+function vectraDb { & explorer "C:\ProgramData\Canfield\Databases\HairMetrixDB" }
+function gdrive   { & chrome 'https://drive.google.com/drive/' }
+function gmail    { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
+function qq       { & chrome 'https://www.e-igakukai.jp/user_service/kaiin_portal/home/home.htm' }
+function oe       { & chrome 'https://www.openevidence.com/' }
+"@
+
 # Part 2: function definitions (single-quote heredoc; $ is literal — correct for profile runtime)
 $part2 = @'
 
@@ -112,6 +138,7 @@ function Setup-Windows {
         [switch]$Update,
         [switch]$SyncSecrets,
         [switch]$IncludeOffice,
+        [switch]$Clinic,
         [switch]$DryRun
     )
     $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
@@ -120,6 +147,8 @@ function Setup-Windows {
 
 function claude {
     param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.',
         [switch]$AsHost,
         [switch]$Rebuild,
         [switch]$Sbx,
@@ -140,9 +169,11 @@ function claude {
         return
     }
 
-    if (Test-Path '.devcontainer' -PathType Container) {
-        $compose   = '.devcontainer\docker-compose.yml'
-        $container = (Get-Item .).Name
+    $targetDir = (Get-Item $Directory).FullName
+
+    if (Test-Path (Join-Path $targetDir '.devcontainer') -PathType Container) {
+        $compose   = Join-Path $targetDir '.devcontainer\docker-compose.yml'
+        $container = (Get-Item $targetDir).Name
 
         $status = docker inspect --format '{{.State.Status}}' $container 2>$null
 
@@ -190,6 +221,37 @@ function claude {
     sbx run claude @Rest
 }
 '@
+
+$part2Clinic = @'
+function Load-SecretEnvironment {
+    if (Get-Module -ListAvailable Microsoft.PowerShell.SecretStore) {
+        Get-SecretInfo -Vault LocalStore -ErrorAction SilentlyContinue | ForEach-Object {
+            $name = $_.Name
+            $val = Get-Secret -Name $name -AsPlainText -ErrorAction SilentlyContinue
+            if ($val) { Set-Content -Path "Env:\$name" -Value $val }
+        }
+    }
+}
+
+Load-SecretEnvironment
+
+function Setup-Windows {
+    param(
+        [switch]$Update,
+        [switch]$SyncSecrets,
+        [switch]$IncludeOffice,
+        [switch]$Clinic,
+        [switch]$DryRun
+    )
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
+    & $scriptPath @PSBoundParameters
+}
+'@
+
+if ($ProfileType -eq 'Clinic') {
+    $part1 = $part1Clinic
+    $part2 = $part2Clinic
+}
 
 $managedSection = "$markerStart`n$part1`n$part2`n$markerEnd"
 
