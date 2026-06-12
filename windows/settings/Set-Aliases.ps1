@@ -18,11 +18,11 @@ if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
 
 # Rotate backups: keep 3 generations
 if (Test-Path "$profilePath.bak.2") { Move-Item "$profilePath.bak.2" "$profilePath.bak.3" -Force }
-if (Test-Path "$profilePath.bak")   { Move-Item "$profilePath.bak"   "$profilePath.bak.2" -Force }
-if (Test-Path $profilePath)         { Copy-Item $profilePath "$profilePath.bak" -Force }
+if (Test-Path "$profilePath.bak") { Move-Item "$profilePath.bak"   "$profilePath.bak.2" -Force }
+if (Test-Path $profilePath) { Copy-Item $profilePath "$profilePath.bak" -Force }
 
 $markerStart = "# === MANAGED BY Set-Aliases.ps1 — DO NOT EDIT BETWEEN THESE MARKERS ==="
-$markerEnd   = "# === END MANAGED SECTION ==="
+$markerEnd = "# === END MANAGED SECTION ==="
 
 # Part 1: aliases and URL shortcuts (double-quote heredoc; $ escaped as `$)
 $part1 = @"
@@ -37,7 +37,6 @@ Set-Alias -Name "chrome"         -Value "C:\Program Files\Google\Chrome\Applicat
 Set-Alias -Name "line"           -Value "`$env:USERPROFILE\AppData\Local\LINE\bin\LineLauncher.exe"
 Set-Alias -Name "zoom"           -Value "C:\Program Files\Zoom\bin\Zoom.exe"
 Set-Alias -Name "telegram"       -Value "`$env:USERPROFILE\AppData\Roaming\Telegram Desktop\Telegram.exe"
-Set-Alias -Name "vscode"         -Value "`$env:USERPROFILE\AppData\Local\Programs\Microsoft VS Code\Code.exe"
 Set-Alias -Name "vpn"            -Value "C:\Program Files (x86)\ExpressVPN\expressvpn-ui\ExpressVPN.exe"
 Set-Alias -Name "docker-desktop" -Value "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 Set-Alias -Name "git-bash"       -Value "C:\Program Files\Git\git-bash.exe"
@@ -168,7 +167,8 @@ function claude {
             sbx create -q --name $sbxName claude $sbxDir
             if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
         }
-        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" $sbxName claude --dangerously-skip-permissions @Rest
+        $sbxWorkdir = '/' + $sbxDir[0].ToString().ToLower() + ($sbxDir.Substring(2) -replace '\\', '/')
+        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude --dangerously-skip-permissions @Rest
         return
     }
 
@@ -239,7 +239,8 @@ function claude {
         sbx create -q --name $sbxName claude $targetDir
         if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
     }
-    sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" $sbxName claude @Rest
+    $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
+    sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
 }
 '@
 
@@ -281,11 +282,13 @@ $existingContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
 
 if ($existingContent -and $existingContent -match [regex]::Escape($markerStart)) {
     $escapedStart = [regex]::Escape($markerStart)
-    $escapedEnd   = [regex]::Escape($markerEnd)
+    $escapedEnd = [regex]::Escape($markerEnd)
     $newContent = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd", $managedSection)
-} elseif ($existingContent -and $existingContent.Trim()) {
+}
+elseif ($existingContent -and $existingContent.Trim()) {
     $newContent = $existingContent.TrimEnd() + "`n`n$managedSection`n"
-} else {
+}
+else {
     $newContent = "$managedSection`n"
 }
 
