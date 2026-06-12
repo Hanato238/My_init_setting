@@ -4,6 +4,7 @@ param(
     [switch]$Update,
     [switch]$SyncSecrets,
     [switch]$IncludeOffice,
+    [switch]$Clinic,
     [switch]$DryRun
 )
 
@@ -26,6 +27,7 @@ if (-not $PSScriptRoot) {
     if ($Update)        { $argList += '-Update' }
     if ($SyncSecrets)   { $argList += '-SyncSecrets' }
     if ($IncludeOffice) { $argList += '-IncludeOffice' }
+    if ($Clinic)        { $argList += '-Clinic' }
     if ($DryRun)        { $argList += '-DryRun' }
 
     Write-Host "Restarting from local copy..." -ForegroundColor Yellow
@@ -63,7 +65,16 @@ function Invoke-Script([string]$Name, [string]$Path, [hashtable]$Params, [bool]$
     }
 }
 
-if ($Update) {
+if ($Clinic) {
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic' }
+    Add-Result 'Install-Office.ps1'         'WARN' 'skipped (not required for Clinic)'
+    Add-Result 'Initialize-Security.ps1'    'WARN' 'skipped (not required for Clinic)'
+    Add-Result 'Setup-Wsl.ps1'              'WARN' 'skipped (not required for Clinic)'
+    Invoke-Script 'Set-Aliases.ps1'         "$PSScriptRoot\settings\Set-Aliases.ps1"          @{ ProfileType = 'Clinic' } -SupportsDryRun $false
+    Add-Result 'Set-McpServers.ps1'         'WARN' 'skipped (not required for Clinic)'
+    Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
+    Invoke-Script 'Set-Workspace.ps1'       "$PSScriptRoot\settings\Set-Workspace.ps1"        @{} -SupportsDryRun $false
+} elseif ($Update) {
     Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun }
     if ($SyncSecrets) {
         Invoke-Script 'Initialize-Security.ps1' "$PSScriptRoot\installer\Initialize-Security.ps1" @{ DryRun = $DryRun }
@@ -73,7 +84,6 @@ if ($Update) {
     Invoke-Script 'Set-McpServers.ps1'      "$PSScriptRoot\settings\Set-McpServers.ps1"       @{ DryRun = $DryRun }
     Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
 } else {
-    Invoke-Script 'Install-Chocolatey.ps1'  "$PSScriptRoot\installer\Install-Chocolatey.ps1"  @{} -SupportsDryRun $false
     Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun }
     if ($IncludeOffice) {
         Invoke-Script 'Install-Office.ps1'  "$PSScriptRoot\installer\Install-Office.ps1"      @{ DryRun = $DryRun }

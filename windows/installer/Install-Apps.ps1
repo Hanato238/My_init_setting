@@ -1,10 +1,16 @@
-﻿param([switch]$Update, [switch]$DryRun)
+﻿param([switch]$Update, [switch]$DryRun, [string]$Profile = '')
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-. "$PSScriptRoot\packages\winget-packages.ps1"
-. "$PSScriptRoot\packages\choco-packages.ps1"
-. "$PSScriptRoot\packages\npm-packages.ps1"
+if ($Profile -eq 'Clinic') {
+    . "$PSScriptRoot\packages\winget-packages-clinic.ps1"
+    . "$PSScriptRoot\packages\choco-packages-clinic.ps1"
+    $npmPackages = @()
+} else {
+    . "$PSScriptRoot\packages\winget-packages.ps1"
+    . "$PSScriptRoot\packages\choco-packages.ps1"
+    . "$PSScriptRoot\packages\npm-packages.ps1"
+}
 
 # --- winget ---
 $wingetAction = if ($Update) { "Upgrading" } else { "Installing" }
@@ -76,9 +82,11 @@ if ($DryRun) {
 }
 
 # --- npm global packages ---
-Write-Host "Installing global npm packages..." -ForegroundColor Cyan
-if ($DryRun) {
-    $npmPackages | ForEach-Object { Write-Host "[DRY RUN] npm install -g $_" -ForegroundColor Yellow }
-} else {
-    npm install -g @npmPackages
+if ($npmPackages.Count -gt 0) {
+    Write-Host "Installing global npm packages..." -ForegroundColor Cyan
+    if ($DryRun) {
+        $npmPackages | ForEach-Object { Write-Host "[DRY RUN] npm install -g $_" -ForegroundColor Yellow }
+    } else {
+        npm install -g @npmPackages
+    }
 }

@@ -7,5 +7,32 @@
       "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\")",
       "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\" 2>&1)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "filesystem",
+    "memory",
+    "sequential-thinking",
+    "fetch",
+    "git",
+    "drawio",
+    "playwright",
+    "browser",
+    "github",
+    "google-workspace",
+    "todoist",
+    "figma",
+    "huggingface",
+    "perplexity",
+    "amazon-seller",
+    "keepa",
+    "aws-iam",
+    "google-maps",
+    "observability",
+    "markitdown",
+    "notebooklm-mcp",
+    "openevidence",
+    "desktop-commander",
+    "serena",
+    "clasp"
+  ]
 }

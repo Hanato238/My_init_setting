@@ -157,7 +157,18 @@ function claude {
     )
 
     if ($Sbx) {
-        sbx run claude @Rest
+        $cols    = [Console]::WindowWidth
+        $rows    = [Console]::WindowHeight
+        $sbxDir  = (Get-Item $Directory).FullName
+        $dirName = (Get-Item $sbxDir).Name.ToLower() -replace '[^a-z0-9.+\-]', '-'
+        $sbxName = "claude-$dirName"
+        $sbxList = (sbx ls --json 2>$null | ConvertFrom-Json).sandboxes
+        if (($sbxList | Where-Object { $_.name -eq $sbxName }).Count -eq 0) {
+            Write-Host "Creating sandbox $sbxName..." -ForegroundColor Cyan
+            sbx create -q --name $sbxName claude $sbxDir
+            if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
+        }
+        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" $sbxName claude --dangerously-skip-permissions @Rest
         return
     }
 
@@ -217,8 +228,18 @@ function claude {
         return
     }
 
-    Write-Host 'No .devcontainer found -> sbx run claude' -ForegroundColor Yellow
-    sbx run claude @Rest
+    Write-Host "No .devcontainer found -> sbx exec claude" -ForegroundColor Yellow
+    $cols    = [Console]::WindowWidth
+    $rows    = [Console]::WindowHeight
+    $dirName = (Get-Item $targetDir).Name.ToLower() -replace '[^a-z0-9.+\-]', '-'
+    $sbxName = "claude-$dirName"
+    $sbxList = (sbx ls --json 2>$null | ConvertFrom-Json).sandboxes
+    if (($sbxList | Where-Object { $_.name -eq $sbxName }).Count -eq 0) {
+        Write-Host "Creating sandbox $sbxName..." -ForegroundColor Cyan
+        sbx create -q --name $sbxName claude $targetDir
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
+    }
+    sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" $sbxName claude @Rest
 }
 '@
 
