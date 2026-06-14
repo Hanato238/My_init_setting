@@ -18,16 +18,17 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
 # Claude Code + Gemini CLI
 RUN npm install -g @anthropic-ai/claude-code @google/gemini-cli
 
-# claude-env: yazi をシステムパスにインストール（root フェーズ）
+# claude-env: install + yazi（root）+ setup（HOME=/home/node）をひとつの RUN で実行
+# npm install -g /local/path がシンボリックリンクを作る場合に備えて
+# rm の前に setup まで完了させてから /tmp を削除する
 ARG CLAUDE_ENV_REF=main
 RUN curl -fsSL "https://api.github.com/repos/hanato238/My_init_setting/tarball/${CLAUDE_ENV_REF}" \
     | tar -xz --strip-components=1 -C /tmp \
     && npm install -g /tmp/packages/claude-env \
     && claude-env install \
+    && HOME=/home/node claude-env setup \
+    && chown -R node:node /home/node \
     && rm -rf /tmp/packages /tmp/windows /tmp/ubuntu /tmp/android /tmp/shared /tmp/claude_container
 
 WORKDIR /workspace
 USER node
-
-# claude-env setup: zjstatus DL + zellij/claude 設定を /home/node/ へ配置（node フェーズ）
-RUN claude-env setup
