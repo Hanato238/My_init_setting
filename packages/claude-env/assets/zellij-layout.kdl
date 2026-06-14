@@ -1,0 +1,65 @@
+// zjstatus バージョン: 0.19.x
+// Ctrl+f でファイルツリー(yazi)をトグル
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="file:/home/node/.config/zellij/plugins/zjstatus.wasm" {
+                format_left   "#[fg=#89B4FA,bold] {session} "
+                format_center "{tabs}"
+                format_right  "#[fg=#A6E3A1]{claude_model} #[fg=#FAB387]{claude_tokens} #[fg=#89DCEB]{git_branch} #[fg=#CDD6F4]{cwd} #[fg=#6C7086]{datetime}"
+
+                claude_model {
+                    command "bash"
+                    args "-c" "jq -r '.model // \"---\"' ~/.claude/stats.json 2>/dev/null || echo '---'"
+                    rendermode "static"
+                    interval 2
+                }
+
+                claude_tokens {
+                    command "bash"
+                    args "-c" "jq -r 'if .tokens_used then (.tokens_used | tostring) + \"/\" + (.tokens_max | tostring) else (.turn_count // 0 | tostring) + \"t\" end' ~/.claude/stats.json 2>/dev/null || echo '0t'"
+                    rendermode "static"
+                    interval 2
+                }
+
+                git_branch {
+                    command "bash"
+                    args "-c" "git -C /workspace branch --show-current 2>/dev/null || echo ''"
+                    rendermode "static"
+                    interval 5
+                }
+
+                cwd {
+                    command "bash"
+                    args "-c" "basename \"$PWD\""
+                    rendermode "static"
+                    interval 10
+                }
+
+                datetime          "{format}"
+                datetime_format   "%H:%M"
+                datetime_interval 60
+            }
+        }
+    }
+
+    tab name="claude" {
+        pane command="claude" close_on_exit=true {
+            args "--dangerously-skip-permissions"
+        }
+    }
+
+    floating_panes {
+        pane command="yazi" {
+            width "30%"
+            height "90%"
+            x "0%"
+            y "5%"
+            name "files"
+        }
+    }
+}
