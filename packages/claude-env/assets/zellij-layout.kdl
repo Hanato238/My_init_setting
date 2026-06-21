@@ -1,4 +1,3 @@
-// zjstatus バージョン: 0.19.x
 // Ctrl+f でファイルツリー(yazi)をトグル
 layout {
     default_tab_template {
@@ -6,43 +5,38 @@ layout {
             plugin location="zellij:tab-bar"
         }
         children
-        pane size=2 borderless=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+        pane size=1 borderless=true {
             plugin location="file:/home/node/.config/zellij/plugins/zjstatus.wasm" {
-                format_left   "#[fg=#89B4FA,bold] {session} "
-                format_center "{tabs}"
-                format_right  "#[fg=#A6E3A1]{claude_model} #[fg=#FAB387]{claude_tokens} #[fg=#89DCEB]{git_branch} #[fg=#CDD6F4]{cwd} #[fg=#6C7086]{datetime}"
+                format_left   " {command_project} "
+                format_center ""
+                format_right  "{command_claude_model} {command_claude_tokens} {command_git_branch} {datetime}"
 
-                claude_model {
-                    command "bash"
-                    args "-c" "jq -r '.model // \"---\"' ~/.claude/stats.json 2>/dev/null || echo '---'"
-                    rendermode "static"
-                    interval 2
-                }
+                command_project_command    "/home/node/.config/zellij/scripts/project-name.sh"
+                command_project_format     "#[fg=#89B4FA,bold]{stdout}"
+                command_project_interval   "3600"
+                command_project_rendermode "static"
 
-                claude_tokens {
-                    command "bash"
-                    args "-c" "jq -r 'if .tokens_used then (.tokens_used | tostring) + \"/\" + (.tokens_max | tostring) else (.turn_count // 0 | tostring) + \"t\" end' ~/.claude/stats.json 2>/dev/null || echo '0t'"
-                    rendermode "static"
-                    interval 2
-                }
+                command_claude_model_command    "/home/node/.config/zellij/scripts/claude-model.sh"
+                command_claude_model_format     "#[fg=#A6E3A1]{stdout}"
+                command_claude_model_interval   "2"
+                command_claude_model_rendermode "static"
 
-                git_branch {
-                    command "bash"
-                    args "-c" "git -C /workspace branch --show-current 2>/dev/null || echo ''"
-                    rendermode "static"
-                    interval 5
-                }
+                command_claude_tokens_command    "/home/node/.config/zellij/scripts/claude-tokens.sh"
+                command_claude_tokens_format     "#[fg=#FAB387]{stdout}"
+                command_claude_tokens_interval   "2"
+                command_claude_tokens_rendermode "static"
 
-                cwd {
-                    command "bash"
-                    args "-c" "basename \"$PWD\""
-                    rendermode "static"
-                    interval 10
-                }
+                command_git_branch_command      "/home/node/.config/zellij/scripts/git-branch.sh"
+                command_git_branch_format       "#[fg=#89DCEB]{stdout}"
+                command_git_branch_interval     "5"
+                command_git_branch_rendermode   "static"
 
-                datetime          "{format}"
+                datetime          "#[fg=#6C7086]{format}"
                 datetime_format   "%H:%M"
-                datetime_interval 60
+                datetime_interval "60"
             }
         }
     }
@@ -51,15 +45,17 @@ layout {
         pane command="claude" close_on_exit=true {
             args "--dangerously-skip-permissions"
         }
-    }
-
-    floating_panes {
-        pane command="yazi" {
-            width "30%"
-            height "90%"
-            x "0%"
-            y "5%"
-            name "files"
+        floating_panes {
+            pane command="yazi" {
+                width "30%"
+                height "90%"
+                x "0%"
+                y "5%"
+                name "files"
+            }
         }
+    }
+    tab name="agy" {
+        pane command="agy" close_on_exit=true
     }
 }

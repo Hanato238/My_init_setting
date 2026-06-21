@@ -3,7 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "node",
   "workspaceFolder": "/workspace",
-  "postStartCommand": "claude --dangerously-skip-permissions",
+  "postStartCommand": "zellij",
   "containerUser": "node",
   "remoteUser": "node"
 }

@@ -2,8 +2,13 @@
   "hooks": {
     "Stop": [
       {
-        "type": "command",
-        "command": "/home/node/.claude/hooks/update-stats.sh"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/node/.claude/hooks/update-stats.sh"
+          }
+        ]
       }
     ]
   }

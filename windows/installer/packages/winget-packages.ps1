@@ -18,5 +18,6 @@
     "Bitwarden.Bitwarden",
     "Bitwarden.CLI",
     "Telegram.TelegramDesktop",
-    "Microsoft.WindowsTerminal"
+    "Microsoft.WindowsTerminal",
+    "DEVCOM.JetBrainsMonoNerdFont"
 )

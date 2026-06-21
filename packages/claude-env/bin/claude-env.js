@@ -76,6 +76,8 @@ if (command === 'install') {
   const zellijDir     = path.join(HOME, '.config', 'zellij');
   const pluginsDir    = path.join(zellijDir, 'plugins');
   const layoutsDir    = path.join(zellijDir, 'layouts');
+  const scriptsDir    = path.join(zellijDir, 'scripts');
+  const yaziDir       = path.join(HOME, '.config', 'yazi');
   const claudeDir     = path.join(HOME, '.claude');
   const hooksDir      = path.join(claudeDir, 'hooks');
   const hooksScript   = path.join(hooksDir, 'update-stats.sh');
@@ -88,6 +90,14 @@ if (command === 'install') {
   console.log('[claude-env] Installing config files:');
   copyAsset('zellij-layout.kdl', path.join(layoutsDir, 'claude.kdl'));
   copyAsset('zellij-config.kdl', path.join(zellijDir, 'config.kdl'));
+  copyAsset('yazi-theme.toml',   path.join(yaziDir, 'theme.toml'));
+
+  console.log('[claude-env] Installing zjstatus scripts:');
+  for (const name of ['claude-model.sh', 'claude-tokens.sh', 'git-branch.sh', 'project-name.sh']) {
+    const dest = path.join(scriptsDir, name);
+    copyAsset(`scripts/${name}`, dest);
+    fs.chmodSync(dest, 0o755);
+  }
 
   console.log('[claude-env] Registering Claude hooks:');
   mergeHooks(path.join(ASSETS, 'claude-settings.json'), settingsPath);

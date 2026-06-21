@@ -38,6 +38,14 @@ if (-not $PSScriptRoot) {
 # --- Main logic ---
 
 $results = @()
+$profileFile = "$env:LOCALAPPDATA\MyInitSetting\install-profile.txt"
+
+function Save-InstallProfile([string]$ProfileName) {
+    if ($DryRun) { return }
+    $dir = Split-Path $profileFile
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    Set-Content -Path $profileFile -Value $ProfileName -Encoding UTF8
+}
 
 function Add-Result([string]$Script, [string]$Status, [string]$Message) {
     $script:results += @{ Script = $Script; Status = $Status; Message = $Message }
@@ -67,6 +75,7 @@ function Invoke-Script([string]$Name, [string]$Path, [hashtable]$Params, [bool]$
 
 if ($Clinic) {
     Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic' }
+    Save-InstallProfile 'Clinic'
     Add-Result 'Install-Office.ps1'         'WARN' 'skipped (not required for Clinic)'
     Add-Result 'Initialize-Security.ps1'    'WARN' 'skipped (not required for Clinic)'
     Add-Result 'Setup-Wsl.ps1'              'WARN' 'skipped (not required for Clinic)'
@@ -75,16 +84,29 @@ if ($Clinic) {
     Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
     Invoke-Script 'Set-Workspace.ps1'       "$PSScriptRoot\settings\Set-Workspace.ps1"        @{} -SupportsDryRun $false
 } elseif ($Update) {
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun }
-    if ($SyncSecrets) {
-        Invoke-Script 'Initialize-Security.ps1' "$PSScriptRoot\installer\Initialize-Security.ps1" @{ DryRun = $DryRun }
+    $savedProfile = if (Test-Path $profileFile) { (Get-Content $profileFile -Raw).Trim() } else { '' }
+    $isClinic     = $savedProfile -eq 'Clinic'
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun; Profile = $savedProfile }
+    if ($isClinic) {
+        Add-Result 'Initialize-Security.ps1' 'WARN' 'skipped (not required for Clinic)'
+        Add-Result 'Setup-Wsl.ps1'           'WARN' 'skipped (not required for Clinic)'
+    } else {
+        if ($SyncSecrets) {
+            Invoke-Script 'Initialize-Security.ps1' "$PSScriptRoot\installer\Initialize-Security.ps1" @{ DryRun = $DryRun }
+        }
+        Invoke-Script 'Setup-Wsl.ps1'        "$PSScriptRoot\installer\Setup-Wsl.ps1"           @{ Update = $true; DryRun = $DryRun }
     }
-    Invoke-Script 'Setup-Wsl.ps1'           "$PSScriptRoot\installer\Setup-Wsl.ps1"           @{ Update = $true; DryRun = $DryRun }
-    Invoke-Script 'Set-Aliases.ps1'         "$PSScriptRoot\settings\Set-Aliases.ps1"          @{} -SupportsDryRun $false
-    Invoke-Script 'Set-McpServers.ps1'      "$PSScriptRoot\settings\Set-McpServers.ps1"       @{ DryRun = $DryRun }
+    $aliasParams = if ($isClinic) { @{ ProfileType = 'Clinic' } } else { @{} }
+    Invoke-Script 'Set-Aliases.ps1'         "$PSScriptRoot\settings\Set-Aliases.ps1"          $aliasParams -SupportsDryRun $false
+    if ($isClinic) {
+        Add-Result 'Set-McpServers.ps1'      'WARN' 'skipped (not required for Clinic)'
+    } else {
+        Invoke-Script 'Set-McpServers.ps1'   "$PSScriptRoot\settings\Set-McpServers.ps1"       @{ DryRun = $DryRun }
+    }
     Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
 } else {
     Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun }
+    Save-InstallProfile 'Default'
     if ($IncludeOffice) {
         Invoke-Script 'Install-Office.ps1'  "$PSScriptRoot\installer\Install-Office.ps1"      @{ DryRun = $DryRun }
     } else {
