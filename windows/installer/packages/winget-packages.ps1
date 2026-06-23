@@ -19,5 +19,6 @@
     "Bitwarden.CLI",
     "Telegram.TelegramDesktop",
     "Microsoft.WindowsTerminal",
-    "DEVCOM.JetBrainsMonoNerdFont"
+    "DEVCOM.JetBrainsMonoNerdFont",
+    "JGraph.Draw"
 )
