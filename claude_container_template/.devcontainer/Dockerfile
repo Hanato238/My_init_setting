@@ -1,10 +1,10 @@
 FROM node:22-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    procps curl ca-certificates jq git unzip \
+    procps curl ca-certificates jq git unzip ncurses-term \
     && rm -rf /var/lib/apt/lists/*
 
-ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 SHELL=/bin/bash
 
 # Zellij
 ARG ZELLIJ_VERSION=0.41.2
@@ -16,7 +16,8 @@ RUN curl -fsSL "https://github.com/zellij-org/zellij/releases/download/v${ZELLIJ
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Claude Code
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code \
+    && node /usr/local/lib/node_modules/@anthropic-ai/claude-code/install.cjs
 
 # Antigravity CLI (agy)
 RUN curl -fsSL https://antigravity.google/cli/install.sh | bash \

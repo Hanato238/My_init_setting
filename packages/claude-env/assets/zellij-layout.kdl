@@ -46,12 +46,13 @@ layout {
             args "--dangerously-skip-permissions"
         }
         floating_panes {
-            pane command="yazi" {
+            pane command="bash" {
+                args "-c" "while true; do yazi; done"
                 width "30%"
-                height "90%"
-                x "0%"
-                y "5%"
-                name "files"
+                height "100%"
+                x "0"
+                y "0"
+                name "filetree"
             }
         }
     }

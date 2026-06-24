@@ -6,8 +6,6 @@
       "Bash(git push *)",
       "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\")",
       "PowerShell(& \"C:\\\\Users\\\\lesen\\\\workspace\\\\My_init_setting\\\\windows\\\\settings\\\\Set-McpServers.ps1\" 2>&1)",
-      "Write(claude_container/.devcontainer/*)",
-      "Edit(claude_container/.devcontainer/*)",
       "Bash(git *)",
       "WebFetch(domain:github.com)"
     ]
