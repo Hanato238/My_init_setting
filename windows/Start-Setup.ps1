@@ -5,7 +5,13 @@ param(
     [switch]$SyncSecrets,
     [switch]$IncludeOffice,
     [switch]$Clinic,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Settings subcommands
+    [switch]$ServerMode,
+    [switch]$Aliases,
+    [switch]$McpServers,
+    [switch]$WindowsSettings,
+    [switch]$Workspace
 )
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -24,11 +30,16 @@ if (-not $PSScriptRoot) {
     Rename-Item "$env:TEMP\My_init_setting-main" $tempDir
 
     $argList = @()
-    if ($Update)        { $argList += '-Update' }
-    if ($SyncSecrets)   { $argList += '-SyncSecrets' }
-    if ($IncludeOffice) { $argList += '-IncludeOffice' }
-    if ($Clinic)        { $argList += '-Clinic' }
-    if ($DryRun)        { $argList += '-DryRun' }
+    if ($Update)          { $argList += '-Update' }
+    if ($SyncSecrets)     { $argList += '-SyncSecrets' }
+    if ($IncludeOffice)   { $argList += '-IncludeOffice' }
+    if ($Clinic)          { $argList += '-Clinic' }
+    if ($DryRun)          { $argList += '-DryRun' }
+    if ($ServerMode)      { $argList += '-ServerMode' }
+    if ($Aliases)         { $argList += '-Aliases' }
+    if ($McpServers)      { $argList += '-McpServers' }
+    if ($WindowsSettings) { $argList += '-WindowsSettings' }
+    if ($Workspace)       { $argList += '-Workspace' }
 
     Write-Host "Restarting from local copy..." -ForegroundColor Yellow
     & "$tempDir\windows\Start-Setup.ps1" @argList
@@ -71,6 +82,29 @@ function Invoke-Script([string]$Name, [string]$Path, [hashtable]$Params, [bool]$
         Add-Result $Name 'ERR' $_.Exception.Message
         Write-Warning "Error in ${Name}: $_"
     }
+}
+
+# Settings subcommands: when any settings switch is specified, run only those scripts
+$settingsSubcommand = $ServerMode -or $Aliases -or $McpServers -or $WindowsSettings -or $Workspace
+if ($settingsSubcommand) {
+    $aliasParams = if ($Clinic) { @{ ProfileType = 'Clinic' } } else { @{} }
+    if ($ServerMode)      { Invoke-Script 'Set-ServerMode.ps1'      "$PSScriptRoot\settings\Set-ServerMode.ps1"      @{ DryRun = $DryRun } }
+    if ($Aliases)         { Invoke-Script 'Set-Aliases.ps1'         "$PSScriptRoot\settings\Set-Aliases.ps1"         $aliasParams -SupportsDryRun $false }
+    if ($McpServers)      { Invoke-Script 'Set-McpServers.ps1'      "$PSScriptRoot\settings\Set-McpServers.ps1"      @{ DryRun = $DryRun } }
+    if ($WindowsSettings) { Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1" @{ DryRun = $DryRun } }
+    if ($Workspace)       { Invoke-Script 'Set-Workspace.ps1'       "$PSScriptRoot\settings\Set-Workspace.ps1"       @{} -SupportsDryRun $false }
+
+    Write-Host "`n=== Setup Summary ===" -ForegroundColor Cyan
+    foreach ($r in $results) {
+        $color = 'White'
+        if ($r.Status -eq 'OK')   { $color = 'Green' }
+        if ($r.Status -eq 'WARN') { $color = 'Yellow' }
+        if ($r.Status -eq 'ERR')  { $color = 'Red' }
+        $label = "[$($r.Status)]".PadRight(7)
+        $msg = if ($r.Message) { "  - $($r.Message)" } else { '' }
+        Write-Host "$label $($r.Script)$msg" -ForegroundColor $color
+    }
+    return
 }
 
 if ($Clinic) {

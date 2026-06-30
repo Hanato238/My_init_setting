@@ -138,7 +138,12 @@ function Setup-Windows {
         [switch]$SyncSecrets,
         [switch]$IncludeOffice,
         [switch]$Clinic,
-        [switch]$DryRun
+        [switch]$DryRun,
+        [switch]$ServerMode,
+        [switch]$Aliases,
+        [switch]$McpServers,
+        [switch]$WindowsSettings,
+        [switch]$Workspace
     )
     $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
     & $scriptPath @PSBoundParameters
@@ -263,7 +268,12 @@ function Setup-Windows {
         [switch]$SyncSecrets,
         [switch]$IncludeOffice,
         [switch]$Clinic,
-        [switch]$DryRun
+        [switch]$DryRun,
+        [switch]$ServerMode,
+        [switch]$Aliases,
+        [switch]$McpServers,
+        [switch]$WindowsSettings,
+        [switch]$Workspace
     )
     $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
     & $scriptPath @PSBoundParameters
