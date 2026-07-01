@@ -149,6 +149,22 @@ function Setup-Windows {
     & $scriptPath @PSBoundParameters
 }
 
+function Get-SbxSandboxes {
+    # sbx daemon が未起動だと "Starting ..." 等のメッセージが stdout に混じり、
+    # ConvertFrom-Json がそのまま失敗するため、最初に JSON らしき行が現れる位置以降だけを抽出する。
+    $sbxRaw = @(sbx ls --json 2>$null)
+    $jsonStartLine = $sbxRaw | Where-Object { $_ -match '^\s*[\{\[]' } | Select-Object -First 1
+    if (-not $jsonStartLine) { return @() }
+    $startIndex = [array]::IndexOf($sbxRaw, $jsonStartLine)
+    $sbxJson = ($sbxRaw[$startIndex..($sbxRaw.Count - 1)]) -join "`n"
+    try {
+        return @((ConvertFrom-Json $sbxJson).sandboxes)
+    } catch {
+        Write-Warning "sbx ls --json の出力を解析できませんでした: $_"
+        return @()
+    }
+}
+
 function claude {
     param(
         [Parameter(Position=0)]
@@ -166,7 +182,7 @@ function claude {
         $sbxDir  = (Get-Item $Directory).FullName
         $dirName = (Get-Item $sbxDir).Name.ToLower() -replace '[^a-z0-9.+\-]', '-'
         $sbxName = "claude-$dirName"
-        $sbxList = (sbx ls --json 2>$null | ConvertFrom-Json).sandboxes
+        $sbxList = Get-SbxSandboxes
         if (($sbxList | Where-Object { $_.name -eq $sbxName }).Count -eq 0) {
             Write-Host "Creating sandbox $sbxName..." -ForegroundColor Cyan
             sbx create -q --name $sbxName claude $sbxDir
@@ -238,7 +254,7 @@ function claude {
     $rows    = [Console]::WindowHeight
     $dirName = (Get-Item $targetDir).Name.ToLower() -replace '[^a-z0-9.+\-]', '-'
     $sbxName = "claude-$dirName"
-    $sbxList = (sbx ls --json 2>$null | ConvertFrom-Json).sandboxes
+    $sbxList = Get-SbxSandboxes
     if (($sbxList | Where-Object { $_.name -eq $sbxName }).Count -eq 0) {
         Write-Host "Creating sandbox $sbxName..." -ForegroundColor Cyan
         sbx create -q --name $sbxName claude $targetDir
