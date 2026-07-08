@@ -42,6 +42,9 @@ case "$CATEGORY" in
         fi
         run_if_exists "$SCRIPT_DIR/settings/set_gui.sh"
         ;;
+    remote-dev)
+        run_if_exists "$SCRIPT_DIR/installer/install_remote_dev.sh"
+        ;;
     all)
         run_if_exists "$SCRIPT_DIR/installer/install_apps.sh"
         run_if_exists "$SCRIPT_DIR/installer/initialize_security.sh"
@@ -54,7 +57,7 @@ case "$CATEGORY" in
         ;;
     *)
         echo "Unknown category: $CATEGORY" >&2
-        echo "Usage: $0 [apps|mcp|aliases|workspace|security|gui|all]" >&2
+        echo "Usage: $0 [apps|mcp|aliases|workspace|security|gui|remote-dev|all]" >&2
         exit 1
         ;;
 esac
