@@ -42,9 +42,6 @@ case "$CATEGORY" in
         fi
         run_if_exists "$SCRIPT_DIR/settings/set_gui.sh"
         ;;
-    remote-dev)
-        run_if_exists "$SCRIPT_DIR/installer/install_remote_dev.sh"
-        ;;
     all)
         run_if_exists "$SCRIPT_DIR/installer/install_apps.sh"
         run_if_exists "$SCRIPT_DIR/installer/initialize_security.sh"
@@ -56,8 +53,16 @@ case "$CATEGORY" in
         fi
         ;;
     *)
-        echo "Unknown category: $CATEGORY" >&2
-        echo "Usage: $0 [apps|mcp|aliases|workspace|security|gui|remote-dev|all]" >&2
-        exit 1
+        # Convention-based project dispatch: any ubuntu/<name>/install.sh is
+        # runnable as `setup.sh <name>` without editing this script.
+        PROJECT_INSTALL="$SCRIPT_DIR/$CATEGORY/install.sh"
+        if [[ -f "$PROJECT_INSTALL" ]]; then
+            run_if_exists "$PROJECT_INSTALL"
+        else
+            echo "Unknown category: $CATEGORY" >&2
+            echo "Usage: $0 [apps|mcp|aliases|workspace|security|gui|all|<project>]" >&2
+            echo "  <project> = any ubuntu/<name>/install.sh (e.g. remote-dev)" >&2
+            exit 1
+        fi
         ;;
 esac
