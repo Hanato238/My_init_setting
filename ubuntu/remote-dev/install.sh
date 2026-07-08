@@ -3,13 +3,13 @@ set -e
 
 if [ "$EUID" -eq 0 ]; then
     echo "Error: Do not run this script with sudo. Run as your regular user:" >&2
-    echo "  bash ./installer/install_remote_dev.sh" >&2
+    echo "  bash ./remote-dev/install.sh" >&2
     exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../packages/apt-packages-remote-dev.sh
-source "$SCRIPT_DIR/../packages/apt-packages-remote-dev.sh"
+# shellcheck source=./packages.sh
+source "$SCRIPT_DIR/packages.sh"
 
 echo "=== Remote dev environment setup (Tailscale + Orca headless server) ==="
 

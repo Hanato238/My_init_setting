@@ -14,11 +14,25 @@ bash installer/initialize_security.sh  # 4. Bitwarden → ~/.secrets
 bash installer/install_docker.sh       # 5. Docker Desktop + devcontainer CLI
 ```
 
-GCP VM等をTailscale経由のリモート開発機にする場合は、上記とは別に単体で実行する:
+GCP VM等、特定用途のマシン（プロジェクト）をセットアップする場合は、上記とは別に単体で実行する:
 
 ```bash
 bash setup.sh remote-dev
 ```
+
+### 新しいプロジェクト（VM）を追加する
+
+`setup.sh`は「`ubuntu/<name>/install.sh`が存在すれば`setup.sh <name>`で呼び出せる」という規約ベースで動く。`apps`/`mcp`/`aliases`等の全プロジェクト共通の項目とは別に、プロジェクト固有の構成は`ubuntu/<name>/`配下に一式まとめる。
+
+```
+ubuntu/<name>/
+├── install.sh       # 必須。setup.sh <name> から呼ばれるエントリーポイント
+├── packages.sh       # 任意。apt パッケージ一覧など install.sh から source する
+├── config/           # 任意。VM作成パラメータ等
+└── README.md         # 任意。使い方
+```
+
+`ubuntu/<name>/install.sh`を追加するだけでよく、`setup.sh`自体の編集は不要（`case`文には手を入れない）。既存の`remote-dev/`が実例。
 
 ---
 
@@ -179,17 +193,28 @@ bash setup_gui.sh
 
 ---
 
-### `install_remote_dev.sh` — リモート開発環境セットアップ（GCP VM 向け・オプション）
+### `remote-dev/` — リモート開発環境セットアップ（GCP VM 向け・オプション）
 
-GCP等のUbuntu VMを、Tailscale経由で外部デバイスからClaude Code / Orcaを操作するリモート開発機にするためのスクリプト。`setup.sh remote-dev` で呼び出す。
+GCP等のUbuntu VMを、Tailscale経由で外部デバイスからClaude Code / Orcaを操作するリモート開発機にするためのプロジェクト。`setup.sh remote-dev` で`remote-dev/install.sh`が呼ばれる。
 
-VMインスタンス自体をまだ作成していない場合は、先に [`remote-dev/`](remote-dev/README.md)（Windows側・gcloud使用）でVMを作成する。
+VMインスタンス自体をまだ作成していない場合は、先に [`remote-dev/README.md`](remote-dev/README.md)（Windows側・gcloud使用の`Create-Vm.ps1`）でVMを作成する。
 
-**インストールするもの:**
+**構成:**
+
+```
+remote-dev/
+├── install.sh          # setup.sh remote-dev のエントリーポイント（OS側セットアップ）
+├── packages.sh          # apt パッケージ一覧（curl, libfuse2, xvfb）
+├── config/vm-config.json  # VM作成パラメータ（Create-Vm.ps1用）
+├── Create-Vm.ps1        # gcloudでVMを作成するラッパー（Windows側）
+└── README.md
+```
+
+**`install.sh`がインストールするもの:**
 
 | 項目 | 内容 |
 |------|------|
-| apt パッケージ | `packages/apt-packages-remote-dev.sh` の一覧（curl, libfuse2, xvfb） |
+| apt パッケージ | `packages.sh` の一覧（curl, libfuse2, xvfb） |
 | Tailscale | 公式インストールスクリプト経由。IP forwarding も有効化（exit node用） |
 | Orca | headless AppImage を `/opt/orca` に配置し、専用ユーザー `orca` で `orca-serve.service`（systemd）として常時起動 |
 
