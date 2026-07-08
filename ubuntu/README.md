@@ -183,6 +183,8 @@ bash setup_gui.sh
 
 GCP等のUbuntu VMを、Tailscale経由で外部デバイスからClaude Code / Orcaを操作するリモート開発機にするためのスクリプト。`setup.sh remote-dev` で呼び出す。
 
+VMインスタンス自体をまだ作成していない場合は、先に [`remote-dev/`](remote-dev/README.md)（Windows側・gcloud使用）でVMを作成する。
+
 **インストールするもの:**
 
 | 項目 | 内容 |
@@ -196,7 +198,7 @@ bash setup.sh remote-dev
 ```
 
 **自動化されない手動ステップ（実行後に表示される）:**
-1. GCP側でインスタンスの「IP forwarding」を有効化（作成時のみ設定可、既存インスタンスは変更不可）
+1. GCP側でインスタンスの「IP forwarding」を有効化（作成時のみ設定可、既存インスタンスは変更不可。`remote-dev/Create-Vm.ps1` でVMを作成した場合は`vm-config.json`の`enableIpForward`で既に設定済み）
 2. `sudo tailscale up --ssh --advertise-exit-node` で認証・Tailscale管理コンソールでexit node承認
 3. `sudo systemctl enable --now orca-serve.service` でOrcaサーバー起動、`sudo journalctl -u orca-serve -f` でペアリングURL確認
 

@@ -1,6 +1,6 @@
 # remote-dev/ — GCP VM リモート開発環境セットアップ
 
-GCP上にUbuntu VMを作成し、Tailscale + Orca headless server でリモート開発できるようにするための構成一式。VM上のソフトウェアセットアップ自体は [`ubuntu/setup.sh remote-dev`](../ubuntu/README.md) が行う。ここにあるのはその前段（VMの作成）を担うラッパースクリプトと設定。
+GCP上にUbuntu VMを作成し、Tailscale + Orca headless server でリモート開発できるようにするための構成一式。VM上のソフトウェアセットアップ自体は [`../setup.sh remote-dev`](../README.md) が行う。ここにあるのはその前段（VMの作成）を担うラッパースクリプトと設定。
 
 ## 構成
 
