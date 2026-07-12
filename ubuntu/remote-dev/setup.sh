@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# GCE startup-scripts run as root without $HOME set, which trips up some
+# third-party installers (e.g. the Antigravity CLI installer below) that
+# assume it's always set.
+export HOME="${HOME:-/root}"
+
 # Safe to run as root (e.g. from a GCE startup-script, which always runs as root)
 # or as a regular sudo-capable user - every step below goes through sudo, which
 # is a no-op passthrough when already root. Also safe to re-run (every step below
@@ -98,78 +103,6 @@ else
     echo "NOTE: workspace-repo-url not set - skipping workspace auto-clone setup."
 fi
 
-# --- Node.js + npm (needed by the Claude Code CLI / Agent SDK / LIFF SDK below) ---
-if command -v node &>/dev/null; then
-    echo "OK: node is already installed ($(node --version))"
-else
-    echo "Installing Node.js LTS..."
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-fi
-
-# --- Docker Engine + CLI ---
-if command -v docker &>/dev/null; then
-    echo "OK: docker is already installed ($(docker --version))"
-else
-    echo "Installing Docker Engine..."
-    curl -fsSL https://get.docker.com | sudo sh
-fi
-
-# --- GitHub CLI (gh) ---
-if command -v gh &>/dev/null; then
-    echo "OK: gh is already installed ($(gh --version | head -n1))"
-else
-    echo "Installing GitHub CLI (gh)..."
-    sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
-    sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-        | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt-get update
-    sudo apt-get install -y gh
-fi
-
-# --- Claude Code CLI + Claude Agent SDK (npm + Python) ---
-if command -v claude &>/dev/null; then
-    echo "OK: claude-code is already installed ($(claude --version 2>/dev/null || echo installed))"
-else
-    echo "Installing Claude Code CLI..."
-    sudo npm install -g @anthropic-ai/claude-code
-fi
-
-if npm list -g @anthropic-ai/claude-agent-sdk &>/dev/null; then
-    echo "OK: @anthropic-ai/claude-agent-sdk already installed"
-else
-    echo "Installing Claude Agent SDK (npm)..."
-    sudo npm install -g @anthropic-ai/claude-agent-sdk
-fi
-
-if python3 -m pip show claude-agent-sdk &>/dev/null; then
-    echo "OK: claude-agent-sdk (pip) already installed"
-else
-    echo "Installing Claude Agent SDK (pip)..."
-    sudo python3 -m pip install claude-agent-sdk
-fi
-
-# --- LINE LIFF SDK (npm) ---
-# Normally a per-project npm dependency rather than something installed
-# system-wide, but requested as a global install for this VM.
-if npm list -g @line/liff &>/dev/null; then
-    echo "OK: @line/liff already installed"
-else
-    echo "Installing LINE LIFF SDK (npm)..."
-    sudo npm install -g @line/liff
-fi
-
-# --- Antigravity CLI ---
-if command -v agy &>/dev/null; then
-    echo "OK: Antigravity CLI (agy) is already installed"
-else
-    echo "Installing Antigravity CLI..."
-    curl -fsSL https://antigravity.google/cli/install.sh | bash
-fi
-
 # --- Orca headless server (AppImage) ---
 ORCA_DIR="/opt/orca"
 ORCA_BIN="$ORCA_DIR/orca-linux.AppImage"
@@ -234,6 +167,82 @@ fi
 # TAILSCALE_AUTHKEY was supplied): the service just sits in "activating" until
 # Tailscale comes up, then starts itself.
 sudo systemctl enable --now orca-serve.service
+
+# --- Optional dev tooling ---
+# Everything below is "nice to have" on top of the core Tailscale + Orca setup
+# above, so each block is written so a failure prints a WARNING and moves on
+# instead of aborting the whole script via `set -e` (a command used as an
+# if/elif condition is exempt from `set -e`, which is what makes this safe).
+if command -v node &>/dev/null; then
+    echo "OK: node is already installed ($(node --version))"
+elif curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs; then
+    echo "OK: Node.js installed ($(node --version))"
+else
+    echo "WARNING: Node.js installation failed - skipping (not required for Tailscale/Orca)." >&2
+fi
+
+if command -v docker &>/dev/null; then
+    echo "OK: docker is already installed ($(docker --version))"
+elif curl -fsSL https://get.docker.com | sudo sh; then
+    echo "OK: Docker installed."
+else
+    echo "WARNING: Docker installation failed - skipping (not required for Tailscale/Orca)." >&2
+fi
+
+if command -v gh &>/dev/null; then
+    echo "OK: gh is already installed ($(gh --version | head -n1))"
+elif sudo mkdir -p -m 755 /etc/apt/keyrings \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+    && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && sudo apt-get update \
+    && sudo apt-get install -y gh; then
+    echo "OK: GitHub CLI installed."
+else
+    echo "WARNING: GitHub CLI installation failed - skipping (not required for Tailscale/Orca)." >&2
+fi
+
+if command -v claude &>/dev/null; then
+    echo "OK: claude-code is already installed ($(claude --version 2>/dev/null || echo installed))"
+elif sudo npm install -g @anthropic-ai/claude-code; then
+    echo "OK: Claude Code CLI installed."
+else
+    echo "WARNING: Claude Code CLI installation failed - skipping." >&2
+fi
+
+if npm list -g @anthropic-ai/claude-agent-sdk &>/dev/null; then
+    echo "OK: @anthropic-ai/claude-agent-sdk already installed"
+elif sudo npm install -g @anthropic-ai/claude-agent-sdk; then
+    echo "OK: Claude Agent SDK (npm) installed."
+else
+    echo "WARNING: Claude Agent SDK (npm) installation failed - skipping." >&2
+fi
+
+if python3 -m pip show claude-agent-sdk &>/dev/null; then
+    echo "OK: claude-agent-sdk (pip) already installed"
+elif sudo python3 -m pip install claude-agent-sdk; then
+    echo "OK: Claude Agent SDK (pip) installed."
+else
+    echo "WARNING: Claude Agent SDK (pip) installation failed - skipping." >&2
+fi
+
+# LINE LIFF SDK: normally a per-project npm dependency rather than something
+# installed system-wide, but requested as a global install for this VM.
+if npm list -g @line/liff &>/dev/null; then
+    echo "OK: @line/liff already installed"
+elif sudo npm install -g @line/liff; then
+    echo "OK: LINE LIFF SDK installed."
+else
+    echo "WARNING: LINE LIFF SDK installation failed - skipping." >&2
+fi
+
+if command -v agy &>/dev/null; then
+    echo "OK: Antigravity CLI (agy) is already installed"
+elif curl -fsSL https://antigravity.google/cli/install.sh | bash; then
+    echo "OK: Antigravity CLI installed."
+else
+    echo "WARNING: Antigravity CLI installation failed - skipping." >&2
+fi
 
 echo ""
 echo "=== Remote dev setup finished ==="
