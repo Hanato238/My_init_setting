@@ -1,3 +1,8 @@
 node_modules/
 .gemini/
 *.log
+
+# Raw installer binaries for local Chocolatey packages (windows/installer/packages/local/).
+# These are large and/or licensed and must never be committed - see
+# windows/installer/packages/local/README.md.
+/my_apps/

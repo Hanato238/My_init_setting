@@ -1,4 +1,4 @@
-﻿param([switch]$Update, [switch]$DryRun, [string]$Profile = '')
+﻿param([switch]$Update, [switch]$DryRun, [string]$Profile = '', [switch]$IncludeLocalApps)
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
@@ -47,6 +47,43 @@ if ($DryRun) {
     choco $chocoCmd @chocoPackages --ignore-checksums -y
 }
 Write-Host "$chocoAction via Chocolatey has been finished"
+
+# --- Local (non-community) Chocolatey packages ---
+# Packages under packages\local\<id>\ are internal/custom apps not published to the
+# Chocolatey community repository (proprietary installers, private tools, etc.). Each
+# subfolder holds only a .nuspec + tools\*.ps1 (no bundled binaries - those are downloaded
+# at install time, or looked up in an external asset location; see
+# packages\local\README.md). Opt-in via -IncludeLocalApps since some of these packages
+# (e.g. bartender) require assets to be staged on the machine beforehand.
+if ($IncludeLocalApps) {
+    $localPackagesDir = Join-Path $PSScriptRoot 'packages\local'
+    $localPackageFolders = if (Test-Path $localPackagesDir) { Get-ChildItem -Path $localPackagesDir -Directory } else { @() }
+
+    if ($localPackageFolders.Count -gt 0) {
+        Write-Host "$chocoAction local apps via Chocolatey..." -ForegroundColor Cyan
+        $localFeedDir = Join-Path $env:TEMP 'choco-local-feed'
+        if (-not $DryRun) { New-Item -ItemType Directory -Path $localFeedDir -Force | Out-Null }
+
+        foreach ($pkgDir in $localPackageFolders) {
+            $nuspec = Get-ChildItem -Path $pkgDir.FullName -Filter '*.nuspec' | Select-Object -First 1
+            if (-not $nuspec) {
+                Write-Warning "No .nuspec found in $($pkgDir.FullName), skipping."
+                continue
+            }
+            $pkgId = $nuspec.BaseName
+            if ($DryRun) {
+                Write-Host "[DRY RUN] choco pack `"$($nuspec.FullName)`" --outputdirectory `"$localFeedDir`"" -ForegroundColor Yellow
+                Write-Host "[DRY RUN] choco $chocoCmd $pkgId -s `"$localFeedDir`" -y --ignore-checksums" -ForegroundColor Yellow
+            } else {
+                choco pack "$($nuspec.FullName)" --outputdirectory "$localFeedDir"
+                choco $chocoCmd $pkgId -s "$localFeedDir" -y --ignore-checksums
+            }
+        }
+        Write-Host "$chocoAction local apps via Chocolatey has been finished"
+    }
+} else {
+    Write-Host "Skipping local apps (use -IncludeLocalApps to install bartender/orca)." -ForegroundColor DarkGray
+}
 
 # --- PowerShell modules ---
 Write-Host "$(if ($Update) { 'Updating' } else { 'Installing' }) PowerShell modules..." -ForegroundColor Cyan

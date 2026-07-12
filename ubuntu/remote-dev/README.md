@@ -1,16 +1,21 @@
 # remote-dev/ — GCP VM リモート開発環境セットアップ
 
-GCP上にUbuntu VMを作成し、Tailscale + Orca headless server でリモート開発できるようにするためのプロジェクト一式。`ubuntu/`配下の他のプロジェクト用VMと同じ規約（`ubuntu/<name>/install.sh` を `setup.sh <name>` から呼ぶ）に従っている。詳細は[`../README.md`](../README.md#新しいプロジェクトvmを追加する)を参照。
+GCP上にUbuntu VMを作成し、Tailscale + Orca headless server でリモート開発できるようにするためのプロジェクト一式。
+`Create-Vm.ps1` はVM作成時に `startup-script.sh` を起動スクリプトとして添付するため、**VM起動後に自動的に**
+`setup.sh`（Tailscale + Orca セットアップ）が実行される。手動でSSHして叩く必要はない
+（再実行しても安全な冪等スクリプトなので、SSHして`bash remote-dev/setup.sh`を手動で叩き直すことも可能）。
+詳細は[`../README.md`](../README.md)を参照。
 
 ## 構成
 
 ```
 remote-dev/
-├── install.sh            # setup.sh remote-dev のエントリーポイント（OS側: Tailscale + Orca セットアップ）
-├── packages.sh            # install.sh が使う apt パッケージ一覧
+├── startup-script.sh       # GCE起動スクリプト。リポジトリをclone/pullしてsetup.shを実行する
+├── setup.sh                # OS側セットアップ本体（Tailscale + Orca セットアップ）
+├── packages.sh             # setup.sh が使う apt パッケージ一覧
 ├── config/
-│   └── vm-config.json    # VM作成パラメータ（プロジェクトID、ゾーン等。Create-Vm.ps1用）
-├── Create-Vm.ps1          # gcloudでVMを作成するラッパースクリプト（Windows/PowerShell側）
+│   └── vm-config.json     # VM作成パラメータ（プロジェクトID、ゾーン等。Create-Vm.ps1用）
+├── Create-Vm.ps1           # gcloudでVMを作成するラッパースクリプト（Windows/PowerShell側）
 └── README.md
 ```
 
@@ -21,25 +26,40 @@ remote-dev/
 - Windows側に gcloud SDK をインストール（`windows/installer/packages/choco-packages.ps1` の `gcloudsdk`、または `choco install gcloudsdk`）
 - `gcloud init` と `gcloud auth login` でログイン
 - `config/vm-config.json` を編集し、`projectId` をプレースホルダーから実際の値に置き換える
+- （任意）Tailscale認証も自動化したい場合は、Tailscale管理コンソール（Settings > Keys）で auth key を発行しておく
 
 ### 2. VM作成
 
 ```powershell
 cd remote-dev
-.\Create-Vm.ps1                                          # 作成
-.\Create-Vm.ps1 -DryRun                                   # 実行されるgcloudコマンドの確認のみ
-.\Create-Vm.ps1 -ConfigPath .\config\other-vm-config.json  # 別設定ファイルを使う場合
+.\Create-Vm.ps1                                              # 作成（Tailscale認証は手動で残る）
+.\Create-Vm.ps1 -TailscaleAuthKey tskey-auth-xxxxx            # Tailscale認証も自動化
+.\Create-Vm.ps1 -DryRun                                       # 実行されるgcloudコマンドの確認のみ
+.\Create-Vm.ps1 -ConfigPath .\config\other-vm-config.json     # 別設定ファイルを使う場合
 ```
 
-### 3. VM上でのセットアップ（手動）
+`-TailscaleAuthKey` は未指定時 `$env:TAILSCALE_AUTHKEY` を使う。auth keyは `vm-config.json`
+（gitコミット対象）には書かず、パラメータか環境変数で渡すこと。インスタンスメタデータ経由でVMに
+渡されるため、VM上のメタデータサーバーから読める点に注意（漏洩時の影響を抑えたい場合はTailscale側で
+reusable/expiryを短く設定するか、使用後にkeyを失効させる）。
+
+### 3. 起動確認・残りの手動ステップ
+
+VM作成から1〜2分後、SSHで進捗を確認できる:
 
 ```bash
 gcloud compute ssh <vmName> --zone=<zone> --project=<projectId>
-git clone https://github.com/Hanato238/My_init_setting.git
-bash My_init_setting/ubuntu/setup.sh remote-dev
+sudo journalctl -u google-startup-scripts -f   # startup-script.sh の実行ログ
+sudo journalctl -u orca-serve -f               # Orcaのペアリングurlはここで確認
 ```
 
-以降（Tailscale認証・exit node承認・Orcaサービス起動）は `ubuntu/setup.sh remote-dev` 実行後に表示される案内に従う。
+自動化されるもの: `tailscaled`起動・IP forwarding有効化・（`-TailscaleAuthKey`指定時のみ）Tailscale認証・
+Orca headless AppImageのインストールと`orca-serve.service`の起動・`orca` CLIコマンドのPATH登録。
+
+引き続き手動が必要なもの:
+1. `-TailscaleAuthKey` 未指定の場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）
+2. このVMをexit nodeにしたい場合、Tailscale管理コンソールでの承認
+3. 外部のOrcaクライアント（デスクトップ/モバイル）とのペアリング（上記のペアリングURLを使用）
 
 ## vm-config.json の項目
 

@@ -3,7 +3,7 @@ set -e
 
 if [ "$EUID" -eq 0 ]; then
     echo "Error: Do not run this script with sudo. Run as your regular user:" >&2
-    echo "  bash ./installer/initialize_security.sh" >&2
+    echo "  bash ./wsl-setup/initialize_security.sh" >&2
     exit 1
 fi
 

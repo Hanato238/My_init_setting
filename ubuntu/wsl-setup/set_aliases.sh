@@ -84,7 +84,7 @@ function load_secret_environment() {
 }
 
 function sync_api_keys() {
-    local script="$HOME/workspace/My_init_setting/ubuntu/installer/initialize_security.sh"
+    local script="$HOME/workspace/My_init_setting/ubuntu/wsl-setup/initialize_security.sh"
     if [ -f "$script" ]; then
         bash "$script"
         load_secret_environment

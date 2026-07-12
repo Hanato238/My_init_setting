@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup_nanoclaw.sh - Setup NanoClaw on Ubuntu
+# setup.sh - Setup NanoClaw on Ubuntu
 
 # Add Telegram API IP to /etc/hosts on WSL2
 if grep -qiE "microsoft|WSL" /proc/version 2>/dev/null; then

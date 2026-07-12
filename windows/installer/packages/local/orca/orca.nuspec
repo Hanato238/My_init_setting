@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>orca</id>
+    <version>1.4.123</version>
+    <title>Orca</title>
+    <authors>stablyai</authors>
+    <projectUrl>https://onOrca.dev</projectUrl>
+    <projectSourceUrl>https://github.com/stablyai/orca</projectSourceUrl>
+    <licenseUrl>https://github.com/stablyai/orca/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>The AI Orchestrator for 100x builders. Run Codex, ClaudeCode, OpenCode or Pi side-by-side — each in its own worktree, tracked in one place.</description>
+    <tags>cli terminal ai-agents orchestration devtools claude-code codex opencode worktrees parallel-agents</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>bartender</id>
+    <version>1.0.0</version>
+    <title>BarTender (Seagull Scientific) + Drivers by Seagull</title>
+    <authors>Seagull Scientific</authors>
+    <owners>internal</owners>
+    <projectUrl>https://www.seagullscientific.com</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+BarTender label design software (Seagull Scientific) with the Drivers by Seagull printer
+driver package and the Japanese instruction manual, installed as an internal Chocolatey
+package.
+
+By installing this package you accept Seagull Scientific's End User License Agreement, which
+is presented by the installer itself.
+
+This package does NOT bundle the (large, licensed) Seagull installers - it is a thin
+Chocolatey wrapper only. Before installing, place the following files on the target machine
+under `%CHOCO_LOCAL_ASSETS%\Bartender\` (defaults to `C:\ChocoLocalAssets\Bartender` if the
+CHOCO_LOCAL_ASSETS environment variable is not set):
+
+  BarTender\BarTender_Label Design Software.exe
+  Driver\BeeprtPrinter_2024.2.exe
+  Manual\取扱説明書_Ver202505.pdf
+
+See tools/chocolateyInstall.ps1 for the exact lookup logic and the /SkipDriver, /SkipManual
+parameters to opt out of the optional components.
+
+This package installs three components silently, in order:
+1. BarTender ("BarTender_Label Design Software.exe"), using the classic InstallShield
+   "/s /v\"/qn ADDLOCAL=...\"" silent syntax by default - confirmed working against the
+   Seagull-provided installer. Pass /Modern to try Seagull's newer "FEATURE=" syntax instead
+   (only documented for BarTender 2019+).
+2. Drivers by Seagull printer driver files ("BeeprtPrinter_2024.2.exe") and, optionally,
+   a specific printer driver via the Seagull Driver Wizard (DriverWizard.exe)
+3. The instruction manual PDF (copied next to the BarTender installation for reference)
+
+IMPORTANT - No public product key code (PKC) is embedded in this package. Supply your
+own PKC (and any other install-time options) using --params, for example:
+
+  choco install bartender --params "/PKC:xxxx-xxxx-xxxx-xxxx"
+    </description>
+    <tags>bartender seagull-scientific label-printing driver internal</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

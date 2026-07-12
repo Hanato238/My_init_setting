@@ -4,6 +4,7 @@ param(
     [switch]$Update,
     [switch]$SyncSecrets,
     [switch]$IncludeOffice,
+    [switch]$IncludeLocalApps,
     [switch]$Clinic,
     [switch]$DryRun,
     # Settings subcommands
@@ -33,6 +34,7 @@ if (-not $PSScriptRoot) {
     if ($Update)          { $argList += '-Update' }
     if ($SyncSecrets)     { $argList += '-SyncSecrets' }
     if ($IncludeOffice)   { $argList += '-IncludeOffice' }
+    if ($IncludeLocalApps) { $argList += '-IncludeLocalApps' }
     if ($Clinic)          { $argList += '-Clinic' }
     if ($DryRun)          { $argList += '-DryRun' }
     if ($ServerMode)      { $argList += '-ServerMode' }
@@ -108,7 +110,7 @@ if ($settingsSubcommand) {
 }
 
 if ($Clinic) {
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic' }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic'; IncludeLocalApps = $IncludeLocalApps }
     Save-InstallProfile 'Clinic'
     Add-Result 'Install-Office.ps1'         'WARN' 'skipped (not required for Clinic)'
     Add-Result 'Initialize-Security.ps1'    'WARN' 'skipped (not required for Clinic)'
@@ -120,7 +122,7 @@ if ($Clinic) {
 } elseif ($Update) {
     $savedProfile = if (Test-Path $profileFile) { (Get-Content $profileFile -Raw).Trim() } else { '' }
     $isClinic     = $savedProfile -eq 'Clinic'
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun; Profile = $savedProfile }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun; Profile = $savedProfile; IncludeLocalApps = $IncludeLocalApps }
     if ($isClinic) {
         Add-Result 'Initialize-Security.ps1' 'WARN' 'skipped (not required for Clinic)'
         Add-Result 'Setup-Wsl.ps1'           'WARN' 'skipped (not required for Clinic)'
@@ -139,7 +141,7 @@ if ($Clinic) {
     }
     Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
 } else {
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; IncludeLocalApps = $IncludeLocalApps }
     Save-InstallProfile 'Default'
     if ($IncludeOffice) {
         Invoke-Script 'Install-Office.ps1'  "$PSScriptRoot\installer\Install-Office.ps1"      @{ DryRun = $DryRun }

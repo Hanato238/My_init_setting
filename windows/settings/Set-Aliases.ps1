@@ -46,6 +46,7 @@ Set-Alias -Name "powertoys"      -Value "C:\Program Files\PowerToys\PowerToys.ex
 Set-Alias -Name "bitwarden"      -Value "`$env:USERPROFILE\AppData\Local\Programs\Bitwarden\Bitwarden.exe"
 Set-Alias -Name "spacedesk"      -Value "C:\Program Files\datronicsoft\spacedesk\spacedeskConsole.exe"
 Set-Alias -Name "gemini"         -Value "`$env:USERPROFILE\AppData\Roaming\npm\gemini.ps1"
+Set-Alias -Name "orca"           -Value "`$env:USERPROFILE\AppData\Local\Programs\orca\Orca.exe"
 
 Set-Alias -Name "powerpoint" -Value "C:\Program Files\Microsoft Office\root\Office16\POWERPNT.EXE"
 Set-Alias -Name "word"       -Value "C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE"
@@ -62,6 +63,8 @@ function hf-chrome    { & chrome 'https://huggingface.co/' }
 function context7     { Start-Process 'https://context7.com/dashboard' }
 function github       { & chrome 'https://github.com/' }
 function repository   { & chrome 'https://community.chocolatey.org/packages' }
+function winstall     { & chrome 'https://winstall.app/' }
+function tailnet      { & chrome 'https://login.tailscale.com/admin' }
 function gdrive       { & chrome 'https://drive.google.com/drive/' }
 function gmail        { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
 function gcp          { & chrome 'https://console.cloud.google.com/welcome?hl=ja' }
