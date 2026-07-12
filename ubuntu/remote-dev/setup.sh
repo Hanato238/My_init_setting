@@ -168,6 +168,130 @@ fi
 # Tailscale comes up, then starts itself.
 sudo systemctl enable --now orca-serve.service
 
+# --- Convenience aliases (login-time) ---
+# orca-serve.service runs as the dedicated `orca` user (kept separate from
+# interactive login users - see README - so that a compromised Orca process
+# can't reach a login user's SSH keys or any web server experimentally
+# exposed on this VM). It writes ~/.config/orca/orca-runtime.json under that
+# user's home, so orca CLI subcommands (worktree create, snapshot, click,
+# fill, ...) must run as the same user to find that file. The `orca()`
+# function below wraps that sudo call so login users don't have to type it
+# out each time.
+ALIASES_SCRIPT="/etc/profile.d/90-remote-dev-aliases.sh"
+echo "Installing/updating login-time aliases at $ALIASES_SCRIPT..."
+sudo tee "$ALIASES_SCRIPT" > /dev/null << 'EOF'
+# Convenience aliases for the remote-dev VM (see ubuntu/remote-dev/setup.sh).
+# Service accounts (e.g. "orca", shell=/usr/sbin/nologin) never get an
+# interactive login shell, so this never runs for them.
+
+# Run the orca CLI as the dedicated `orca` user - orca-serve.service runs as
+# that user and writes ~/.config/orca/orca-runtime.json under its home, so
+# CLI subcommands need to run as the same user to find that file.
+orca() {
+    sudo -u orca -H /usr/local/bin/orca "$@"
+}
+
+alias orca-status='sudo systemctl status orca-serve'
+alias orca-restart='sudo systemctl restart orca-serve'
+alias orca-logs='sudo journalctl -u orca-serve -f'
+
+alias ts-ip='tailscale ip -4'
+alias ts-status='tailscale status'
+
+# Ported from windows/settings/Set-Aliases.ps1's `claude` function. This VM
+# has no `sbx` (that's a Windows-host-only sandboxing tool), so --sbx is
+# reimplemented with a plain long-lived Docker container per target
+# directory instead: created once, then reused via `docker exec` on later
+# calls (same idea as sbx's per-directory sandbox). A .devcontainer in the
+# target dir still takes priority and is driven via `docker compose`, same
+# as the Windows version.
+claude() {
+    local target_dir="."
+    local as_host=0
+    local rebuild=0
+    local sbx=0
+    local -a rest=()
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --as-host) as_host=1 ;;
+            --rebuild) rebuild=1 ;;
+            --sbx) sbx=1 ;;
+            *)
+                if [[ "$target_dir" == "." ]]; then target_dir="$1"; else rest+=("$1"); fi
+                ;;
+        esac
+        shift
+    done
+
+    if (( as_host )); then
+        command claude "${rest[@]}"
+        return
+    fi
+
+    if ! command -v docker &>/dev/null; then
+        echo "claude: docker not found - running claude directly (no sandbox)." >&2
+        command claude "${rest[@]}"
+        return
+    fi
+
+    target_dir="$(cd "$target_dir" 2>/dev/null && pwd)" || { echo "claude: directory not found" >&2; return 1; }
+
+    if [ -d "$target_dir/.devcontainer" ]; then
+        local compose="$target_dir/.devcontainer/docker-compose.yml"
+        local container status
+        container="$(basename "$target_dir")"
+        status="$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null || true)"
+
+        if (( rebuild )); then
+            echo "Rebuilding container..."
+            docker compose -f "$compose" up --build -d || { echo "claude: failed to rebuild container" >&2; return 1; }
+        elif [ "$status" != "running" ]; then
+            echo "Starting container..."
+            docker compose -f "$compose" up -d || { echo "claude: failed to start container" >&2; return 1; }
+        else
+            echo "Container already running ($container)"
+        fi
+
+        docker exec -it "$container" zellij "${rest[@]}"
+        return
+    fi
+
+    local image="claude-sandbox:latest"
+    if (( rebuild )) || ! docker image inspect "$image" &>/dev/null; then
+        echo "Building $image..."
+        docker build -t "$image" - << 'DOCKERFILE' || { echo "claude: failed to build sandbox image" >&2; return 1; }
+FROM node:lts-slim
+RUN npm install -g @anthropic-ai/claude-code
+DOCKERFILE
+    fi
+
+    local container_name
+    container_name="claude-$(basename "$target_dir" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9.+-]/-/g')"
+
+    if (( rebuild )); then
+        docker rm -f "$container_name" &>/dev/null || true
+    fi
+
+    local sbx_status
+    sbx_status="$(docker inspect --format '{{.State.Status}}' "$container_name" 2>/dev/null || true)"
+    if [ -z "$sbx_status" ]; then
+        echo "Creating sandbox $container_name..."
+        docker run -dit --name "$container_name" -v "$target_dir:/workspace" -w /workspace "$image" sleep infinity \
+            || { echo "claude: failed to create sandbox" >&2; return 1; }
+    elif [ "$sbx_status" != "running" ]; then
+        docker start "$container_name" >/dev/null
+    fi
+
+    local -a claude_args=("${rest[@]}")
+    if (( sbx )); then
+        claude_args=(--dangerously-skip-permissions "${rest[@]}")
+    fi
+
+    docker exec -it "$container_name" claude "${claude_args[@]}"
+}
+EOF
+
 # --- Optional dev tooling ---
 # Everything below is "nice to have" on top of the core Tailscale + Orca setup
 # above, so each block is written so a failure prints a WARNING and moves on
@@ -265,3 +389,11 @@ echo "      sudo journalctl -u orca-serve -f"
 echo ""
 echo "The 'orca' CLI command is on PATH (symlinked to the AppImage) - use it for"
 echo "scripting, e.g. 'orca worktree create', once a server is paired."
+echo ""
+echo "Login shells get an 'orca' function (runs the CLI as the orca user), a"
+echo "'claude' function (--as-host runs it directly; otherwise it runs inside a"
+echo "per-directory Docker sandbox, or the project's .devcontainer if present;"
+echo "--sbx adds --dangerously-skip-permissions; --rebuild forces a rebuild),"
+echo "plus orca-status / orca-restart / orca-logs / ts-ip / ts-status aliases -"
+echo "open a new shell (or 'source /etc/profile.d/90-remote-dev-aliases.sh') to"
+echo "pick them up."

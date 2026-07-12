@@ -75,10 +75,40 @@ sudo journalctl -u orca-serve -f               # Orcaのペアリングurlはこ
 
 自動化されるもの: `tailscaled`起動・IP forwarding有効化・（`-TailscaleAuthKey`指定時のみ）Tailscale認証・
 Orca headless AppImageのインストールと`orca-serve.service`の起動・`orca` CLIコマンドのPATH登録・
+ログイン時エイリアス（後述）の設置・
 （`workspaceRepoUrl`指定時のみ）`~/workspace/<リポジトリ名>`へのリポジトリclone・
 git/vim/python3のインストール・Node.js(LTS)/Docker Engine/GitHub CLI(`gh`)のインストール・
 Claude Code CLI(`claude`)とClaude Agent SDK(npm/pip)のインストール・LINE LIFF SDK(npm)の
 グローバルインストール・Antigravity CLIのインストール。
+
+**ログイン時エイリアス**: `orca-serve.service`は専用の非rootユーザー`orca`で動作する
+（対話ログインユーザーとは意図的に分離。理由は下記）。`setup.sh`は`/etc/profile.d/90-remote-dev-aliases.sh`
+を設置し、対話ログインする各ユーザーのシェルに以下を追加する（`orca`ユーザー自身は
+`nologin`のため対象外）:
+
+| エイリアス/関数 | 内容 |
+|---|---|
+| `orca <サブコマンド>` | `sudo -u orca -H /usr/local/bin/orca <サブコマンド>` を実行する関数。`orca-runtime.json`が`orca`ユーザーのホーム配下に書かれるため、CLIも同じユーザーで実行しないと見つからない |
+| `orca-status` | `sudo systemctl status orca-serve` |
+| `orca-restart` | `sudo systemctl restart orca-serve` |
+| `orca-logs` | `sudo journalctl -u orca-serve -f`（ペアリングURL確認用） |
+| `ts-ip` | `tailscale ip -4` |
+| `ts-status` | `tailscale status` |
+| `claude [dir] [--as-host] [--sbx] [--rebuild]` | `windows/settings/Set-Aliases.ps1`の`claude`関数の移植（後述） |
+
+**`claude`関数**: 対象ディレクトリに`.devcontainer/docker-compose.yml`があればそれを
+`docker compose`で起動し`zellij`経由で接続する（Windows版と同じ挙動）。無ければ、
+このVMには`sbx`（Windows専用のサンドボックスツール）が無いため、代わりにディレクトリ単位の
+Dockerコンテナ（`claude-sandbox`イメージ、初回のみビルド）を作成し、以降は`docker exec`で
+使い回す。`--sbx`を付けると`--dangerously-skip-permissions`付きで実行する（Windows版の`-Sbx`相当）。
+`--as-host`はDockerを使わずホスト上の`claude`を直接実行し、`--rebuild`はサンドボックス
+コンテナ/イメージ（または`.devcontainer`側）を作り直す。
+
+**`orca-serve`を対話ログインユーザーと同じユーザーで動かさない理由**: このVMでは実験的に
+Webサーバーとして一部ポートを公開する可能性があるため、リモート操作でクリック/入力を
+自動実行するOrcaと同一ユーザーで動かすと、どちらかが侵害された際にもう一方（SSH鍵や
+公開中のWebサーバー等）まで巻き添えになるリスクが上がる。ユーザーを分離したまま、
+上記の`orca()`関数で手間だけを減らしている。
 
 引き続き手動が必要なもの:
 1. `-TailscaleAuthKey` 未指定の場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）
