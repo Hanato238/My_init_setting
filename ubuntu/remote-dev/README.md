@@ -66,7 +66,10 @@ sudo journalctl -u orca-serve -f               # Orcaのペアリングurlはこ
 
 自動化されるもの: `tailscaled`起動・IP forwarding有効化・（`-TailscaleAuthKey`指定時のみ）Tailscale認証・
 Orca headless AppImageのインストールと`orca-serve.service`の起動・`orca` CLIコマンドのPATH登録・
-（`workspaceRepoUrl`指定時のみ）`~/workspace/<リポジトリ名>`へのリポジトリclone。
+（`workspaceRepoUrl`指定時のみ）`~/workspace/<リポジトリ名>`へのリポジトリclone・
+git/vim/python3のインストール・Node.js(LTS)/Docker Engine/GitHub CLI(`gh`)のインストール・
+Claude Code CLI(`claude`)とClaude Agent SDK(npm/pip)のインストール・LINE LIFF SDK(npm)の
+グローバルインストール・Antigravity CLIのインストール。
 
 引き続き手動が必要なもの:
 1. `-TailscaleAuthKey` 未指定の場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）

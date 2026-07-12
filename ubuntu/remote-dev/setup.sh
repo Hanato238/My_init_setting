@@ -98,6 +98,78 @@ else
     echo "NOTE: workspace-repo-url not set - skipping workspace auto-clone setup."
 fi
 
+# --- Node.js + npm (needed by the Claude Code CLI / Agent SDK / LIFF SDK below) ---
+if command -v node &>/dev/null; then
+    echo "OK: node is already installed ($(node --version))"
+else
+    echo "Installing Node.js LTS..."
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+fi
+
+# --- Docker Engine + CLI ---
+if command -v docker &>/dev/null; then
+    echo "OK: docker is already installed ($(docker --version))"
+else
+    echo "Installing Docker Engine..."
+    curl -fsSL https://get.docker.com | sudo sh
+fi
+
+# --- GitHub CLI (gh) ---
+if command -v gh &>/dev/null; then
+    echo "OK: gh is already installed ($(gh --version | head -n1))"
+else
+    echo "Installing GitHub CLI (gh)..."
+    sudo mkdir -p -m 755 /etc/apt/keyrings
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+    sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y gh
+fi
+
+# --- Claude Code CLI + Claude Agent SDK (npm + Python) ---
+if command -v claude &>/dev/null; then
+    echo "OK: claude-code is already installed ($(claude --version 2>/dev/null || echo installed))"
+else
+    echo "Installing Claude Code CLI..."
+    sudo npm install -g @anthropic-ai/claude-code
+fi
+
+if npm list -g @anthropic-ai/claude-agent-sdk &>/dev/null; then
+    echo "OK: @anthropic-ai/claude-agent-sdk already installed"
+else
+    echo "Installing Claude Agent SDK (npm)..."
+    sudo npm install -g @anthropic-ai/claude-agent-sdk
+fi
+
+if python3 -m pip show claude-agent-sdk &>/dev/null; then
+    echo "OK: claude-agent-sdk (pip) already installed"
+else
+    echo "Installing Claude Agent SDK (pip)..."
+    sudo python3 -m pip install claude-agent-sdk
+fi
+
+# --- LINE LIFF SDK (npm) ---
+# Normally a per-project npm dependency rather than something installed
+# system-wide, but requested as a global install for this VM.
+if npm list -g @line/liff &>/dev/null; then
+    echo "OK: @line/liff already installed"
+else
+    echo "Installing LINE LIFF SDK (npm)..."
+    sudo npm install -g @line/liff
+fi
+
+# --- Antigravity CLI ---
+if command -v antigravity &>/dev/null; then
+    echo "OK: antigravity CLI is already installed"
+else
+    echo "Installing Antigravity CLI..."
+    curl -fsSL https://antigravity.google/cli/install.sh | bash
+fi
+
 # --- Orca headless server (AppImage) ---
 ORCA_DIR="/opt/orca"
 ORCA_BIN="$ORCA_DIR/orca-linux.AppImage"

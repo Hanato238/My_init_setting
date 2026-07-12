@@ -1,6 +1,7 @@
-# apt packages required to run Orca as a headless server.
-# Tailscale is installed separately via its own official install script
-# (see setup.sh), not through this list.
+# apt packages for the remote-dev environment (Orca headless server + general
+# dev tooling). Tools that aren't plain apt packages (Docker, GitHub CLI,
+# Node.js, Claude Code, etc.) are installed separately via their own official
+# install scripts in setup.sh, not through this list.
 REMOTE_DEV_APT_PACKAGES=(
     curl
     libfuse2
@@ -16,4 +17,9 @@ REMOTE_DEV_APT_PACKAGES=(
     libnss3
     libxss1
     libxtst6
+    # General dev tooling
+    git
+    vim
+    python3
+    python3-pip
 )
