@@ -163,8 +163,8 @@ else
 fi
 
 # --- Antigravity CLI ---
-if command -v antigravity &>/dev/null; then
-    echo "OK: antigravity CLI is already installed"
+if command -v agy &>/dev/null; then
+    echo "OK: Antigravity CLI (agy) is already installed"
 else
     echo "Installing Antigravity CLI..."
     curl -fsSL https://antigravity.google/cli/install.sh | bash
