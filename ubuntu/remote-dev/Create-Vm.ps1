@@ -22,6 +22,14 @@
 .PARAMETER Recreate
     同名VMが既に存在する場合、確認プロンプトの後に削除してから作り直す。
     未指定時、同名VMが存在するとエラーで終了する（誤って上書きしないための既定動作）。
+.PARAMETER TailscaleApiKey
+    Tailscale API access token（Personal access token、`tskey-api-...`）。
+    -Recreate で既存VMを削除した際、Tailscale側に残る同名の古いデバイス（再作成後は
+    ノードキーが変わるため新しいデバイスとして登録され、古い方はオフラインのまま残る）を
+    Tailscale API経由で自動削除する。未指定時はこのクリーンアップをスキップし、
+    古いデバイスは管理コンソールから手動削除が必要になる。
+    未指定時は $env:TAILSCALE_API_KEY を使用する。
+    auth keyと同様、vm-config.json（gitコミット対象）には書かず、パラメータか環境変数で渡すこと。
 .PARAMETER DryRun
     実際にはVMを作成せず、実行される gcloud コマンドを表示するだけのモード
 .NOTES
@@ -31,15 +39,57 @@
     最初にSSHログインしたタイミングで ~/workspace ディレクトリへ自動でcloneする
     （起動時点ではまだOSユーザーのホームディレクトリが存在しないことがあるため、
     ログイン時の遅延cloneにしている。private リポジトリの認証には未対応）。
+    -Recreate はTailscale側のIPアドレスまでは引き継がない（VM再作成でtailscaledの
+    ノードキーが失われるため、必ず新しいIPが割り当てられる）。-TailscaleApiKey を指定すると
+    古いデバイスの自動削除だけは行われる。
 #>
 
 param(
     [string]$ConfigPath = "$PSScriptRoot\config\vm-config.json",
     [string]$ProjectId = $env:GCP_PROJECT_ID,
     [string]$TailscaleAuthKey = $env:TAILSCALE_AUTHKEY,
+    [string]$TailscaleApiKey = $env:TAILSCALE_API_KEY,
     [switch]$Recreate,
     [switch]$DryRun
 )
+
+function Remove-TailscaleDevice {
+    <#
+    .SYNOPSIS
+        Tailscale API経由で、指定したhostnameに一致するデバイスを削除する（-Recreate時、
+        再作成前の古いデバイスをクリーンアップするため）。API呼び出しの失敗はVM作成処理
+        全体を止めない（Write-Warningのみ）。
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Hostname,
+        [Parameter(Mandatory)][string]$ApiKey
+    )
+
+    $headers = @{ Authorization = "Bearer $ApiKey" }
+    try {
+        $resp = Invoke-RestMethod -Uri "https://api.tailscale.com/api/v2/tailnet/-/devices" -Headers $headers -Method Get
+    } catch {
+        Write-Warning "Tailscale device list fetch failed - skipping old-device cleanup: $_"
+        return
+    }
+
+    $staleDevices = @($resp.devices | Where-Object { $_.hostname -eq $Hostname })
+    if ($staleDevices.Count -eq 0) {
+        Write-Host "No existing Tailscale device found for hostname '$Hostname' - nothing to clean up." -ForegroundColor DarkGray
+        return
+    }
+
+    foreach ($device in $staleDevices) {
+        $addresses = $device.addresses -join ', '
+        Write-Host "Removing stale Tailscale device '$($device.hostname)' ($addresses)..." -ForegroundColor Yellow
+        try {
+            Invoke-RestMethod -Uri "https://api.tailscale.com/api/v2/device/$($device.id)" -Headers $headers -Method Delete | Out-Null
+            Write-Host "Removed." -ForegroundColor Green
+        } catch {
+            Write-Warning "Failed to remove Tailscale device $($device.id): $_"
+        }
+    }
+}
 
 if (-not (Test-Path $ConfigPath)) {
     Write-Error "Config file not found: $ConfigPath"
@@ -97,6 +147,13 @@ if ($existingVm) {
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to delete existing VM (exit code $LASTEXITCODE)."
             exit $LASTEXITCODE
+        }
+
+        if ($TailscaleApiKey) {
+            Remove-TailscaleDevice -Hostname $config.vmName -ApiKey $TailscaleApiKey
+        } else {
+            Write-Host "NOTE: -TailscaleApiKey not set - the old Tailscale device (if any) was left in place." -ForegroundColor DarkGray
+            Write-Host "      Remove it manually if needed: https://login.tailscale.com/admin/machines" -ForegroundColor DarkGray
         }
     }
 }
