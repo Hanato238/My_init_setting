@@ -12,19 +12,32 @@
     どちらの場合も引き続き手動。
 .PARAMETER ConfigPath
     VM設定JSONファイルのパス（既定: config/vm-config.json）
+.PARAMETER ProjectId
+    GCPプロジェクトID。指定すると vm-config.json の projectId を上書きする。
+    未指定時は $env:GCP_PROJECT_ID を使用する（それも無ければ vm-config.json の値を使う）。
 .PARAMETER TailscaleAuthKey
     Tailscale の auth key。指定するとVM起動時にTailscale認証も自動化される
     （インスタンスメタデータ経由でVMに渡すため、リポジトリにはコミットしないこと）。
     未指定時は $env:TAILSCALE_AUTHKEY を使用する。
+.PARAMETER Recreate
+    同名VMが既に存在する場合、確認プロンプトの後に削除してから作り直す。
+    未指定時、同名VMが存在するとエラーで終了する（誤って上書きしないための既定動作）。
 .PARAMETER DryRun
     実際にはVMを作成せず、実行される gcloud コマンドを表示するだけのモード
 .NOTES
     事前に gcloud SDK のインストールと `gcloud auth login` が必要。
+    vm-config.json の workspaceRepoUrl に public な GitHub リポジトリURLを設定しておくと、
+    setup.sh が /etc/profile.d にログイン時clone用スクリプトを設置し、各ユーザーが
+    最初にSSHログインしたタイミングで ~/workspace ディレクトリへ自動でcloneする
+    （起動時点ではまだOSユーザーのホームディレクトリが存在しないことがあるため、
+    ログイン時の遅延cloneにしている。private リポジトリの認証には未対応）。
 #>
 
 param(
     [string]$ConfigPath = "$PSScriptRoot\config\vm-config.json",
+    [string]$ProjectId = $env:GCP_PROJECT_ID,
     [string]$TailscaleAuthKey = $env:TAILSCALE_AUTHKEY,
+    [switch]$Recreate,
     [switch]$DryRun
 )
 
@@ -34,6 +47,10 @@ if (-not (Test-Path $ConfigPath)) {
 }
 
 $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+
+if ($ProjectId) {
+    $config | Add-Member -NotePropertyName projectId -NotePropertyValue $ProjectId -Force
+}
 
 foreach ($required in @('projectId', 'zone', 'vmName', 'machineType', 'imageFamily', 'imageProject')) {
     if (-not $config.$required) {
@@ -58,6 +75,31 @@ if (-not $activeAccount) {
     exit 1
 }
 Write-Host "gcloud account: $activeAccount" -ForegroundColor Cyan
+
+$existingVm = gcloud compute instances describe $config.vmName `
+    --zone=$($config.zone) --project=$($config.projectId) `
+    --format="value(name)" 2>$null
+if ($existingVm) {
+    if (-not $Recreate) {
+        Write-Error "VM '$($config.vmName)' already exists in zone $($config.zone). Use -Recreate to delete and recreate it, or delete it manually first."
+        exit 1
+    }
+    if ($DryRun) {
+        Write-Host "`n[DRY RUN] VM '$($config.vmName)' already exists; -Recreate would delete it before creating." -ForegroundColor Yellow
+    } else {
+        $confirm = Read-Host "VM '$($config.vmName)' already exists. Delete and recreate? (y/N)"
+        if ($confirm -notin @('y', 'Y')) {
+            Write-Host "Aborted." -ForegroundColor Yellow
+            exit 0
+        }
+        Write-Host "Deleting existing VM '$($config.vmName)'..." -ForegroundColor Yellow
+        gcloud compute instances delete $config.vmName --zone=$($config.zone) --project=$($config.projectId) --quiet
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to delete existing VM (exit code $LASTEXITCODE)."
+            exit $LASTEXITCODE
+        }
+    }
+}
 
 $diskSizeGb = if ($config.diskSizeGb) { $config.diskSizeGb } else { 30 }
 $diskType   = if ($config.diskType)   { $config.diskType }   else { "pd-balanced" }
@@ -88,13 +130,28 @@ if (-not (Test-Path $startupScriptPath)) {
     exit 1
 }
 $gcloudArgs += "--metadata-from-file=startup-script=$startupScriptPath"
+
+# gcloud only accepts a single --metadata flag per invocation, so all key=value
+# pairs (besides startup-script, which goes through --metadata-from-file) must
+# be combined into one comma-joined argument.
+$metadataPairs = @()
 if ($TailscaleAuthKey) {
-    $gcloudArgs += "--metadata=tailscale-authkey=$TailscaleAuthKey"
+    $metadataPairs += "tailscale-authkey=$TailscaleAuthKey"
+}
+if ($config.workspaceRepoUrl) {
+    $metadataPairs += "workspace-repo-url=$($config.workspaceRepoUrl)"
+}
+if ($metadataPairs.Count -gt 0) {
+    $gcloudArgs += "--metadata=$($metadataPairs -join ',')"
 }
 
 Write-Host "`n=== gcloud command ===" -ForegroundColor Cyan
 $printableArgs = $gcloudArgs | ForEach-Object {
-    if ($_ -like '--metadata=tailscale-authkey=*') { '--metadata=tailscale-authkey=***' } else { $_ }
+    if ($_ -like '--metadata=*tailscale-authkey=*') {
+        $_ -replace 'tailscale-authkey=[^,]*', 'tailscale-authkey=***'
+    } else {
+        $_
+    }
 }
 Write-Host "gcloud $($printableArgs -join ' ')"
 
@@ -129,3 +186,8 @@ Write-Host "  1. If this VM should be a Tailscale exit node, approve it in the"
 Write-Host "     Tailscale admin console."
 Write-Host "  2. Pair an external Orca client (desktop/mobile) using the pairing URL:"
 Write-Host "       sudo journalctl -u orca-serve -f"
+if ($config.workspaceRepoUrl) {
+    Write-Host ""
+    Write-Host "workspaceRepoUrl was set, so ~/workspace will be auto-cloned with:" -ForegroundColor Green
+    Write-Host "  $($config.workspaceRepoUrl)"
+}

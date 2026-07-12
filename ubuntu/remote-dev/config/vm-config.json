@@ -8,5 +8,6 @@
     "diskSizeGb": 30,
     "diskType": "pd-balanced",
     "enableIpForward": true,
-    "networkTags": ["remote-dev"]
+    "networkTags": ["remote-dev"],
+    "workspaceRepoUrl": "https://github.com/Hanato238/My_init_setting.git"
 }

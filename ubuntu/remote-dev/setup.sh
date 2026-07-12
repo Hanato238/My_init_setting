@@ -58,6 +58,46 @@ else
     echo "OK: IP forwarding already configured ($SYSCTL_CONF)"
 fi
 
+# --- Workspace repo (optional) ---
+# Set via the "workspace-repo-url" GCE instance metadata attribute (see
+# vm-config.json's workspaceRepoUrl / Create-Vm.ps1). Cloning happens lazily
+# on each user's first interactive login (via /etc/profile.d), NOT here at
+# boot time - on first boot the OS login user's home directory often doesn't
+# exist yet (GCE creates it on first `gcloud compute ssh`, which races with
+# this script), so a one-shot clone here can easily miss it. Login-time is
+# the first point $HOME is guaranteed to exist for any given user.
+if [ -n "${WORKSPACE_REPO_URL:-}" ]; then
+    if ! command -v git &>/dev/null; then
+        sudo apt-get install -y git
+    fi
+    echo "--- Workspace repo ($WORKSPACE_REPO_URL) ---"
+    sudo mkdir -p /etc/remote-dev
+    echo "$WORKSPACE_REPO_URL" | sudo tee /etc/remote-dev/workspace-repo-url > /dev/null
+
+    PROFILE_D_SCRIPT="/etc/profile.d/99-remote-dev-workspace.sh"
+    echo "Installing/updating login-time workspace clone script at $PROFILE_D_SCRIPT..."
+    sudo tee "$PROFILE_D_SCRIPT" > /dev/null << 'EOF'
+# Auto-clone the workspace repo configured via vm-config.json's
+# workspaceRepoUrl (see ubuntu/remote-dev/setup.sh) into ~/workspace on first
+# interactive login. Runs for every login shell but does nothing once the
+# repo is already cloned. Service accounts (e.g. "orca", shell=/usr/sbin/nologin)
+# never get an interactive login shell, so this never runs for them.
+_repo_url_file="/etc/remote-dev/workspace-repo-url"
+if [ -r "$_repo_url_file" ] && [ -n "$HOME" ] && command -v git >/dev/null 2>&1; then
+    _repo_url="$(cat "$_repo_url_file")"
+    _repo_name="$(basename "$_repo_url" .git)"
+    _dest="$HOME/workspace/$_repo_name"
+    if [ -n "$_repo_url" ] && [ ! -d "$_dest/.git" ]; then
+        mkdir -p "$HOME/workspace"
+        git clone "$_repo_url" "$_dest"
+    fi
+fi
+unset _repo_url_file _repo_url _repo_name _dest
+EOF
+else
+    echo "NOTE: workspace-repo-url not set - skipping workspace auto-clone setup."
+fi
+
 # --- Orca headless server (AppImage) ---
 ORCA_DIR="/opt/orca"
 ORCA_BIN="$ORCA_DIR/orca-linux.AppImage"
@@ -128,6 +168,9 @@ echo "=== Remote dev setup finished ==="
 echo ""
 echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'not authenticated yet')"
 echo "orca-serve.service: $(systemctl is-active orca-serve.service 2>/dev/null || true)"
+if [ -n "${WORKSPACE_REPO_URL:-}" ]; then
+    echo "Workspace: ~/workspace/$(basename "$WORKSPACE_REPO_URL" .git) (cloned on each user's first login)"
+fi
 echo ""
 echo "Remaining manual steps:"
 if ! tailscale ip -4 &>/dev/null; then
