@@ -266,6 +266,66 @@ function claude {
     $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
     sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
 }
+
+function Get-CpuPower {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet('AC','DC','Both')]
+        [string]$Power = 'Both'
+    )
+
+    # Auto-detect the GUID of the active power scheme
+    $activeScheme = powercfg /getactivescheme
+    $guid = ($activeScheme -split ' ')[3]
+
+    Write-Host "=== Active power scheme: $guid ===`n"
+
+    # Get detailed settings under SUB_PROCESSOR
+    $query = powercfg /q $guid SUB_PROCESSOR
+
+    # Extract and display the blocks for PROCTHROTTLEMAX and PERFBOOSTMODE
+    $lines = $query -split "`n"
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match 'PROCTHROTTLEMAX|PERFBOOSTMODE') {
+            # Show a few lines from the header (includes AC/DC values)
+            $block = $lines[$i..([Math]::Min($i+4, $lines.Count-1))]
+            $block | ForEach-Object { Write-Host $_ }
+            Write-Host ""
+        }
+    }
+}
+
+function Set-CpuPower {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateRange(0,100)]
+        [int]$ThrottleMax,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet(0,1,2)]  # 0=Disabled, 1=Enabled, 2=Aggressive
+        [int]$BoostMode = 0,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet('AC','DC','Both')]
+        [string]$Power = 'DC'  # DC = on battery
+    )
+
+    # Auto-detect the GUID of the active power scheme
+    $activeScheme = powercfg /getactivescheme
+    $guid = ($activeScheme -split ' ')[3]
+
+    if ($Power -eq 'DC' -or $Power -eq 'Both') {
+        powercfg /setdcvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX $ThrottleMax
+        powercfg /setdcvalueindex $guid SUB_PROCESSOR PERFBOOSTMODE $BoostMode
+    }
+    if ($Power -eq 'AC' -or $Power -eq 'Both') {
+        powercfg /setacvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX $ThrottleMax
+        powercfg /setacvalueindex $guid SUB_PROCESSOR PERFBOOSTMODE $BoostMode
+    }
+
+    powercfg /setactive $guid
+    Write-Host "Applied: GUID=$guid / ThrottleMax=$ThrottleMax% / BoostMode=$BoostMode / Target=$Power"
+}
 '@
 
 $part2Clinic = @'
