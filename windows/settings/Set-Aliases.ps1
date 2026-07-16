@@ -135,6 +135,16 @@ function Sync-ApiKeys {
     }
 }
 
+function Clear-DesktopTaskbar {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Clear-DesktopTaskbar.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
+}
+
 function Setup-Windows {
     param(
         [switch]$Update,
@@ -356,6 +366,16 @@ function Setup-Windows {
     )
     $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
     & $scriptPath @PSBoundParameters
+}
+
+function Clear-DesktopTaskbar {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Clear-DesktopTaskbar.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
 }
 '@
 
