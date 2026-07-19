@@ -19,10 +19,19 @@ Write-Host "$wingetAction apps via Winget..." -ForegroundColor Cyan
 foreach ($pkg in $wingetPackages) {
     if ($DryRun) {
         Write-Host "[DRY RUN] winget $wingetCmd -e --id $pkg" -ForegroundColor Yellow
-    } else {
-        Write-Host "$wingetAction $pkg..." -ForegroundColor Cyan
-        winget $wingetCmd -e --id $pkg --accept-package-agreements --accept-source-agreements
+        continue
     }
+
+    if (-not $Update) {
+        winget list -e --id $pkg --accept-source-agreements | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "$pkg is already installed, skipping." -ForegroundColor DarkGray
+            continue
+        }
+    }
+
+    Write-Host "$wingetAction $pkg..." -ForegroundColor Cyan
+    winget $wingetCmd -e --id $pkg --accept-package-agreements --accept-source-agreements
 }
 Write-Host "$wingetAction via Winget has been finished"
 
@@ -41,10 +50,22 @@ if (-not $DryRun) {
 $chocoAction = if ($Update) { "Upgrading" } else { "Installing" }
 $chocoCmd    = if ($Update) { "upgrade" }   else { "install" }
 Write-Host "$chocoAction apps via Chocolatey..." -ForegroundColor Cyan
+
+$chocoTargets = $chocoPackages
+if (-not $Update -and -not $DryRun) {
+    $installedIds = (choco list --local-only -r) | ForEach-Object { ($_ -split '\|')[0] }
+    $chocoTargets = $chocoPackages | Where-Object { $_ -notin $installedIds }
+    foreach ($pkg in ($chocoPackages | Where-Object { $_ -in $installedIds })) {
+        Write-Host "$pkg is already installed, skipping." -ForegroundColor DarkGray
+    }
+}
+
 if ($DryRun) {
     $chocoPackages | ForEach-Object { Write-Host "[DRY RUN] choco $chocoCmd $_" -ForegroundColor Yellow }
+} elseif ($chocoTargets.Count -gt 0) {
+    choco $chocoCmd @chocoTargets --ignore-checksums -y
 } else {
-    choco $chocoCmd @chocoPackages --ignore-checksums -y
+    Write-Host "No new Chocolatey packages to install." -ForegroundColor DarkGray
 }
 Write-Host "$chocoAction via Chocolatey has been finished"
 

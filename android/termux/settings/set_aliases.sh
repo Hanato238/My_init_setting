@@ -15,7 +15,6 @@ cat > "$BASHRC" << 'EOF'
 alias la="ls -a"
 alias ll="ls -l"
 alias lf="ls -al"
-alias gemini="gemini" # Standard command
 EOF
 
 # Create .bash_profile with Sync-ApiKeys function
