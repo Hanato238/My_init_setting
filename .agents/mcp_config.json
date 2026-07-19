@@ -1,0 +1,156 @@
+{
+  "mcpServers": {
+    "cloud-resource-manager": {
+      "serverUrl": "https://cloudresourcemanager.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "cloud-run": {
+      "serverUrl": "https://run.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "cloud-storage": {
+      "serverUrl": "https://storage.googleapis.com/storage/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "cloud-logging": {
+      "serverUrl": "https://logging.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "cloud-monitoring": {
+      "serverUrl": "https://monitoring.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "compute-engine": {
+      "serverUrl": "https://compute.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "pubsub": {
+      "serverUrl": "https://pubsub.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "observability": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/observability-mcp"
+      ]
+    },
+    "gcp-hardening-storage": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/storage-mcp"
+      ],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "${GOOGLE_CLOUD_PROJECT}"
+      }
+    },
+    "gcp-hardening-bigquery": {
+      "serverUrl": "https://bigquery.googleapis.com/mcp",
+      "authProviderType": "google_credentials",
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "${GOOGLE_CLOUD_PROJECT}"
+      }
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@perplexity-ai/mcp-server"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "${CONTEXT7_API_KEY}"
+      ]
+    },
+    "security-server": {
+      "command": "node",
+      "args": [
+        "C:/Users/lesen/.gemini/config/plugins/gemini-cli-security/mcp-server/dist/index.js"
+      ]
+    },
+    "osv-scanner": {
+      "command": "C:/Users/lesen/.gemini/config/plugins/gemini-cli-security/osv-scanner.exe",
+      "args": [
+        "experimental-mcp"
+      ]
+    },
+    "desktop-commander": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@wonderwhy-er/desktop-commander"
+      ]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ]
+    },
+    "clasp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google/clasp",
+        "mcp"
+      ]
+    },
+    "google-maps-platform-code-assist": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@googlemaps/code-assist-mcp@latest"
+      ]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem"
+      ],
+      "env": {}
+    },
+    "memory": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-memory"
+      ],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {}
+    },
+    "fetch": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {}
+    },
+    "git": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-git"
+      ],
+      "env": {}
+    }
+  }
+}
