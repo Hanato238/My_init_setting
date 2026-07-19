@@ -32,16 +32,16 @@ else
     echo "~/workspace already exists"
 fi
 
-echo "[1/4] Installing LLM CLI and extensions..."
+echo "[1/5] Installing Antigravity CLI..."
 run_task "installer/install_llm_cli.sh"
 
-echo "[2/4] Initializing Bitwarden security..."
+echo "[2/5] Initializing Bitwarden security..."
 run_task "installer/initialize_security.sh"
 
-echo "[3/4] Setting up workspace..."
+echo "[3/5] Setting up workspace..."
 run_task "settings/set_workspace.sh"
 
-echo "[4/4] Setting up aliases and profile..."
+echo "[4/5] Setting up aliases and profile..."
 run_task "settings/set_aliases.sh"
 
 echo "[5/5] Registering MCP servers..."

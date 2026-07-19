@@ -1,11 +1,13 @@
 # Termux 環境構築手順
 
 ## ファイル構成
-installer/setup_gemini_cli.sh   # パッケージ・gemini-cli インストール
-installer/setup_security.sh      # Bitwarden から API キー取得
-settings/set_aliases.sh         # .bashrc / .bash_profile 生成
-settings/mcp_servers.json       # MCP サーバ定義 (Termux 版)
-settings/set_mcp_servers.sh     # MCP サーバを Gemini 設定に注入
+installer/install_llm_cli.sh     # パッケージ・Antigravity CLI (agy) インストール
+installer/initialize_security.sh # Bitwarden から API キー取得 (jq でパース)
+settings/set_workspace.sh        # ~/workspace 作成、.bash_profile に登録
+settings/set_aliases.sh          # .bashrc / .bash_profile 生成
+settings/set_mcp_servers.sh      # ../../../shared/mcp.d/*.json を統合し
+                                  # リポジトリ直下の mcp-config.json に書き出す
+setup.sh                         # 上記を順番に実行するエントリーポイント
 
 ## 実行順序
 
@@ -15,27 +17,19 @@ pkg install -y git
 git clone https://github.com/hanato238/My_init_setting.git
 cd My_init_setting/android/termux
 
-### 2. 実行権限を付与
-chmod +x installer/setup_gemini_cli.sh
-chmod +x installer/setup_security.sh
-chmod +x settings/set_aliases.sh
-chmod +x settings/set_mcp_servers.sh
-
-### 3. インストール (gemini-cli, nlm 等)
-bash installer/setup_gemini_cli.sh
-
-### 4. セキュリティ設定 (Bitwarden から API キー取得)
-# 事前に Bitwarden CLI が必要です
-bash installer/setup_security.sh
-
-### 5. エイリアス・プロファイル設定
-bash settings/set_aliases.sh
+### 2. まとめて実行
+bash setup.sh
 source ~/.bash_profile
 
-### 6. MCP サーバを Gemini に登録
-bash settings/set_mcp_servers.sh
+setup.sh は内部で次を順に呼び出す:
+  1. installer/install_llm_cli.sh     (openssh, jq, uv, nodejs-lts などのパッケージ + Antigravity CLI)
+  2. installer/initialize_security.sh (要 Bitwarden アカウント。~/.secrets に書き出し)
+  3. settings/set_workspace.sh
+  4. settings/set_aliases.sh
+  5. settings/set_mcp_servers.sh      (mcp-config.json をリポジトリ直下に生成)
 
 ## 備考
+- MCP サーバ定義は Termux 専用ファイルを持たず、全プラットフォーム共通の
+  shared/mcp.d/*.json をそのままマージして使う。追加・変更はそちらを編集する。
 - Windows の SecretStore 相当は ~/.secrets (パーミッション 600 で管理)
-- Windows 専用サーバ (playwright, desktop-commander, browser-mcp) は除外
 - ~/.bash_profile 起動時に ~/.secrets を自動ロードして環境変数に注入
