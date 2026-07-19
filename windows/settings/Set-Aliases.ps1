@@ -336,6 +336,52 @@ function Set-CpuPower {
     powercfg /setactive $guid
     Write-Host "Applied: GUID=$guid / ThrottleMax=$ThrottleMax% / BoostMode=$BoostMode / Target=$Power"
 }
+
+function Enable-TailnetPort {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateRange(1,65535)]
+        [int]$Port,
+
+        [ValidateSet('TCP','UDP')]
+        [string]$Protocol = 'TCP'
+    )
+
+    # Auto-detect the tailnet range from this machine's current Tailscale IP
+    $tailscaleIp = (tailscale ip -4 2>$null | Select-Object -First 1)
+    if (-not $tailscaleIp) {
+        Write-Error "Tailscale IP を取得できませんでした。Tailscale が起動しているか確認してください。"
+        return
+    }
+
+    $octets = $tailscaleIp.Trim() -split '\.'
+    $maskedSecondOctet = [int]$octets[1] -band 0xC0
+    $tailnetCidr = "$($octets[0]).$maskedSecondOctet.0.0/10"
+
+    New-NetFirewallRule -DisplayName "Allow $Protocol $Port (Tailnet only)" -Direction Inbound -Protocol $Protocol -LocalPort $Port -RemoteAddress $tailnetCidr -Action Allow | Out-Null
+    Write-Host "Firewall rule created: $Protocol $Port allowed from $tailnetCidr (detected via $tailscaleIp)" -ForegroundColor Green
+}
+
+function Get-TailnetPorts {
+    $rules = Get-NetFirewallRule -DisplayName "Allow * (Tailnet only)" -ErrorAction SilentlyContinue
+    if (-not $rules) {
+        Write-Host "No tailnet-only firewall rules found." -ForegroundColor DarkGray
+        return
+    }
+
+    $rules | ForEach-Object {
+        $portFilter = $_ | Get-NetFirewallPortFilter
+        $addressFilter = $_ | Get-NetFirewallAddressFilter
+        [PSCustomObject]@{
+            DisplayName   = $_.DisplayName
+            Protocol      = $portFilter.Protocol
+            LocalPort     = $portFilter.LocalPort
+            RemoteAddress = $addressFilter.RemoteAddress -join ','
+            Direction     = $_.Direction
+            Enabled       = $_.Enabled
+        }
+    } | Format-Table -AutoSize
+}
 '@
 
 $part2Clinic = @'

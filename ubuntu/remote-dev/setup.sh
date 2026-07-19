@@ -63,6 +63,31 @@ else
     echo "OK: IP forwarding already configured ($SYSCTL_CONF)"
 fi
 
+# --- Host firewall (ufw) ---
+# Default-deny inbound, but only after the rules below are in place so this
+# never locks out the connection that's running this script: port 22/tcp
+# (GCE OS Login / initial provisioning access, which happens over eth0, not
+# Tailscale) and the whole tailscale0 interface (Tailscale already
+# authenticates/encrypts that traffic - this also covers Tailscale SSH from
+# `tailscale up --ssh` above, which arrives over tailscale0, not port 22, and
+# the Orca server on 6768, meant to be reached only via the tailnet). Once
+# this is active, individual extra tailnet-only ports are opened on demand
+# via the enable-tailnet-port login alias below instead of being added here.
+if command -v ufw &>/dev/null; then
+    if sudo ufw status | grep -q "Status: active"; then
+        echo "OK: ufw is already active"
+    else
+        echo "Enabling ufw (allowing SSH + tailscale0 first so this doesn't lock out access)..."
+        sudo ufw allow 22/tcp comment 'ssh (host access)'
+        sudo ufw allow in on tailscale0 comment 'tailscale (trusted)'
+        sudo ufw default deny incoming
+        sudo ufw default allow outgoing
+        sudo ufw --force enable
+    fi
+else
+    echo "NOTE: ufw not installed - skipping firewall enablement."
+fi
+
 # --- Workspace repo (optional) ---
 # Set via the "workspace-repo-url" GCE instance metadata attribute (see
 # vm-config.json's workspaceRepoUrl / Create-Vm.ps1). Cloning happens lazily
@@ -290,6 +315,49 @@ DOCKERFILE
 
     docker exec -it "$container_name" claude "${claude_args[@]}"
 }
+
+# Ported from windows/settings/Set-Aliases.ps1's `Enable-TailnetPort` /
+# `Get-TailnetPorts`. Uses ufw with a fixed comment tag so rules added here
+# can be found again later; the tailnet CIDR is auto-detected from this
+# machine's current Tailscale IP (Tailscale always assigns from the
+# 100.64.0.0/10 CGNAT range) rather than hardcoded, same as the Windows side.
+enable-tailnet-port() {
+    local port="$1"
+    local proto="${2:-tcp}"
+
+    if [ -z "$port" ]; then
+        echo "Usage: enable-tailnet-port <port> [tcp|udp]" >&2
+        return 1
+    fi
+    if ! command -v ufw &>/dev/null; then
+        echo "enable-tailnet-port: ufw not found (sudo apt-get install ufw)" >&2
+        return 1
+    fi
+
+    local ts_ip
+    ts_ip="$(tailscale ip -4 2>/dev/null)"
+    if [ -z "$ts_ip" ]; then
+        echo "enable-tailnet-port: could not get Tailscale IP - is tailscale running?" >&2
+        return 1
+    fi
+
+    local o1 o2 masked tailnet_cidr
+    o1="$(cut -d. -f1 <<< "$ts_ip")"
+    o2="$(cut -d. -f2 <<< "$ts_ip")"
+    masked=$(( o2 & 0xC0 ))
+    tailnet_cidr="${o1}.${masked}.0.0/10"
+
+    sudo ufw allow from "$tailnet_cidr" to any port "$port" proto "$proto" comment 'tailnet-only'
+    echo "ufw rule added: $proto/$port allowed from $tailnet_cidr (detected via $ts_ip)"
+}
+
+get-tailnet-ports() {
+    if ! command -v ufw &>/dev/null; then
+        echo "get-tailnet-ports: ufw not found" >&2
+        return 1
+    fi
+    sudo ufw status numbered | grep 'tailnet-only' || echo "No tailnet-only ufw rules found."
+}
 EOF
 
 # --- Optional dev tooling ---
@@ -373,6 +441,7 @@ echo "=== Remote dev setup finished ==="
 echo ""
 echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'not authenticated yet')"
 echo "orca-serve.service: $(systemctl is-active orca-serve.service 2>/dev/null || true)"
+echo "ufw: $(sudo ufw status 2>/dev/null | head -n1 || echo 'not installed')"
 if [ -n "${WORKSPACE_REPO_URL:-}" ]; then
     echo "Workspace: ~/workspace/$(basename "$WORKSPACE_REPO_URL" .git) (cloned on each user's first login)"
 fi
@@ -394,6 +463,8 @@ echo "Login shells get an 'orca' function (runs the CLI as the orca user), a"
 echo "'claude' function (--as-host runs it directly; otherwise it runs inside a"
 echo "per-directory Docker sandbox, or the project's .devcontainer if present;"
 echo "--sbx adds --dangerously-skip-permissions; --rebuild forces a rebuild),"
-echo "plus orca-status / orca-restart / orca-logs / ts-ip / ts-status aliases -"
+echo "plus orca-status / orca-restart / orca-logs / ts-ip / ts-status aliases,"
+echo "and enable-tailnet-port <port> [tcp|udp] / get-tailnet-ports (ufw rules"
+echo "scoped to the tailnet CIDR, auto-detected from this VM's Tailscale IP) -"
 echo "open a new shell (or 'source /etc/profile.d/90-remote-dev-aliases.sh') to"
 echo "pick them up."
