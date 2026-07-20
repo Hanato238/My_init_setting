@@ -1,4 +1,4 @@
-﻿param([string]$ProfileType = '')
+param([string]$ProfileType = '')
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
@@ -284,24 +284,52 @@ function Get-CpuPower {
         [string]$Power = 'Both'
     )
 
-    # Auto-detect the GUID of the active power scheme
+    # Auto-detect the GUID and Name of the active power scheme
     $activeScheme = powercfg /getactivescheme
-    $guid = ($activeScheme -split ' ')[3]
+    $guid = if ($activeScheme -match '([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') { $Matches[1] } else { '' }
+    $schemeName = if ($activeScheme -match '\((.*)\)') { $Matches[1] } else { '' }
 
-    Write-Host "=== Active power scheme: $guid ===`n"
+    Write-Host "`n=== Active Power Scheme: $guid ($schemeName) ===" -ForegroundColor Cyan
 
-    # Get detailed settings under SUB_PROCESSOR
-    $query = powercfg /q $guid SUB_PROCESSOR
+    $targets = @('PROCTHROTTLEMAX', 'PERFBOOSTMODE', 'PROCTHROTTLEMIN')
+    $results = [System.Collections.Generic.List[PSObject]]::new()
 
-    # Extract and display the blocks for PROCTHROTTLEMAX and PERFBOOSTMODE
-    $lines = $query -split "`n"
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match 'PROCTHROTTLEMAX|PERFBOOSTMODE') {
-            # Show a few lines from the header (includes AC/DC values)
-            $block = $lines[$i..([Math]::Min($i+4, $lines.Count-1))]
-            $block | ForEach-Object { Write-Host $_ }
-            Write-Host ""
+    foreach ($target in $targets) {
+        $query = powercfg /q $guid SUB_PROCESSOR $target 2>$null
+        if (-not $query) { continue }
+        $queryStr = $query -join "`n"
+
+        $acHex = if ($queryStr -match '(?:AC|AC 電源設定|Current AC Power Setting).*?: 0x([0-9a-fA-F]+)') { $Matches[1] } else { $null }
+        $dcHex = if ($queryStr -match '(?:DC|DC 電源設定|Current DC Power Setting).*?: 0x([0-9a-fA-F]+)') { $Matches[1] } else { $null }
+
+        if ($acHex -or $dcHex) {
+            $acVal = if ($acHex) { [Convert]::ToInt32($acHex, 16) } else { 'N/A' }
+            $dcVal = if ($dcHex) { [Convert]::ToInt32($dcHex, 16) } else { 'N/A' }
+
+            if ($target -like '*THROTTLE*') {
+                $acDisp = if ($acVal -ne 'N/A') { "$acVal%" } else { 'N/A' }
+                $dcDisp = if ($dcVal -ne 'N/A') { "$dcVal%" } else { 'N/A' }
+            } elseif ($target -eq 'PERFBOOSTMODE') {
+                $boostMap = @{0='0 (Disabled)'; 1='1 (Enabled)'; 2='2 (Aggressive)'}
+                $acDisp = if ($boostMap.ContainsKey($acVal)) { $boostMap[$acVal] } else { "$acVal" }
+                $dcDisp = if ($boostMap.ContainsKey($dcVal)) { $boostMap[$dcVal] } else { "$dcVal" }
+            } else {
+                $acDisp = "$acVal"
+                $dcDisp = "$dcVal"
+            }
+
+            $obj = [PSCustomObject]@{ Setting = $target }
+            if ($Power -eq 'AC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'AC (電源)' -Value $acDisp }
+            if ($Power -eq 'DC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'DC (バッテリー)' -Value $dcDisp }
+
+            $results.Add($obj)
         }
+    }
+
+    if ($results.Count -gt 0) {
+        $results | Format-Table -AutoSize
+    } else {
+        Write-Host "Processor power settings not found." -ForegroundColor Yellow
     }
 }
 
@@ -322,7 +350,7 @@ function Set-CpuPower {
 
     # Auto-detect the GUID of the active power scheme
     $activeScheme = powercfg /getactivescheme
-    $guid = ($activeScheme -split ' ')[3]
+    $guid = if ($activeScheme -match '([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') { $Matches[1] } else { '' }
 
     if ($Power -eq 'DC' -or $Power -eq 'Both') {
         powercfg /setdcvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX $ThrottleMax
