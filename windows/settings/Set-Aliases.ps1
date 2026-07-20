@@ -21,7 +21,7 @@ if (Test-Path "$profilePath.bak.2") { Move-Item "$profilePath.bak.2" "$profilePa
 if (Test-Path "$profilePath.bak") { Move-Item "$profilePath.bak"   "$profilePath.bak.2" -Force }
 if (Test-Path $profilePath) { Copy-Item $profilePath "$profilePath.bak" -Force }
 
-$markerStart = "# === MANAGED BY Set-Aliases.ps1 — DO NOT EDIT BETWEEN THESE MARKERS ==="
+$markerStart = "# === MANAGED BY Set-Aliases.ps1 - DO NOT EDIT BETWEEN THESE MARKERS ==="
 $markerEnd = "# === END MANAGED SECTION ==="
 
 # Part 1: aliases and URL shortcuts (double-quote heredoc; $ escaped as `$)
@@ -111,7 +111,7 @@ function qq       { & chrome 'https://www.e-igakukai.jp/user_service/kaiin_porta
 function oe       { & chrome 'https://www.openevidence.com/' }
 "@
 
-# Part 2: function definitions (single-quote heredoc; $ is literal — correct for profile runtime)
+# Part 2: function definitions (single-quote heredoc; $ is literal - correct for profile runtime)
 $part2 = @'
 
 function Load-SecretEnvironment {
@@ -163,8 +163,8 @@ function Setup-Windows {
 }
 
 function Get-SbxSandboxes {
-    # sbx daemon が未起動だと "Starting ..." 等のメッセージが stdout に混じり、
-    # ConvertFrom-Json がそのまま失敗するため、最初に JSON らしき行が現れる位置以降だけを抽出する。
+    # If the sbx daemon is not running, messages like "Starting ..." get mixed into stdout,
+    # causing ConvertFrom-Json to fail. Extract only from the line where JSON starts.
     $sbxRaw = @(sbx ls --json 2>$null)
     $jsonStartLine = $sbxRaw | Where-Object { $_ -match '^\s*[\{\[]' } | Select-Object -First 1
     if (-not $jsonStartLine) { return @() }
@@ -173,7 +173,7 @@ function Get-SbxSandboxes {
     try {
         return @((ConvertFrom-Json $sbxJson).sandboxes)
     } catch {
-        Write-Warning "sbx ls --json の出力を解析できませんでした: $_"
+        Write-Warning "Failed to parse output of sbx ls --json: $_"
         return @()
     }
 }
@@ -319,8 +319,8 @@ function Get-CpuPower {
             }
 
             $obj = [PSCustomObject]@{ Setting = $target }
-            if ($Power -eq 'AC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'AC (電源)' -Value $acDisp }
-            if ($Power -eq 'DC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'DC (バッテリー)' -Value $dcDisp }
+            if ($Power -eq 'AC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'AC (Power)' -Value $acDisp }
+            if ($Power -eq 'DC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'DC (Battery)' -Value $dcDisp }
 
             $results.Add($obj)
         }
@@ -478,7 +478,7 @@ $existingContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
 if ($existingContent -and $existingContent -match [regex]::Escape($markerStart)) {
     $escapedStart = [regex]::Escape($markerStart)
     $escapedEnd = [regex]::Escape($markerEnd)
-    # Remove ALL copies of the managed section (N→0), then append exactly one.
+    # Remove ALL copies of the managed section (N->0), then append exactly one.
     # The naive Replace(old, new) approach keeps N copies when N>1 because each
     # match is replaced with a new copy that itself contains the markers.
     $stripped = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd`r?`n?", "")
@@ -495,9 +495,9 @@ else {
     $newContent = "$managedSection`n"
 }
 
-# BOM付きUTF-8で書き出す。BOMなしだと Windows PowerShell 5.1 がシステムの
-# ANSIコードページ(日本語環境ではShift-JIS)でプロファイルを読もうとし、
-# 日本語コメント/メッセージのUTF-8バイト列を誤解釈してパースエラーになるため。
+# Write file with UTF-8 BOM. Without BOM, Windows PowerShell 5.1 reads the profile
+# using the system ANSI code page (e.g. Shift-JIS in Japanese locale),
+# which misinterprets UTF-8 bytes in comments/messages and causes parse errors.
 $utf8Bom = New-Object System.Text.UTF8Encoding $true
 [System.IO.File]::WriteAllText($profilePath, $newContent, $utf8Bom)
 
