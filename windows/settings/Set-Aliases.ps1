@@ -347,10 +347,16 @@ function Enable-TailnetPort {
         [string]$Protocol = 'TCP'
     )
 
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        Write-Error "Administrator privileges required. Please reopen PowerShell as Administrator."
+        return
+    }
+
     # Auto-detect the tailnet range from this machine's current Tailscale IP
     $tailscaleIp = (tailscale ip -4 2>$null | Select-Object -First 1)
     if (-not $tailscaleIp) {
-        Write-Error "Tailscale IP を取得できませんでした。Tailscale が起動しているか確認してください。"
+        Write-Error "Could not retrieve Tailscale IP. Please check that Tailscale is running."
         return
     }
 
@@ -358,7 +364,13 @@ function Enable-TailnetPort {
     $maskedSecondOctet = [int]$octets[1] -band 0xC0
     $tailnetCidr = "{0}.{1}.0.0/10" -f $octets[0], $maskedSecondOctet
 
-    New-NetFirewallRule -DisplayName "Allow $Protocol $Port (Tailnet only)" -Direction Inbound -Protocol $Protocol -LocalPort $Port -RemoteAddress $tailnetCidr -Action Allow | Out-Null
+    try {
+        New-NetFirewallRule -DisplayName "Allow $Protocol $Port (Tailnet only)" -Direction Inbound -Protocol $Protocol -LocalPort $Port -RemoteAddress $tailnetCidr -Action Allow -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Error "Failed to create firewall rule: $($_.Exception.Message)"
+        return
+    }
+
     Write-Host "Firewall rule created: $Protocol $Port allowed from $tailnetCidr (detected via $tailscaleIp)" -ForegroundColor Green
 }
 
