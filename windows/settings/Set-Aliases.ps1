@@ -356,7 +356,7 @@ function Enable-TailnetPort {
 
     $octets = $tailscaleIp.Trim() -split '\.'
     $maskedSecondOctet = [int]$octets[1] -band 0xC0
-    $tailnetCidr = "$($octets[0]).$maskedSecondOctet.0.0/10"
+    $tailnetCidr = "{0}.{1}.0.0/10" -f $octets[0], $maskedSecondOctet
 
     New-NetFirewallRule -DisplayName "Allow $Protocol $Port (Tailnet only)" -Direction Inbound -Protocol $Protocol -LocalPort $Port -RemoteAddress $tailnetCidr -Action Allow | Out-Null
     Write-Host "Firewall rule created: $Protocol $Port allowed from $tailnetCidr (detected via $tailscaleIp)" -ForegroundColor Green
@@ -447,8 +447,11 @@ else {
     $newContent = "$managedSection`n"
 }
 
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($profilePath, $newContent, $utf8NoBom)
+# BOM付きUTF-8で書き出す。BOMなしだと Windows PowerShell 5.1 がシステムの
+# ANSIコードページ(日本語環境ではShift-JIS)でプロファイルを読もうとし、
+# 日本語コメント/メッセージのUTF-8バイト列を誤解釈してパースエラーになるため。
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($profilePath, $newContent, $utf8Bom)
 
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 

@@ -37,6 +37,10 @@ bash ubuntu/initialize_security.sh
 
 詳細は [`ubuntu/README.md`](ubuntu/README.md) を参照。
 
+## 関連ドキュメント
+
+- [`TAILNET-PORTS.md`](TAILNET-PORTS.md) — tailnet 限定でポートを公開するヘルパー（Windows/Ubuntu 共通）
+
 ## 設計方針
 
 - **冪等性**: 各スクリプトは何度実行しても安全（既存設定を二重登録しない）

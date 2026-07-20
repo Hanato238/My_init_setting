@@ -95,6 +95,8 @@ Claude Code CLI(`claude`)とClaude Agent SDK(npm/pip)のインストール・LIN
 | `ts-ip` | `tailscale ip -4` |
 | `ts-status` | `tailscale status` |
 | `claude [dir] [--as-host] [--sbx] [--rebuild]` | `windows/settings/Set-Aliases.ps1`の`claude`関数の移植（後述） |
+| `enable-tailnet-port <port> [tcp\|udp]` | tailnetからのみ到達可能な`ufw`許可ルールを追加。詳細は[`../../TAILNET-PORTS.md`](../../TAILNET-PORTS.md) |
+| `get-tailnet-ports` | `enable-tailnet-port`で追加したルール一覧を表示 |
 
 **`claude`関数**: 対象ディレクトリに`.devcontainer/docker-compose.yml`があればそれを
 `docker compose`で起動し`zellij`経由で接続する（Windows版と同じ挙動）。無ければ、
