@@ -450,7 +450,15 @@ $existingContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
 if ($existingContent -and $existingContent -match [regex]::Escape($markerStart)) {
     $escapedStart = [regex]::Escape($markerStart)
     $escapedEnd = [regex]::Escape($markerEnd)
-    $newContent = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd", $managedSection)
+    # Remove ALL copies of the managed section (N→0), then append exactly one.
+    # The naive Replace(old, new) approach keeps N copies when N>1 because each
+    # match is replaced with a new copy that itself contains the markers.
+    $stripped = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd`r?`n?", "")
+    if ($stripped.Trim()) {
+        $newContent = $stripped.TrimEnd() + "`n`n$managedSection`n"
+    } else {
+        $newContent = "$managedSection`n"
+    }
 }
 elseif ($existingContent -and $existingContent.Trim()) {
     $newContent = $existingContent.TrimEnd() + "`n`n$managedSection`n"
