@@ -127,9 +127,9 @@ function Load-SecretEnvironment {
 Load-SecretEnvironment
 
 function Sync-ApiKeys {
-    $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\installer\Initialize-Security.ps1"
     if (Test-Path $scriptPath) {
-        & $scriptPath -Update -SyncSecrets
+        & $scriptPath
     } else {
         Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
     }
