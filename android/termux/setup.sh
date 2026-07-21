@@ -27,7 +27,11 @@ run_task() {
 # Antigravity CLI does not work on Termux itself (Android's Bionic libc), so on
 # a Termux host we only bootstrap proot-distro + Ubuntu here, then hand off:
 # the rest of this script must be run again from inside that Ubuntu shell.
-if command -v pkg &>/dev/null; then
+# Note: `command -v pkg` alone is not enough to detect the host, because
+# `proot-distro login` inherits Termux's PATH into the Ubuntu guest, making
+# `pkg` still resolve there. /etc/os-release only exists inside a real distro
+# (Ubuntu/Debian), never on bare Termux/Android, so check that first.
+if [ ! -f /etc/os-release ] && command -v pkg &>/dev/null; then
     echo "--- Termux host detected: bootstrapping proot-distro Ubuntu ---"
     run_task "installer/install_proot_ubuntu.sh"
     echo ""
