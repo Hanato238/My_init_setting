@@ -1,6 +1,7 @@
 # Termux 環境構築手順
 
 ## ファイル構成
+installer/install_proot_ubuntu.sh # proot-distro + Ubuntu rootfs インストール (Termux ホスト側)
 installer/install_llm_cli.sh     # パッケージ・Antigravity CLI (agy) インストール
 installer/initialize_security.sh # Bitwarden から API キー取得 (jq でパース)
 settings/set_workspace.sh        # ~/workspace 作成、.bash_profile に登録
@@ -9,20 +10,36 @@ settings/set_mcp_servers.sh      # ../../../shared/mcp.d/*.json を統合し
                                   # リポジトリ直下の mcp-config.json に書き出す
 setup.sh                         # 上記を順番に実行するエントリーポイント
 
+## 前提: Antigravity CLI は Termux (Bionic libc) 上では動作しない
+Antigravity CLI は glibc 前提のバイナリを配布しているため、Termux 上で直接
+`setup.sh` を実行しても CLI が動かない。proot-distro で Ubuntu (glibc) の
+userland を用意し、その中で setup.sh を実行する。
+
 ## 実行順序
 
-### 1. スクリプトを取得
+### 1. スクリプトを取得 (Termux 上)
 cd ~
 pkg install -y git
 git clone https://github.com/hanato238/My_init_setting.git
 cd My_init_setting/android/termux
 
-### 2. まとめて実行
+### 2. setup.sh を実行 (Termux 上) -> proot-distro + Ubuntu をブートストラップ
+bash setup.sh
+
+Termux 上で実行すると setup.sh は pkg コマンドの有無で環境を検知し、
+installer/install_proot_ubuntu.sh (proot-distro のインストール + Ubuntu rootfs
+の取得) だけを実行して終了する。完了すると Ubuntu へログインするコマンドが
+表示されるので、それを使って Ubuntu に入る。
+
+### 3. Ubuntu にログインして setup.sh を再実行
+proot-distro login ubuntu --bind "$HOME":"$HOME" -- env HOME="$HOME" bash
+cd ~/My_init_setting/android/termux   # Termux の $HOME をそのまま bind しているので同じパスで見える
 bash setup.sh
 source ~/.bash_profile
 
-setup.sh は内部で次を順に呼び出す:
-  1. installer/install_llm_cli.sh     (openssh, jq, uv, nodejs-lts などのパッケージ + Antigravity CLI)
+Ubuntu 上で実行すると (pkg が無いので apt-get 経路になる) 次を順に呼び出す:
+  1. installer/install_llm_cli.sh     (nodejs/npm, git, jq, curl, openssh-client,
+                                        uv (astral.sh インストーラ) + Antigravity CLI)
   2. installer/initialize_security.sh (要 Bitwarden アカウント。~/.secrets に書き出し)
   3. settings/set_workspace.sh
   4. settings/set_aliases.sh
@@ -33,3 +50,6 @@ setup.sh は内部で次を順に呼び出す:
   shared/mcp.d/*.json をそのままマージして使う。追加・変更はそちらを編集する。
 - Windows の SecretStore 相当は ~/.secrets (パーミッション 600 で管理)
 - ~/.bash_profile 起動時に ~/.secrets を自動ロードして環境変数に注入
+- `--bind "$HOME":"$HOME"` で Termux の $HOME を Ubuntu 側にそのまま見せているため、
+  リポジトリを Ubuntu 側に再度 clone する必要はない。proot-distro のデフォルト
+  ユーザーは root なので、明示的に `env HOME="$HOME"` を渡して $HOME を上書きしている。
