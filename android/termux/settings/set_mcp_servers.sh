@@ -8,7 +8,11 @@ OUTPUT_PATH="$SCRIPT_DIR/../../../mcp-config.json"
 
 if ! command -v jq &>/dev/null; then
     echo "--- Installing jq ---"
-    pkg install -y jq
+    if command -v pkg &>/dev/null; then
+        pkg install -y jq
+    else
+        apt-get update -y && apt-get install -y jq
+    fi
 fi
 
 if [ ! -d "$MCP_DIR" ]; then
