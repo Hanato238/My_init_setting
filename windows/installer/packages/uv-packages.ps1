@@ -1,0 +1,3 @@
+$uvToolPackages = @(
+    "notebooklm-mcp-cli"
+)

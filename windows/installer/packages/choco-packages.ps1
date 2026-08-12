@@ -17,5 +17,6 @@
     "tree",
     "ngrok",
     "wireshark",
-    "procmon"
+    "procmon",
+    "pdf24"
 )

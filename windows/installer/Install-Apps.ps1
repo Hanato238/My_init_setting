@@ -6,31 +6,37 @@ if ($Profile -eq 'Clinic') {
     . "$PSScriptRoot\packages\winget-packages-clinic.ps1"
     . "$PSScriptRoot\packages\choco-packages-clinic.ps1"
     $npmPackages = @()
+    $uvToolPackages = @()
 } else {
     . "$PSScriptRoot\packages\winget-packages.ps1"
     . "$PSScriptRoot\packages\choco-packages.ps1"
     . "$PSScriptRoot\packages\npm-packages.ps1"
+    . "$PSScriptRoot\packages\uv-packages.ps1"
 }
 
 # --- winget ---
 $wingetAction = if ($Update) { "Upgrading" } else { "Installing" }
-$wingetCmd    = if ($Update) { "upgrade" }   else { "install" }
 Write-Host "$wingetAction apps via Winget..." -ForegroundColor Cyan
 foreach ($pkg in $wingetPackages) {
     if ($DryRun) {
-        Write-Host "[DRY RUN] winget $wingetCmd -e --id $pkg" -ForegroundColor Yellow
+        $dryRunCmd = if ($Update) { "upgrade" } else { "install" }
+        Write-Host "[DRY RUN] winget $dryRunCmd -e --id $pkg" -ForegroundColor Yellow
         continue
     }
 
-    if (-not $Update) {
-        winget list -e --id $pkg --accept-source-agreements | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "$pkg is already installed, skipping." -ForegroundColor DarkGray
-            continue
-        }
+    # winget upgrade errors out on a package that was never installed, so a
+    # newly-added package still needs the install verb even during -Update.
+    winget list -e --id $pkg --accept-source-agreements | Out-Null
+    $isInstalled = $LASTEXITCODE -eq 0
+
+    if ($isInstalled -and -not $Update) {
+        Write-Host "$pkg is already installed, skipping." -ForegroundColor DarkGray
+        continue
     }
 
-    Write-Host "$wingetAction $pkg..." -ForegroundColor Cyan
+    $wingetCmd = if ($isInstalled) { "upgrade" } else { "install" }
+    $verb      = if ($isInstalled) { "Upgrading" } else { "Installing" }
+    Write-Host "$verb $pkg..." -ForegroundColor Cyan
     winget $wingetCmd -e --id $pkg --accept-package-agreements --accept-source-agreements
 }
 Write-Host "$wingetAction via Winget has been finished"
@@ -140,11 +146,32 @@ if ($DryRun) {
 }
 
 # --- npm global packages ---
+# npm update -g skips packages that were never installed, but plain
+# npm install -g always resolves to the latest version (installing new
+# packages and upgrading existing ones), so it is used for both cases.
 if ($npmPackages.Count -gt 0) {
-    Write-Host "Installing global npm packages..." -ForegroundColor Cyan
+    $npmAction = if ($Update) { "Upgrading" } else { "Installing" }
+    Write-Host "$npmAction global npm packages..." -ForegroundColor Cyan
     if ($DryRun) {
         $npmPackages | ForEach-Object { Write-Host "[DRY RUN] npm install -g $_" -ForegroundColor Yellow }
     } else {
         npm install -g @npmPackages
+    }
+}
+
+# --- uv tool packages ---
+# uv tool upgrade errors out on a tool that was never installed, so install
+# runs first (a no-op if already present) and upgrade follows only on -Update.
+if ($uvToolPackages.Count -gt 0) {
+    $uvAction = if ($Update) { "Upgrading" } else { "Installing" }
+    Write-Host "$uvAction uv tools..." -ForegroundColor Cyan
+    foreach ($pkg in $uvToolPackages) {
+        if ($DryRun) {
+            Write-Host "[DRY RUN] uv tool install $pkg" -ForegroundColor Yellow
+            if ($Update) { Write-Host "[DRY RUN] uv tool upgrade $pkg" -ForegroundColor Yellow }
+            continue
+        }
+        uv tool install $pkg
+        if ($Update) { uv tool upgrade $pkg }
     }
 }
