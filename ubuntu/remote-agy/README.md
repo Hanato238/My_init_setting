@@ -2,14 +2,13 @@
 
 GCP上にUbuntu VMを作成し、クライアントPCから**SSH接続のみ**（Tailscale SSH、または
 Tailscale管理コンソール/GCPコンソールなどのブラウザ経由SSH）でCLI操作を行うための
-プロジェクト一式。GUIはGNOMEデスクトップパッケージをローカルにインストールするのみで、
-RDP/VNC等のリモートGUIサーバーは組み込まない（ブラウザ/TailscaleのSSHだけで完結させる方針）。
+プロジェクト一式。GUI/デスクトップ環境は組み込まない（ブラウザ/TailscaleのSSHだけで完結させる方針）。
 Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/cli`）・gcloud CLIを導入し、
 エージェント的な開発作業をこのVM上で行うことを想定している。`remote-dev`/`life-os`と同様、
 このVMもTailscale exit nodeとしての利用を前提としている（Tailscale管理コンソールでの承認は
 引き続き手動）。
 `Create-Vm.ps1` はVM作成時に `startup-script.sh` を起動スクリプトとして添付するため、**VM起動後に自動的に**
-`setup.sh`（SSH + Tailscale + GNOME + 開発ツール群のセットアップ）が実行される。
+`setup.sh`（SSH + Tailscale + 開発ツール群のセットアップ）が実行される。
 手動でSSHして叩く必要はない（再実行しても安全な冪等スクリプトなので、SSHして`bash remote-agy/setup.sh`を
 手動で叩き直すことも可能）。詳細は[`../README.md`](../README.md)を参照。
 
@@ -19,16 +18,16 @@ Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/c
 |------|-----------|---------|-----------|
 | 常駐サービス | `orca-serve.service` | なし | なし |
 | CLI接続 | Tailscale（Orcaクライアントをペアリング） | Tailscale SSH | Tailscale SSH / ブラウザSSH |
-| GUI接続 | なし | なし | なし（GNOMEはローカルパッケージのみ、リモートGUIサーバー無し） |
+| GUI接続 | なし | なし | なし |
 | exit node化 | 前提 | 前提 | 前提（remote-dev/life-osと同様） |
-| 主要ツール | Claude Code, Claude Agent SDK, Docker | （なし・clone/push専用） | Antigravity CLI (`agy`), uv, notebooklm-mcp-cli, gws (`@googleworkspace/cli`), gcloud CLI, GNOME |
+| 主要ツール | Claude Code, Claude Agent SDK, Docker | （なし・clone/push専用） | Antigravity CLI (`agy`), uv, notebooklm-mcp-cli, gws (`@googleworkspace/cli`), gcloud CLI |
 
 ## 構成
 
 ```
 remote-agy/
 ├── startup-script.sh       # GCE起動スクリプト。リポジトリをclone/pullしてsetup.shを実行する
-├── setup.sh                # OS側セットアップ本体（SSH + Tailscale + GNOME + 開発ツール）
+├── setup.sh                # OS側セットアップ本体（SSH + Tailscale + 開発ツール）
 ├── packages.sh             # setup.sh が使う apt パッケージ一覧
 ├── config/
 │   └── vm-config.json     # VM作成パラメータ（プロジェクトID、ゾーン等。Create-Vm.ps1用）
@@ -82,8 +81,7 @@ auth keyと同様、コミットせずパラメータか環境変数で渡すこ
 
 ### 3. 起動確認
 
-VM作成から数分後（フルGNOMEデスクトップのインストールが入る分、`remote-dev`/`life-os`より時間がかかる）、
-SSHで進捗を確認できる:
+VM作成から数分後、SSHで進捗を確認できる:
 
 ```bash
 gcloud compute ssh <vmName> --zone=<zone> --project=<projectId>
@@ -92,7 +90,7 @@ sudo journalctl -u google-startup-scripts -f   # startup-script.sh の実行ロ�
 
 自動化されるもの: `sshd`（`openssh-server`）の有効化・`tailscaled`起動・IP forwarding有効化・
 （`-TailscaleAuthKey`指定時のみ）Tailscale認証(`--ssh --advertise-exit-node`)・`ufw`の有効化
-（SSH+tailscale0のみ許可、他は拒否）・GNOME（フルmetaパッケージ）のインストール・uv（`/usr/local/bin`に配置）・
+（SSH+tailscale0のみ許可、他は拒否）・uv（`/usr/local/bin`に配置）・
 Antigravity CLI（`agy`）・notebooklm-mcp-cli（uv tool、`/usr/local/bin`に配置）・
 Node.js(LTS)・gws（npmパッケージ`@googleworkspace/cli`）・gcloud CLI（Google公式aptリポジトリ経由）・
 ログイン時エイリアスの設置・
@@ -133,8 +131,7 @@ ssh <tailscale-ip>
 自動でポーリングし（最大4分）、確認でき次第そのアドレスと接続コマンドをコンソールに表示する。
 未指定時は`sudo tailscale up --ssh --advertise-exit-node`を手動で実行する必要がある。
 
-GNOMEデスクトップパッケージはインストールされるが、RDP/VNC等のリモートGUIサーバーは
-組み込んでいないため、GUIとしてリモートから使うことはできない（SSH越しのCLI操作のみ）。
+GUI/デスクトップ環境は組み込んでいないため、SSH越しのCLI操作のみとなる。
 
 ### 5. 残りの手動ステップ
 
@@ -151,7 +148,7 @@ GNOMEデスクトップパッケージはインストールされるが、RDP/VN
 | `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。不足する場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
 | `imageFamily` | OSイメージファミリー。gws（`@googleworkspace/cli`）のバイナリがGLIBC_2.39を要求するため、glibc 2.35のUbuntu 22.04ではなくglibc 2.39を持つUbuntu 24.04を既定にしている | `ubuntu-2404-lts-amd64` |
 | `imageProject` | イメージ提供元プロジェクト | `ubuntu-os-cloud` |
-| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `40`（フルGNOMEデスクトップ分の余裕を見て`remote-dev`/`life-os`より大きめ） | `40` |
+| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `30` |
 | `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-balanced` |
 | `enableIpForward` | IP forwardingを有効化するか（exit node化に必須）。既定`true`。**作成後は変更不可** | `true` |
 | `preemptible` | Preemptible VM（最大24h稼働・GCPの都合で随時停止されうる代わりに大幅割安）にするか。省略時`false`。停止するとTailscale/SSHセッションは切れる（再起動すれば復帰）。**作成後は変更不可**（切り替えるには`-Recreate`が必要） | `true` |

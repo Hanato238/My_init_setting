@@ -13,17 +13,17 @@ export HOME="${HOME:-/root}"
 #
 # Scope of this VM: reachable only via SSH from the client PC (Tailscale SSH,
 # or a browser-based SSH console such as the Tailscale admin console or GCP's
-# browser SSH), with a local GNOME desktop package and Antigravity CLI / uv /
-# notebooklm-mcp-cli / gws / gcloud CLI installed for agentic dev work. No
-# RDP/VNC server is set up - GNOME is not reachable as a remote GUI. Also
-# advertised as a Tailscale exit node (like remote-dev/life-os) - still
-# requires approval in the Tailscale admin console either way.
+# browser SSH), with Antigravity CLI / uv / notebooklm-mcp-cli / gws / gcloud
+# CLI installed for agentic dev work. No GUI/desktop environment is
+# installed. Also advertised as a Tailscale exit node (like
+# remote-dev/life-os) - still requires approval in the Tailscale admin
+# console either way.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./packages.sh
 source "$SCRIPT_DIR/packages.sh"
 
-echo "=== remote-agy VM setup (SSH + GNOME + Antigravity dev tools) ==="
+echo "=== remote-agy VM setup (SSH + Antigravity dev tools) ==="
 
 # GCE startup-scripts can run before the VM's network/DNS is fully settled, which
 # makes the curl-based installers below (Tailscale, Antigravity CLI, uv, Node.js,
@@ -230,7 +230,7 @@ get-tailnet-ports() {
 EOF
 
 # --- Optional dev tooling ---
-# Everything below is "nice to have" on top of the core SSH/Tailscale/GNOME
+# Everything below is "nice to have" on top of the core SSH/Tailscale
 # setup above, so each block is written so a failure prints a WARNING and moves on
 # instead of aborting the whole script via `set -e` (a command used as an
 # if/elif condition is exempt from `set -e`, which is what makes this safe).

@@ -5,9 +5,9 @@
     config/vm-config.json の設定を使って `gcloud compute instances create` を実行する。
     startup-script.sh を起動スクリプトとして添付するため、VM起動後は自動的に
     ubuntu/remote-agy/setup.sh が実行され、Tailscale（tailscaled起動・IP forwarding・
-    SSH有効化・exit node広告）、OpenSSHサーバー、GNOMEデスクトップパッケージ、
+    SSH有効化・exit node広告）、OpenSSHサーバー、
     Antigravity CLI・uv・notebooklm-mcp-cli・gws・gcloud CLI のセットアップが完了する。
-    RDP/VNC等のリモートGUIサーバーは組み込まない（ブラウザ/TailscaleのSSHのみで操作する想定）。
+    GUI/デスクトップ環境は組み込まない（ブラウザ/TailscaleのSSHのみで操作する想定）。
     -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了し、その後SSH経由で
     自動ポーリングし、このVMのTailscale IPが確認できた時点でそのアドレスを
     このスクリプトの出力にそのまま表示する（最大4分待機。タイムアウト時は手動確認コマンドを案内）。
@@ -271,9 +271,8 @@ if ($config.preemptible) {
     Write-Host "after at most 24h of runtime). SSH/Tailscale/RDP sessions will drop when that" -ForegroundColor Yellow
     Write-Host "happens; restart the VM (or re-run this script) to bring it back." -ForegroundColor Yellow
 }
-Write-Host "The startup script bootstraps SSH + Tailscale + GNOME +"
-Write-Host "Antigravity dev tooling automatically on first boot (usually takes a few"
-Write-Host "minutes - installing the full GNOME desktop takes longer than remote-dev/life-os)."
+Write-Host "The startup script bootstraps SSH + Tailscale +"
+Write-Host "Antigravity dev tooling automatically on first boot (usually takes a few minutes)."
 Write-Host "SSH in (via gcloud, over eth0) to check progress:"
 Write-Host "  gcloud compute ssh $($config.vmName) --zone=$($config.zone) --project=$($config.projectId)"
 Write-Host "  sudo journalctl -u google-startup-scripts -f"

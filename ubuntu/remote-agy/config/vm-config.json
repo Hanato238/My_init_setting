@@ -5,7 +5,7 @@
     "machineType": "e2-medium",
     "imageFamily": "ubuntu-2404-lts-amd64",
     "imageProject": "ubuntu-os-cloud",
-    "diskSizeGb": 40,
+    "diskSizeGb": 30,
     "diskType": "pd-balanced",
     "enableIpForward": true,
     "preemptible": true,
