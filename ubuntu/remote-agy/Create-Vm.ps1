@@ -1,21 +1,19 @@
 <#
 .SYNOPSIS
-    GCP上にremote-agy運用VMを作成する（Tailscale SSH経由のCLI操作 + xrdpのGUI操作）
+    GCP上にremote-agy運用VMを作成する（Tailscale/ブラウザSSH経由のCLI操作）
 .DESCRIPTION
     config/vm-config.json の設定を使って `gcloud compute instances create` を実行する。
     startup-script.sh を起動スクリプトとして添付するため、VM起動後は自動的に
     ubuntu/remote-agy/setup.sh が実行され、Tailscale（tailscaled起動・IP forwarding・
-    SSH有効化・exit node広告）、OpenSSHサーバー、xrdp（オンデマンドのGNOME Flashbackセッション）、
-    Antigravity CLI・uv・notebooklm-mcp-cli・gws のセットアップが完了する。
+    SSH有効化・exit node広告）、OpenSSHサーバー、GNOMEデスクトップパッケージ、
+    Antigravity CLI・uv・notebooklm-mcp-cli・gws・gcloud CLI のセットアップが完了する。
+    RDP/VNC等のリモートGUIサーバーは組み込まない（ブラウザ/TailscaleのSSHのみで操作する想定）。
     -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了し、その後SSH経由で
     自動ポーリングし、このVMのTailscale IPが確認できた時点でそのアドレスを
     このスクリプトの出力にそのまま表示する（最大4分待機。タイムアウト時は手動確認コマンドを案内）。
     未指定の場合はTailscale認証のみ手動（SSHで入って `sudo tailscale up --ssh --advertise-exit-node`）
     が必要で、IPアドレスの自動表示も行われない。
     Exit node承認（Tailscale管理コンソール）は自動化されない、引き続き手動。
-    xrdpはペアリング不要 - 初回SSHログイン後（~/.xsessionが書かれた後）、
-    WindowsのリモートデスクトップアプリでこのVMのTailscale IP・ポート3389に
-    接続するだけでよい（詳細はREADME.md参照）。
 .PARAMETER ConfigPath
     VM設定JSONファイルのパス（既定: config/vm-config.json）
 .PARAMETER ProjectId
@@ -273,9 +271,9 @@ if ($config.preemptible) {
     Write-Host "after at most 24h of runtime). SSH/Tailscale/RDP sessions will drop when that" -ForegroundColor Yellow
     Write-Host "happens; restart the VM (or re-run this script) to bring it back." -ForegroundColor Yellow
 }
-Write-Host "The startup script bootstraps SSH + Tailscale + xrdp +"
+Write-Host "The startup script bootstraps SSH + Tailscale + GNOME +"
 Write-Host "Antigravity dev tooling automatically on first boot (usually takes a few"
-Write-Host "minutes - installing the GNOME Flashback desktop takes longer than remote-dev/life-os)."
+Write-Host "minutes - installing the full GNOME desktop takes longer than remote-dev/life-os)."
 Write-Host "SSH in (via gcloud, over eth0) to check progress:"
 Write-Host "  gcloud compute ssh $($config.vmName) --zone=$($config.zone) --project=$($config.projectId)"
 Write-Host "  sudo journalctl -u google-startup-scripts -f"
@@ -306,9 +304,6 @@ Write-Host ""
 Write-Host "Remaining manual steps (either way):"
 Write-Host "  1. If this VM should be a Tailscale exit node, approve it in the Tailscale"
 Write-Host "     admin console (advertisement alone isn't enough)."
-Write-Host "  2. GUI access needs no pairing - after your first SSH login (so"
-Write-Host "     ~/.xsession gets written), open Windows' Remote Desktop Connection"
-Write-Host "     (mstsc) and connect to this VM's Tailscale IP on port 3389."
 if ($config.workspaceRepoUrls -and $config.workspaceRepoUrls.Count -gt 0) {
     Write-Host ""
     Write-Host "workspaceRepoUrls was set, so ~/workspace will be auto-cloned with:" -ForegroundColor Green

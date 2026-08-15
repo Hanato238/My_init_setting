@@ -1,6 +1,6 @@
 #!/bin/bash
 # GCE startup-script: bootstraps this VM unattended by cloning My_init_setting and
-# running ubuntu/remote-agy/setup.sh (Tailscale SSH + xrdp +
+# running ubuntu/remote-agy/setup.sh (Tailscale/browser SSH + GNOME +
 # Antigravity dev tooling).
 #
 # Installed automatically by Create-Vm.ps1 via `--metadata-from-file startup-script=`.

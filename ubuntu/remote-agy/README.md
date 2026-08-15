@@ -1,13 +1,15 @@
 # remote-agy/ — Antigravity CLI 向け GCP VM リモート開発環境セットアップ
 
-GCP上にUbuntu VMを作成し、クライアントPCから**Tailscale経由でSSH接続**（CLI操作）と
-**xrdp経由でGUI接続**の両方ができるようにするためのプロジェクト一式。
-Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/cli`）を導入し、
+GCP上にUbuntu VMを作成し、クライアントPCから**SSH接続のみ**（Tailscale SSH、または
+Tailscale管理コンソール/GCPコンソールなどのブラウザ経由SSH）でCLI操作を行うための
+プロジェクト一式。GUIはGNOMEデスクトップパッケージをローカルにインストールするのみで、
+RDP/VNC等のリモートGUIサーバーは組み込まない（ブラウザ/TailscaleのSSHだけで完結させる方針）。
+Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/cli`）・gcloud CLIを導入し、
 エージェント的な開発作業をこのVM上で行うことを想定している。`remote-dev`/`life-os`と同様、
 このVMもTailscale exit nodeとしての利用を前提としている（Tailscale管理コンソールでの承認は
 引き続き手動）。
 `Create-Vm.ps1` はVM作成時に `startup-script.sh` を起動スクリプトとして添付するため、**VM起動後に自動的に**
-`setup.sh`（SSH + Tailscale + xrdp + 開発ツール群のセットアップ）が実行される。
+`setup.sh`（SSH + Tailscale + GNOME + 開発ツール群のセットアップ）が実行される。
 手動でSSHして叩く必要はない（再実行しても安全な冪等スクリプトなので、SSHして`bash remote-agy/setup.sh`を
 手動で叩き直すことも可能）。詳細は[`../README.md`](../README.md)を参照。
 
@@ -15,26 +17,18 @@ Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/c
 
 | 項目 | remote-dev | life-os | remote-agy |
 |------|-----------|---------|-----------|
-| 常駐サービス | `orca-serve.service` | なし | `xrdp`（GUIセッション自体は接続時のみ起動） |
-| CLI接続 | Tailscale（Orcaクライアントをペアリング） | Tailscale SSH | Tailscale SSH |
-| GUI接続 | なし | なし | xrdp（Tailscale経由・ペアリング不要） |
+| 常駐サービス | `orca-serve.service` | なし | なし |
+| CLI接続 | Tailscale（Orcaクライアントをペアリング） | Tailscale SSH | Tailscale SSH / ブラウザSSH |
+| GUI接続 | なし | なし | なし（GNOMEはローカルパッケージのみ、リモートGUIサーバー無し） |
 | exit node化 | 前提 | 前提 | 前提（remote-dev/life-osと同様） |
-| 主要ツール | Claude Code, Claude Agent SDK, Docker | （なし・clone/push専用） | Antigravity CLI (`agy`), uv, notebooklm-mcp-cli, gws (`@googleworkspace/cli`) |
-
-GUIをほとんど使わない想定のため、Chrome Remote Desktop（ペアリングしておくと常時デスクトップ
-セッションが動き続ける）ではなく**xrdp**を採用している。xrdpはRDP接続が来たときだけGNOME Flashback
-セッションを起動し、切断すると終了するため、GUIを使わない間のオーバーヘッドがほぼ無い。ペアリング作業も
-不要で、Windows標準のリモートデスクトップ接続（mstsc）からTailscale IP宛にそのまま接続できる。
-デスクトップ環境はモダンなGNOME Shellではなく**GNOME Flashback**（classic GNOME 2風・metacity）を
-採用している。GNOME Shell（Mutter）はxrdpのXorgバックエンド経由だと黒画面やセッションクラッシュが
-報告されることがあるため、xrdpとの相性実績が豊富なFlashbackを選んでいる。
+| 主要ツール | Claude Code, Claude Agent SDK, Docker | （なし・clone/push専用） | Antigravity CLI (`agy`), uv, notebooklm-mcp-cli, gws (`@googleworkspace/cli`), gcloud CLI, GNOME |
 
 ## 構成
 
 ```
 remote-agy/
 ├── startup-script.sh       # GCE起動スクリプト。リポジトリをclone/pullしてsetup.shを実行する
-├── setup.sh                # OS側セットアップ本体（SSH + Tailscale + xrdp + 開発ツール）
+├── setup.sh                # OS側セットアップ本体（SSH + Tailscale + GNOME + 開発ツール）
 ├── packages.sh             # setup.sh が使う apt パッケージ一覧
 ├── config/
 │   └── vm-config.json     # VM作成パラメータ（プロジェクトID、ゾーン等。Create-Vm.ps1用）
@@ -88,7 +82,7 @@ auth keyと同様、コミットせずパラメータか環境変数で渡すこ
 
 ### 3. 起動確認
 
-VM作成から数分後（GNOME Flashbackデスクトップのインストールが入る分、`remote-dev`/`life-os`より時間がかかる）、
+VM作成から数分後（フルGNOMEデスクトップのインストールが入る分、`remote-dev`/`life-os`より時間がかかる）、
 SSHで進捗を確認できる:
 
 ```bash
@@ -98,18 +92,19 @@ sudo journalctl -u google-startup-scripts -f   # startup-script.sh の実行ロ�
 
 自動化されるもの: `sshd`（`openssh-server`）の有効化・`tailscaled`起動・IP forwarding有効化・
 （`-TailscaleAuthKey`指定時のみ）Tailscale認証(`--ssh --advertise-exit-node`)・`ufw`の有効化
-（SSH+tailscale0のみ許可、他は拒否）・`xrdp`の有効化（TLS証明書読み取り用に`ssl-cert`グループへ
-自動追加）・ログイン時の`~/.xsession`自動設置（gnome-flashback-metacity指定）・uv（`/usr/local/bin`に配置）・
+（SSH+tailscale0のみ許可、他は拒否）・GNOME（フルmetaパッケージ）のインストール・uv（`/usr/local/bin`に配置）・
 Antigravity CLI（`agy`）・notebooklm-mcp-cli（uv tool、`/usr/local/bin`に配置）・
-Node.js(LTS)・gws（npmパッケージ`@googleworkspace/cli`）・ログイン時エイリアスの設置・
+Node.js(LTS)・gws（npmパッケージ`@googleworkspace/cli`）・gcloud CLI（Google公式aptリポジトリ経由）・
+ログイン時エイリアスの設置・
 （`workspaceRepoUrls`指定時のみ）各リポジトリの`~/workspace/<リポジトリ名>`への
 ログイン時clone。
 
-**インストーラのリトライ**: `setup.sh`はTailscale・Antigravity CLI・uv・Node.js・gwsの
-curlベースインストーラをそれぞれ最大5回・10秒間隔でリトライする。GCE起動スクリプトは
+**インストーラのリトライ**: `setup.sh`はTailscale・Antigravity CLI・uv・Node.js・gws・gcloud CLIの
+インストール処理（curlベースインストーラ、およびgcloud CLIのaptリポジトリ追加+インストール）を
+それぞれ最大5回・10秒間隔でリトライする。GCE起動スクリプトは
 VMのネットワーク/DNSが完全に安定する前に走ることがあり、特にTailscaleのインストールが
 （`set -e`下のベタ書きだった旧実装では）ここで失敗すると以降の全ステップ（Antigravity CLI・
-uv・Node.js・gwsも含む）がまとめてスキップされていた。現在はリトライ後も失敗した場合、
+uv・Node.js・gws・gcloud CLIも含む）がまとめてスキップされていた。現在はリトライ後も失敗した場合、
 該当ステップだけWARNINGを出して後続の処理は続行する（Tailscale自体が入らなかった場合は
 `sudo bash /opt/My_init_setting/ubuntu/remote-agy/setup.sh`で再実行すればよい）。
 
@@ -120,34 +115,28 @@ uv・Node.js・gwsも含む）がまとめてスキップされていた。現�
 |---|---|
 | `ts-ip` | `tailscale ip -4` |
 | `ts-status` | `tailscale status` |
-| `xrdp-status` | `sudo systemctl status xrdp` |
 | `enable-tailnet-port <port> [tcp\|udp]` | tailnetからのみ到達可能な`ufw`許可ルールを追加。詳細は[`../../TAILNET-PORTS.md`](../../TAILNET-PORTS.md) |
 | `get-tailnet-ports` | `enable-tailnet-port`で追加したルール一覧を表示 |
 
-### 4. CLI接続（Tailscale SSH）
+### 4. SSH接続
 
 ```bash
 tailscale ssh <vmName>     # または
 ssh <tailscale-ip>
 ```
 
+ブラウザからの接続でよい場合は、Tailscale管理コンソール（各デバイスの詳細ページの
+「SSH console」ボタン）やGCPコンソールの「ブラウザウィンドウで開く」SSHボタンからも
+同様に接続できる（いずれも鍵ペア・クライアントアプリの用意が不要）。
+
 `-TailscaleAuthKey`を指定した場合、`Create-Vm.ps1`はVM作成後、Tailscale IPが確認できるまで
 自動でポーリングし（最大4分）、確認でき次第そのアドレスと接続コマンドをコンソールに表示する。
 未指定時は`sudo tailscale up --ssh --advertise-exit-node`を手動で実行する必要がある。
 
-### 5. GUI接続（xrdp）— ペアリング不要
+GNOMEデスクトップパッケージはインストールされるが、RDP/VNC等のリモートGUIサーバーは
+組み込んでいないため、GUIとしてリモートから使うことはできない（SSH越しのCLI操作のみ）。
 
-Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。初回SSHログイン時に`~/.xsession`が
-自動設置されるので、それ以降はいつでも以下だけでGUI接続できる:
-
-1. このVMに一度SSHログインしておく（`~/.xsession`が書かれるのはこのタイミング。前述の
-   ログイン時プロファイルスクリプトが自動で行う）。
-2. クライアントPC（Windows）で標準の「リモートデスクトップ接続」（`mstsc`）を開き、
-   このVMのTailscale IP（`tailscale ip -4`で確認）をポート3389で指定して接続する。
-   OS標準ユーザー名・パスワードでログインする。
-3. 切断すると裏のGNOME Flashbackセッションも終了する（Chrome Remote Desktopのように常駐しない）。
-
-### 6. 残りの手動ステップ
+### 5. 残りの手動ステップ
 
 1. `-TailscaleAuthKey` 未指定の場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）
 2. このVMをexit nodeにしたい場合、Tailscale管理コンソールでの承認
@@ -159,13 +148,13 @@ Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。
 | `projectId` | GCPプロジェクトID（`-ProjectId` / `$env:GCP_PROJECT_ID` で上書き可） | `my-project-123456` |
 | `zone` | 作成するゾーン | `asia-northeast1-a` |
 | `vmName` | インスタンス名 | `remote-agy-vm` |
-| `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。GUIは滅多に使わない前提の構成で、xrdpのGNOME Flashbackセッションは接続時のみ起動するため待機中の負荷は小さい。不足/過剰な場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
+| `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。不足する場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
 | `imageFamily` | OSイメージファミリー。gws（`@googleworkspace/cli`）のバイナリがGLIBC_2.39を要求するため、glibc 2.35のUbuntu 22.04ではなくglibc 2.39を持つUbuntu 24.04を既定にしている | `ubuntu-2404-lts-amd64` |
 | `imageProject` | イメージ提供元プロジェクト | `ubuntu-os-cloud` |
-| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `30` |
+| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `40`（フルGNOMEデスクトップ分の余裕を見て`remote-dev`/`life-os`より大きめ） | `40` |
 | `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-balanced` |
 | `enableIpForward` | IP forwardingを有効化するか（exit node化に必須）。既定`true`。**作成後は変更不可** | `true` |
-| `preemptible` | Preemptible VM（最大24h稼働・GCPの都合で随時停止されうる代わりに大幅割安）にするか。省略時`false`。停止するとTailscale/RDPセッションは切れる（再起動すれば復帰）。**作成後は変更不可**（切り替えるには`-Recreate`が必要） | `true` |
+| `preemptible` | Preemptible VM（最大24h稼働・GCPの都合で随時停止されうる代わりに大幅割安）にするか。省略時`false`。停止するとTailscale/SSHセッションは切れる（再起動すれば復帰）。**作成後は変更不可**（切り替えるには`-Recreate`が必要） | `true` |
 | `networkTags` | ネットワークタグ（ファイアウォールルール等で利用、省略可） | `["remote-agy"]` |
 | `workspaceRepoUrls` | 自動cloneするpublic GitHubリポジトリURLの配列（省略可。privateリポジトリは未対応） | `["https://github.com/you/your-repo.git"]` |
 

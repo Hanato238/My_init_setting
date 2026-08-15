@@ -11,18 +11,19 @@ export HOME="${HOME:-/root}"
 # is a no-op passthrough when already root. Also safe to re-run (every step below
 # checks whether its target already exists before acting).
 #
-# Scope of this VM: reachable only via Tailscale SSH from the client PC, plus
-# an xrdp GUI session (also reached over the tailnet - see the ufw section
-# below) for the rare occasions a desktop is needed, with Antigravity CLI /
-# uv / notebooklm-mcp-cli / gws installed for agentic dev work. Also advertised
-# as a Tailscale exit node (like remote-dev/life-os) - still requires approval
-# in the Tailscale admin console either way.
+# Scope of this VM: reachable only via SSH from the client PC (Tailscale SSH,
+# or a browser-based SSH console such as the Tailscale admin console or GCP's
+# browser SSH), with a local GNOME desktop package and Antigravity CLI / uv /
+# notebooklm-mcp-cli / gws / gcloud CLI installed for agentic dev work. No
+# RDP/VNC server is set up - GNOME is not reachable as a remote GUI. Also
+# advertised as a Tailscale exit node (like remote-dev/life-os) - still
+# requires approval in the Tailscale admin console either way.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./packages.sh
 source "$SCRIPT_DIR/packages.sh"
 
-echo "=== remote-agy VM setup (Tailscale SSH + xrdp GUI + Antigravity dev tools) ==="
+echo "=== remote-agy VM setup (SSH + GNOME + Antigravity dev tools) ==="
 
 # GCE startup-scripts can run before the VM's network/DNS is fully settled, which
 # makes the curl-based installers below (Tailscale, Antigravity CLI, uv, Node.js,
@@ -120,9 +121,6 @@ fi
 # Tailscale) and the whole tailscale0 interface (Tailscale already
 # authenticates/encrypts that traffic - this also covers Tailscale SSH from
 # `tailscale up --ssh` above, which arrives over tailscale0, not port 22).
-# xrdp's RDP port (3389) needs no separate rule either - it's only reachable
-# over tailscale0, which is already allowed wholesale; it stays unreachable
-# over eth0/the public internet since only port 22 is opened there.
 if command -v ufw &>/dev/null; then
     if sudo ufw status | grep -q "Status: active"; then
         echo "OK: ufw is already active"
@@ -179,44 +177,6 @@ else
     echo "NOTE: workspace-repo-urls not set - skipping workspace auto-clone setup."
 fi
 
-# --- xrdp (on-demand GUI over RDP, reached only over the tailnet) ---
-# Unlike Chrome Remote Desktop (which keeps a desktop session running as soon
-# as it's paired), xrdp only spawns the GNOME Flashback session when a client
-# actually connects and tears it down on disconnect - no idle GUI overhead, which
-# matters more here since the GUI is expected to be used rarely. There's also
-# no pairing step: once installed, any login user just points Windows' stock
-# Remote Desktop Connection (mstsc) at this VM's Tailscale IP, port 3389
-# (already reachable - see the ufw comment above, no separate rule needed).
-if systemctl is-active --quiet xrdp; then
-    echo "OK: xrdp is already running"
-else
-    sudo systemctl enable --now xrdp
-fi
-
-# xrdp needs read access to its self-signed TLS cert (/etc/xrdp/*.pem),
-# granted via this group - the xrdp package doesn't add itself to it.
-if ! id -nG xrdp 2>/dev/null | grep -qw ssl-cert; then
-    sudo usermod -aG ssl-cert xrdp
-    sudo systemctl restart xrdp
-fi
-
-# xrdp's session chooser doesn't know about GNOME Flashback unless each user's
-# ~/.xsession says so. Done at login time (like the workspace clone above)
-# since the interactive user's home directory may not exist yet at boot.
-# GNOME Flashback (metacity variant), not vanilla GNOME Shell - Mutter's
-# compositor has known black-screen/session-crash issues over xrdp's Xorg
-# backend, while Flashback is well-proven with xrdp.
-XRDP_SESSION_SCRIPT="/etc/profile.d/91-remote-agy-xrdp-session.sh"
-echo "Installing/updating login-time xrdp session script at $XRDP_SESSION_SCRIPT..."
-sudo tee "$XRDP_SESSION_SCRIPT" > /dev/null << 'EOF'
-# Point xrdp at a GNOME Flashback session for the logging-in user (see
-# ubuntu/remote-agy/setup.sh). Only written once - edit ~/.xsession yourself
-# if you ever want a different desktop.
-if [ -n "$HOME" ] && [ ! -f "$HOME/.xsession" ]; then
-    echo "gnome-session --session=gnome-flashback-metacity" > "$HOME/.xsession"
-fi
-EOF
-
 # --- Convenience aliases (login-time) ---
 ALIASES_SCRIPT="/etc/profile.d/90-remote-agy-aliases.sh"
 echo "Installing/updating login-time aliases at $ALIASES_SCRIPT..."
@@ -225,7 +185,6 @@ sudo tee "$ALIASES_SCRIPT" > /dev/null << 'EOF'
 
 alias ts-ip='tailscale ip -4'
 alias ts-status='tailscale status'
-alias xrdp-status='sudo systemctl status xrdp'
 
 # Ported from ubuntu/remote-dev/setup.sh. Uses ufw with a fixed comment tag so
 # rules added here can be found again later; the tailnet CIDR is
@@ -271,7 +230,7 @@ get-tailnet-ports() {
 EOF
 
 # --- Optional dev tooling ---
-# Everything below is "nice to have" on top of the core SSH/Tailscale/xrdp
+# Everything below is "nice to have" on top of the core SSH/Tailscale/GNOME
 # setup above, so each block is written so a failure prints a WARNING and moves on
 # instead of aborting the whole script via `set -e` (a command used as an
 # if/elif condition is exempt from `set -e`, which is what makes this safe).
@@ -330,6 +289,28 @@ else
     echo "WARNING: gws (@googleworkspace/cli) installation failed after retries - skipping." >&2
 fi
 
+# gcloud CLI (Google Cloud SDK) - added via Google's official apt repo rather
+# than a curl-pipe-bash installer, so it keeps updating via normal apt upgrade
+# afterwards. --yes on gpg --dearmor keeps the key-import step idempotent
+# across retries (it otherwise refuses to overwrite an existing key file
+# non-interactively). Wrapped in `set -e` so any failed step inside the
+# subshell fails the whole attempt and triggers a retry, same as the other
+# curl-based installers above.
+if command -v gcloud &>/dev/null; then
+    echo "OK: gcloud CLI is already installed ($(gcloud --version | head -n1))"
+elif retry 5 10 bash -c '
+    set -e
+    sudo apt-get install -y apt-transport-https ca-certificates gnupg
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor --yes -o /usr/share/keyrings/cloud.google.gpg
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y google-cloud-cli
+'; then
+    echo "OK: gcloud CLI installed ($(gcloud --version | head -n1))."
+else
+    echo "WARNING: gcloud CLI installation failed after retries - skipping." >&2
+fi
+
 echo ""
 echo "=== remote-agy setup finished ==="
 echo ""
@@ -340,7 +321,6 @@ else
 fi
 echo "sshd: $(systemctl is-active ssh 2>/dev/null || true)"
 echo "ufw: $(sudo ufw status 2>/dev/null | head -n1 || echo 'not installed')"
-echo "xrdp: $(systemctl is-active xrdp 2>/dev/null || echo 'not installed')"
 if [ -n "${WORKSPACE_REPO_URLS:-}" ]; then
     echo "Workspace repos cloned per SSH user on their first login:"
     for _repo_url in $WORKSPACE_REPO_URLS; do
@@ -360,11 +340,7 @@ fi
 echo "  - If you want to use this VM as a Tailscale exit node, approve it in the"
 echo "    Tailscale admin console (advertisement alone isn't enough)."
 echo ""
-echo "GUI access needs no pairing - after your first SSH login (so ~/.xsession"
-echo "gets written), just open Windows' Remote Desktop Connection (mstsc) and"
-echo "connect to this VM's Tailscale IP on port 3389."
-echo ""
-echo "Login shells get ts-ip / ts-status / xrdp-status aliases, plus"
+echo "Login shells get ts-ip / ts-status aliases, plus"
 echo "enable-tailnet-port <port> [tcp|udp] / get-tailnet-ports (ufw rules scoped"
 echo "to the tailnet CIDR, auto-detected from this VM's Tailscale IP) - open a"
 echo "new shell (or 'source /etc/profile.d/90-remote-agy-aliases.sh') to pick"
