@@ -1,0 +1,14 @@
+{
+    "projectId": "your-gcp-project-id",
+    "zone": "asia-northeast1-a",
+    "vmName": "remote-agy-vm",
+    "machineType": "e2-medium",
+    "imageFamily": "ubuntu-2204-lts",
+    "imageProject": "ubuntu-os-cloud",
+    "diskSizeGb": 30,
+    "diskType": "pd-balanced",
+    "enableIpForward": true,
+    "preemptible": true,
+    "networkTags": ["remote-agy"],
+    "workspaceRepoUrls": []
+}
