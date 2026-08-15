@@ -24,6 +24,25 @@ source "$SCRIPT_DIR/packages.sh"
 
 echo "=== remote-agy VM setup (Tailscale SSH + xrdp GUI + Antigravity dev tools) ==="
 
+# GCE startup-scripts can run before the VM's network/DNS is fully settled, which
+# makes the curl-based installers below (Tailscale, Antigravity CLI, uv, Node.js,
+# gws) fail intermittently on first boot. Retry each one a few times with a short
+# backoff instead of giving up (or, worse, letting `set -e` abort the rest of
+# this idempotent script) on a single transient failure.
+retry() {
+    local attempts="$1" delay="$2"
+    shift 2
+    local n=1
+    until "$@"; do
+        if (( n >= attempts )); then
+            return 1
+        fi
+        echo "  (attempt $n/$attempts failed, retrying in ${delay}s...)" >&2
+        sleep "$delay"
+        n=$((n + 1))
+    done
+}
+
 if ! command -v systemctl &>/dev/null; then
     echo "Error: systemd is required for this setup (tailscaled/ssh service management)." >&2
     exit 1
@@ -41,32 +60,47 @@ else
 fi
 
 # --- Tailscale ---
+# Installation failure here used to abort the whole script (bare statement
+# under `set -e`), silently skipping every step below it - including the
+# Antigravity CLI / uv / Node.js / gws installs much further down. Retry first
+# (the common cause is a transient network/DNS hiccup right after boot); if it
+# still fails, warn and continue instead of taking down the rest of setup.sh.
 if command -v tailscale &>/dev/null; then
     echo "OK: tailscale is already installed ($(tailscale version | head -n1))"
+elif retry 5 10 bash -c 'curl -fsSL https://tailscale.com/install.sh | sh'; then
+    echo "OK: tailscale installed."
 else
-    echo "Installing Tailscale..."
-    curl -fsSL https://tailscale.com/install.sh | sh
+    echo "WARNING: Tailscale installation failed after retries - skipping Tailscale setup for this run." >&2
+    echo "         Re-run this script (or reboot the VM) once network access is confirmed." >&2
 fi
 
-if systemctl is-active --quiet tailscaled; then
-    echo "OK: tailscaled is running"
-else
-    sudo systemctl enable --now tailscaled
-fi
+if command -v tailscale &>/dev/null; then
+    if systemctl is-active --quiet tailscaled; then
+        echo "OK: tailscaled is running"
+    else
+        sudo systemctl enable --now tailscaled
+    fi
 
-# Authenticate non-interactively if TAILSCALE_AUTHKEY is set (e.g. passed via the
-# "tailscale-authkey" GCE instance metadata attribute - see Create-Vm.ps1
-# -TailscaleAuthKey). Otherwise this is left as a manual step (device auth flow
-# needs a browser). --ssh enables Tailscale SSH, the intended access path from
-# the client PC. --advertise-exit-node makes this VM available as a tailnet
-# exit node (still requires approval in the Tailscale admin console either way).
-if tailscale ip -4 &>/dev/null; then
-    echo "OK: tailscale is already authenticated ($(tailscale ip -4))"
-elif [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
-    echo "Authenticating Tailscale with the supplied auth key..."
-    sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --ssh --advertise-exit-node
+    # Authenticate non-interactively if TAILSCALE_AUTHKEY is set (e.g. passed via the
+    # "tailscale-authkey" GCE instance metadata attribute - see Create-Vm.ps1
+    # -TailscaleAuthKey). Otherwise this is left as a manual step (device auth flow
+    # needs a browser). --ssh enables Tailscale SSH, the intended access path from
+    # the client PC. --advertise-exit-node makes this VM available as a tailnet
+    # exit node (still requires approval in the Tailscale admin console either way).
+    if tailscale ip -4 &>/dev/null; then
+        echo "OK: tailscale is already authenticated ($(tailscale ip -4))"
+    elif [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
+        echo "Authenticating Tailscale with the supplied auth key..."
+        if retry 5 10 sudo tailscale up --authkey="$TAILSCALE_AUTHKEY" --ssh --advertise-exit-node; then
+            echo "OK: tailscale authenticated ($(tailscale ip -4))."
+        else
+            echo "WARNING: Tailscale auth failed after retries - run 'sudo tailscale up --ssh --advertise-exit-node' manually." >&2
+        fi
+    else
+        echo "NOTE: TAILSCALE_AUTHKEY not set - Tailscale auth left for the manual step below."
+    fi
 else
-    echo "NOTE: TAILSCALE_AUTHKEY not set - Tailscale auth left for the manual step below."
+    echo "NOTE: tailscale is not installed - skipping tailscaled/auth steps."
 fi
 
 # Enable IP forwarding (required to advertise this VM as an exit node)
@@ -147,8 +181,8 @@ fi
 
 # --- xrdp (on-demand GUI over RDP, reached only over the tailnet) ---
 # Unlike Chrome Remote Desktop (which keeps a desktop session running as soon
-# as it's paired), xrdp only spawns the XFCE session when a client actually
-# connects and tears it down on disconnect - no idle GUI overhead, which
+# as it's paired), xrdp only spawns the GNOME Flashback session when a client
+# actually connects and tears it down on disconnect - no idle GUI overhead, which
 # matters more here since the GUI is expected to be used rarely. There's also
 # no pairing step: once installed, any login user just points Windows' stock
 # Remote Desktop Connection (mstsc) at this VM's Tailscale IP, port 3389
@@ -166,17 +200,20 @@ if ! id -nG xrdp 2>/dev/null | grep -qw ssl-cert; then
     sudo systemctl restart xrdp
 fi
 
-# xrdp's session chooser doesn't know about XFCE unless each user's
+# xrdp's session chooser doesn't know about GNOME Flashback unless each user's
 # ~/.xsession says so. Done at login time (like the workspace clone above)
 # since the interactive user's home directory may not exist yet at boot.
+# GNOME Flashback (metacity variant), not vanilla GNOME Shell - Mutter's
+# compositor has known black-screen/session-crash issues over xrdp's Xorg
+# backend, while Flashback is well-proven with xrdp.
 XRDP_SESSION_SCRIPT="/etc/profile.d/91-remote-agy-xrdp-session.sh"
 echo "Installing/updating login-time xrdp session script at $XRDP_SESSION_SCRIPT..."
 sudo tee "$XRDP_SESSION_SCRIPT" > /dev/null << 'EOF'
-# Point xrdp at an XFCE session for the logging-in user (see
+# Point xrdp at a GNOME Flashback session for the logging-in user (see
 # ubuntu/remote-agy/setup.sh). Only written once - edit ~/.xsession yourself
 # if you ever want a different desktop.
 if [ -n "$HOME" ] && [ ! -f "$HOME/.xsession" ]; then
-    echo "xfce4-session" > "$HOME/.xsession"
+    echo "gnome-session --session=gnome-flashback-metacity" > "$HOME/.xsession"
 fi
 EOF
 
@@ -244,10 +281,10 @@ EOF
 # (whose $HOME the installer would otherwise default to).
 if command -v uv &>/dev/null; then
     echo "OK: uv is already installed ($(uv --version))"
-elif curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh; then
+elif retry 5 10 bash -c 'curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh'; then
     echo "OK: uv installed to /usr/local/bin."
 else
-    echo "WARNING: uv installation failed - skipping." >&2
+    echo "WARNING: uv installation failed after retries - skipping." >&2
 fi
 
 # Antigravity CLI (agy) - the official installer drops the binary under
@@ -255,13 +292,13 @@ fi
 # so it's moved to /usr/local/bin afterwards to be reachable by every login user.
 if command -v agy &>/dev/null; then
     echo "OK: Antigravity CLI (agy) is already installed"
-elif curl -fsSL https://antigravity.google/cli/install.sh | bash; then
+elif retry 5 10 bash -c 'curl -fsSL https://antigravity.google/cli/install.sh | bash'; then
     if [ -x "$HOME/.local/bin/agy" ]; then
         sudo mv "$HOME/.local/bin/agy" /usr/local/bin/agy
     fi
     echo "OK: Antigravity CLI installed."
 else
-    echo "WARNING: Antigravity CLI installation failed - skipping." >&2
+    echo "WARNING: Antigravity CLI installation failed after retries - skipping." >&2
 fi
 
 # notebooklm-mcp-cli (uv tool) - UV_TOOL_DIR/UV_TOOL_BIN_DIR redirect the
@@ -277,25 +314,30 @@ fi
 # Node.js (required for the npm-based gws install below)
 if command -v node &>/dev/null; then
     echo "OK: node is already installed ($(node --version))"
-elif curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs; then
+elif retry 5 10 bash -c 'curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs'; then
     echo "OK: Node.js installed ($(node --version))"
 else
-    echo "WARNING: Node.js installation failed - skipping." >&2
+    echo "WARNING: Node.js installation failed after retries - skipping." >&2
 fi
 
-# gws (npm package @googleworkspace/cli)
+# gws (npm package @googleworkspace/cli). Requires GLIBC_2.39 (see
+# vm-config.json's imageFamily - Ubuntu 24.04 ships glibc 2.39, 22.04 only 2.35).
 if command -v gws &>/dev/null; then
     echo "OK: gws is already installed"
-elif sudo npm install -g @googleworkspace/cli; then
+elif command -v npm &>/dev/null && retry 5 10 sudo npm install -g @googleworkspace/cli; then
     echo "OK: gws (@googleworkspace/cli) installed."
 else
-    echo "WARNING: gws (@googleworkspace/cli) installation failed - skipping." >&2
+    echo "WARNING: gws (@googleworkspace/cli) installation failed after retries - skipping." >&2
 fi
 
 echo ""
 echo "=== remote-agy setup finished ==="
 echo ""
-echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'not authenticated yet')"
+if command -v tailscale &>/dev/null; then
+    echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'installed, not authenticated yet')"
+else
+    echo "Tailscale: not installed (installation failed after retries - see WARNING above; re-run this script)"
+fi
 echo "sshd: $(systemctl is-active ssh 2>/dev/null || true)"
 echo "ufw: $(sudo ufw status 2>/dev/null | head -n1 || echo 'not installed')"
 echo "xrdp: $(systemctl is-active xrdp 2>/dev/null || echo 'not installed')"
@@ -308,7 +350,10 @@ if [ -n "${WORKSPACE_REPO_URLS:-}" ]; then
 fi
 echo ""
 echo "Remaining manual steps:"
-if ! tailscale ip -4 &>/dev/null; then
+if ! command -v tailscale &>/dev/null; then
+    echo "  - Tailscale itself failed to install (see WARNING above) - re-run:"
+    echo "      sudo bash /opt/My_init_setting/ubuntu/remote-agy/setup.sh"
+elif ! tailscale ip -4 &>/dev/null; then
     echo "  - Authenticate Tailscale on this VM (no TAILSCALE_AUTHKEY was supplied):"
     echo "      sudo tailscale up --ssh --advertise-exit-node"
 fi

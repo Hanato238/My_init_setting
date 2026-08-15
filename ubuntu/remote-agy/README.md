@@ -22,9 +22,12 @@ Antigravity CLI（`agy`）・uv・notebooklm-mcp-cli・gws（`@googleworkspace/c
 | 主要ツール | Claude Code, Claude Agent SDK, Docker | （なし・clone/push専用） | Antigravity CLI (`agy`), uv, notebooklm-mcp-cli, gws (`@googleworkspace/cli`) |
 
 GUIをほとんど使わない想定のため、Chrome Remote Desktop（ペアリングしておくと常時デスクトップ
-セッションが動き続ける）ではなく**xrdp**を採用している。xrdpはRDP接続が来たときだけXFCEセッションを
-起動し、切断すると終了するため、GUIを使わない間のオーバーヘッドがほぼ無い。ペアリング作業も不要で、
-Windows標準のリモートデスクトップ接続（mstsc）からTailscale IP宛にそのまま接続できる。
+セッションが動き続ける）ではなく**xrdp**を採用している。xrdpはRDP接続が来たときだけGNOME Flashback
+セッションを起動し、切断すると終了するため、GUIを使わない間のオーバーヘッドがほぼ無い。ペアリング作業も
+不要で、Windows標準のリモートデスクトップ接続（mstsc）からTailscale IP宛にそのまま接続できる。
+デスクトップ環境はモダンなGNOME Shellではなく**GNOME Flashback**（classic GNOME 2風・metacity）を
+採用している。GNOME Shell（Mutter）はxrdpのXorgバックエンド経由だと黒画面やセッションクラッシュが
+報告されることがあるため、xrdpとの相性実績が豊富なFlashbackを選んでいる。
 
 ## 構成
 
@@ -85,7 +88,7 @@ auth keyと同様、コミットせずパラメータか環境変数で渡すこ
 
 ### 3. 起動確認
 
-VM作成から数分後（XFCEデスクトップのインストールが入る分、`remote-dev`/`life-os`より時間がかかる）、
+VM作成から数分後（GNOME Flashbackデスクトップのインストールが入る分、`remote-dev`/`life-os`より時間がかかる）、
 SSHで進捗を確認できる:
 
 ```bash
@@ -96,11 +99,19 @@ sudo journalctl -u google-startup-scripts -f   # startup-script.sh の実行ロ�
 自動化されるもの: `sshd`（`openssh-server`）の有効化・`tailscaled`起動・IP forwarding有効化・
 （`-TailscaleAuthKey`指定時のみ）Tailscale認証(`--ssh --advertise-exit-node`)・`ufw`の有効化
 （SSH+tailscale0のみ許可、他は拒否）・`xrdp`の有効化（TLS証明書読み取り用に`ssl-cert`グループへ
-自動追加）・ログイン時の`~/.xsession`自動設置（xfce4-session指定）・uv（`/usr/local/bin`に配置）・
+自動追加）・ログイン時の`~/.xsession`自動設置（gnome-flashback-metacity指定）・uv（`/usr/local/bin`に配置）・
 Antigravity CLI（`agy`）・notebooklm-mcp-cli（uv tool、`/usr/local/bin`に配置）・
 Node.js(LTS)・gws（npmパッケージ`@googleworkspace/cli`）・ログイン時エイリアスの設置・
 （`workspaceRepoUrls`指定時のみ）各リポジトリの`~/workspace/<リポジトリ名>`への
 ログイン時clone。
+
+**インストーラのリトライ**: `setup.sh`はTailscale・Antigravity CLI・uv・Node.js・gwsの
+curlベースインストーラをそれぞれ最大5回・10秒間隔でリトライする。GCE起動スクリプトは
+VMのネットワーク/DNSが完全に安定する前に走ることがあり、特にTailscaleのインストールが
+（`set -e`下のベタ書きだった旧実装では）ここで失敗すると以降の全ステップ（Antigravity CLI・
+uv・Node.js・gwsも含む）がまとめてスキップされていた。現在はリトライ後も失敗した場合、
+該当ステップだけWARNINGを出して後続の処理は続行する（Tailscale自体が入らなかった場合は
+`sudo bash /opt/My_init_setting/ubuntu/remote-agy/setup.sh`で再実行すればよい）。
 
 **ログイン時エイリアス**: `setup.sh`は`/etc/profile.d/90-remote-agy-aliases.sh`を設置し、
 対話ログインする各ユーザーのシェルに以下を追加する:
@@ -134,7 +145,7 @@ Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。
 2. クライアントPC（Windows）で標準の「リモートデスクトップ接続」（`mstsc`）を開き、
    このVMのTailscale IP（`tailscale ip -4`で確認）をポート3389で指定して接続する。
    OS標準ユーザー名・パスワードでログインする。
-3. 切断すると裏のXFCEセッションも終了する（Chrome Remote Desktopのように常駐しない）。
+3. 切断すると裏のGNOME Flashbackセッションも終了する（Chrome Remote Desktopのように常駐しない）。
 
 ### 6. 残りの手動ステップ
 
@@ -148,8 +159,8 @@ Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。
 | `projectId` | GCPプロジェクトID（`-ProjectId` / `$env:GCP_PROJECT_ID` で上書き可） | `my-project-123456` |
 | `zone` | 作成するゾーン | `asia-northeast1-a` |
 | `vmName` | インスタンス名 | `remote-agy-vm` |
-| `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。GUIは滅多に使わない前提の構成で、xrdpのXFCEセッションは接続時のみ起動するため待機中の負荷は小さい。不足/過剰な場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
-| `imageFamily` | OSイメージファミリー | `ubuntu-2204-lts` |
+| `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。GUIは滅多に使わない前提の構成で、xrdpのGNOME Flashbackセッションは接続時のみ起動するため待機中の負荷は小さい。不足/過剰な場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
+| `imageFamily` | OSイメージファミリー。gws（`@googleworkspace/cli`）のバイナリがGLIBC_2.39を要求するため、glibc 2.35のUbuntu 22.04ではなくglibc 2.39を持つUbuntu 24.04を既定にしている | `ubuntu-2404-lts-amd64` |
 | `imageProject` | イメージ提供元プロジェクト | `ubuntu-os-cloud` |
 | `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `30` |
 | `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-balanced` |

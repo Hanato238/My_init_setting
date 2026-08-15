@@ -15,10 +15,12 @@ REMOTE_AGY_APT_PACKAGES=(
     # Used by the enable-tailnet-port/get-tailnet-ports login aliases (see
     # setup.sh) to scope inbound ports to the tailnet CIDR only.
     ufw
-    # Minimal desktop environment for the xrdp session (see setup.sh's
-    # ~/.xsession setup) + the RDP server itself.
-    xfce4
-    desktop-base
+    # Desktop environment for the xrdp session (see setup.sh's ~/.xsession
+    # setup) + the RDP server itself. GNOME Flashback (not vanilla GNOME
+    # Shell) - GNOME Shell/Mutter has known black-screen/session-crash issues
+    # over xrdp's Xorg backend, while Flashback (classic GNOME 2-style
+    # panel+metacity) is well-proven with xrdp.
+    gnome-session-flashback
     dbus-x11
     x11-xserver-utils
     xrdp
