@@ -29,12 +29,17 @@
     同名VMが既に存在する場合、確認プロンプトの後に削除してから作り直す。
     未指定時、同名VMが存在するとエラーで終了する（誤って上書きしないための既定動作）。
 .PARAMETER TailscaleApiKey
-    Tailscale API access token（Personal access token、`tskey-api-...`）。
-    -Recreate で既存VMを削除した際、Tailscale側に残る同名の古いデバイス（再作成後は
+    Tailscale API access token（Personal access token、`tskey-api-...`）。2つの用途がある:
+    (1) -TailscaleAuthKey が未指定の場合、このAPIキーを使ってTailscale APIから使い捨ての
+    auth keyを自動生成し、Tailscale認証も自動化する（管理コンソールで毎回手動でauth keyを
+    発行する必要がなくなる。生成失敗時は警告を出して手動認証にフォールバックする）。
+    (2) -Recreate で既存VMを削除した際、Tailscale側に残る同名の古いデバイス（再作成後は
     ノードキーが変わるため新しいデバイスとして登録され、古い方はオフラインのまま残る）を
-    Tailscale API経由で自動削除する。未指定時はこのクリーンアップをスキップし、
-    古いデバイスは管理コンソールから手動削除が必要になる。
-    未指定時は $env:TAILSCALE_API_KEY を使用する。
+    Tailscale API経由で自動削除する。
+    いずれも未指定時はスキップされる（認証キー生成はスキップされ手動認証が必要になり、
+    古いデバイスは管理コンソールから手動削除が必要になる）。
+    未指定時は $env:TAILSCALE_API_KEY を使用する。auth key生成には "Auth Keys" の書き込み
+    権限を持つトークンが必要。
     auth keyと同様、vm-config.json（gitコミット対象）には書かず、パラメータか環境変数で渡すこと。
 .PARAMETER DryRun
     実際にはVMを作成せず、実行される gcloud コマンドを表示するだけのモード
@@ -96,6 +101,46 @@ function Remove-TailscaleDevice {
         } catch {
             Write-Warning "Failed to remove Tailscale device $($device.id): $_"
         }
+    }
+}
+
+function New-TailscaleAuthKey {
+    <#
+    .SYNOPSIS
+        Auto-generates a one-time Tailscale auth key via the Tailscale API, so the
+        VM can join the tailnet unattended without a human generating a key from
+        the admin console before every run. Used as a fallback when -TailscaleAuthKey
+        isn't supplied but -TailscaleApiKey is. The key is single-use (reusable:false)
+        and expires in 1 hour, since it's only meant to cover this one VM boot.
+        Returns $null (non-fatal) if the API call fails, e.g. the token lacks the
+        "Auth Keys" write scope - the caller falls back to manual Tailscale auth.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$ApiKey
+    )
+
+    $headers = @{ Authorization = "Bearer $ApiKey" }
+    $body = @{
+        capabilities  = @{
+            devices = @{
+                create = @{
+                    reusable      = $false
+                    ephemeral     = $false
+                    preauthorized = $true
+                    tags          = @()
+                }
+            }
+        }
+        expirySeconds = 3600
+    } | ConvertTo-Json -Depth 5
+
+    try {
+        $resp = Invoke-RestMethod -Uri "https://api.tailscale.com/api/v2/tailnet/-/keys" `
+            -Headers $headers -Method Post -ContentType "application/json" -Body $body
+        return $resp.key
+    } catch {
+        Write-Warning "Failed to auto-generate a Tailscale auth key via the API (falling back to manual auth): $_"
+        return $null
     }
 }
 
@@ -162,6 +207,16 @@ if (-not $activeAccount) {
     exit 1
 }
 Write-Host "gcloud account: $activeAccount" -ForegroundColor Cyan
+
+if (-not $TailscaleAuthKey -and $TailscaleApiKey) {
+    Write-Host "No -TailscaleAuthKey supplied, but -TailscaleApiKey is available - auto-generating a one-time auth key so this VM joins the tailnet automatically..." -ForegroundColor Cyan
+    $TailscaleAuthKey = New-TailscaleAuthKey -ApiKey $TailscaleApiKey
+    if ($TailscaleAuthKey) {
+        Write-Host "Auth key generated - Tailscale auth will be automated for this VM." -ForegroundColor Green
+    } else {
+        Write-Host "Auth key generation failed - Tailscale auth will remain a manual step (see below)." -ForegroundColor Yellow
+    }
+}
 
 $existingVm = gcloud compute instances describe $config.vmName `
     --zone=$($config.zone) --project=$($config.projectId) `

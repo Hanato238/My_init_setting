@@ -46,7 +46,11 @@ remote-agy/
 - Windows側に gcloud SDK をインストール（`windows/installer/packages/choco-packages.ps1` の `gcloudsdk`、または `choco install gcloudsdk`）
 - `gcloud init` と `gcloud auth login` でログイン
 - `config/vm-config.json` を編集し、`projectId` をプレースホルダーから実際の値に置き換える
-- （任意）Tailscale認証も自動化したい場合は、Tailscale管理コンソール（Settings > Keys）で auth key を発行しておく
+- （任意）Tailscale認証も自動化したい場合は、次のいずれかを用意しておく
+  - Tailscale管理コンソール（Settings > Keys）で毎回 auth key を発行し `-TailscaleAuthKey` に渡す、または
+  - "Auth Keys" 書き込み権限を持つAPI access token（`tskey-api-...`）を一度発行し `-TailscaleApiKey`
+    （または `$env:TAILSCALE_API_KEY`）に渡しておく — 以後は `-TailscaleAuthKey` 無しでも
+    実行のたびに使い捨てのauth keyが自動生成され、Tailscale認証が自動化される
 - （任意）VM上に開発用ワークスペースを自動セットアップしたい場合は、`config/vm-config.json` の
   `workspaceRepoUrls` にcloneしたいpublicなGitHubリポジトリURLを配列で設定しておく（複数可）
 
@@ -57,6 +61,7 @@ cd remote-agy
 .\Create-Vm.ps1                                              # 作成（Tailscale認証は手動で残る）
 .\Create-Vm.ps1 -ProjectId my-project-123456                 # projectIdをvm-config.jsonの値から上書き
 .\Create-Vm.ps1 -TailscaleAuthKey tskey-auth-xxxxx            # Tailscale認証も自動化（Tailscale IPも自動表示）
+.\Create-Vm.ps1 -TailscaleApiKey tskey-api-xxxxx              # auth keyを自動生成してTailscale認証も自動化
 .\Create-Vm.ps1 -Recreate                                     # 同名VMが既存なら確認の上、削除してから作り直す
 .\Create-Vm.ps1 -Recreate -TailscaleApiKey tskey-api-xxxxx    # recreate時、Tailscale側の古いデバイスも自動削除
 .\Create-Vm.ps1 -DryRun                                       # 実行されるgcloudコマンドの確認のみ
@@ -68,6 +73,14 @@ cd remote-agy
 auth keyは `vm-config.json`（gitコミット対象）には書かず、パラメータか環境変数で渡すこと。
 インスタンスメタデータ経由でVMに渡されるため、VM上のメタデータサーバーから読める点に注意
 （漏洩時の影響を抑えたい場合はTailscale側でreusable/expiryを短く設定するか、使用後にkeyを失効させる）。
+
+**`-TailscaleAuthKey` を省略して自動接続したい場合**: `-TailscaleAuthKey` を渡さず
+`-TailscaleApiKey`（または `$env:TAILSCALE_API_KEY`）だけを渡すと、実行のたびにTailscale API
+経由で使い捨て（`reusable: false`・1時間で失効）のauth keyを自動生成し、それを使ってVM起動時に
+Tailscale認証を自動化する。生成に失敗した場合（トークンの権限不足など）は警告を出したうえで
+Tailscale認証は手動ステップにフォールバックする（VM作成自体は失敗しない）。
+`$env:TAILSCALE_API_KEY` を一度設定しておけば、以降は`-TailscaleAuthKey`/`-TailscaleApiKey`を
+毎回指定しなくても自動接続される。
 
 同名VMが既に存在する場合、既定では誤って上書きしないようエラーで終了する。
 `machineType`・`diskSizeGb`など作成時にしか決められない設定を変更したい場合は`-Recreate`を
@@ -94,7 +107,8 @@ sudo journalctl -u google-startup-scripts -f   # startup-script.sh の実行ロ�
 ```
 
 自動化されるもの: `sshd`（`openssh-server`）の有効化・`tailscaled`起動・IP forwarding有効化・
-（`-TailscaleAuthKey`指定時のみ）Tailscale認証(`--ssh --advertise-exit-node`)・`ufw`の有効化
+（`-TailscaleAuthKey`または`-TailscaleApiKey`指定時のみ）Tailscale認証(`--ssh --advertise-exit-node`)・
+Tailscale/Antigravity CLI等のインストールはネットワーク瞬断に備えて自動リトライ（最大5回）・`ufw`の有効化
 （SSH+tailscale0のみ許可、他は拒否）・`xrdp`の有効化（TLS証明書読み取り用に`ssl-cert`グループへ
 自動追加）・ログイン時の`~/.xsession`自動設置（xfce4-session指定）・uv（`/usr/local/bin`に配置）・
 Antigravity CLI（`agy`）・notebooklm-mcp-cli（uv tool、`/usr/local/bin`に配置）・
@@ -120,9 +134,10 @@ tailscale ssh <vmName>     # または
 ssh <tailscale-ip>
 ```
 
-`-TailscaleAuthKey`を指定した場合、`Create-Vm.ps1`はVM作成後、Tailscale IPが確認できるまで
-自動でポーリングし（最大4分）、確認でき次第そのアドレスと接続コマンドをコンソールに表示する。
-未指定時は`sudo tailscale up --ssh --advertise-exit-node`を手動で実行する必要がある。
+`-TailscaleAuthKey`（または`-TailscaleApiKey`による自動生成）でTailscale認証が自動化された場合、
+`Create-Vm.ps1`はVM作成後、Tailscale IPが確認できるまで自動でポーリングし（最大4分）、確認でき
+次第そのアドレスと接続コマンドをコンソールに表示する。どちらも未指定時は
+`sudo tailscale up --ssh --advertise-exit-node`を手動で実行する必要がある。
 
 ### 5. GUI接続（xrdp）— ペアリング不要
 
@@ -138,7 +153,8 @@ Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。
 
 ### 6. 残りの手動ステップ
 
-1. `-TailscaleAuthKey` 未指定の場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）
+1. `-TailscaleAuthKey`・`-TailscaleApiKey`のどちらも未指定の場合のTailscale認証
+   （`sudo tailscale up --ssh --advertise-exit-node`）
 2. このVMをexit nodeにしたい場合、Tailscale管理コンソールでの承認
 
 ## vm-config.json の項目
