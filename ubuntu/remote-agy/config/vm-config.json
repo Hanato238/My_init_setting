@@ -3,7 +3,7 @@
     "zone": "asia-northeast1-a",
     "vmName": "remote-agy-vm",
     "machineType": "e2-medium",
-    "imageFamily": "ubuntu-2404-lts-amd64",
+    "imageFamily": "ubuntu-2204-lts",
     "imageProject": "ubuntu-os-cloud",
     "diskSizeGb": 30,
     "diskType": "pd-balanced",

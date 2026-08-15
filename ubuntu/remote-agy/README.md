@@ -165,7 +165,7 @@ Chrome Remote Desktopと異なり、xrdpは**ペアリング作業が無い**。
 | `zone` | 作成するゾーン | `asia-northeast1-a` |
 | `vmName` | インスタンス名 | `remote-agy-vm` |
 | `machineType` | マシンタイプ。既定`e2-medium`(共有2vCPU・4GB RAM)。GUIは滅多に使わない前提の構成で、xrdpのXFCEセッションは接続時のみ起動するため待機中の負荷は小さい。不足/過剰な場合は`gcloud compute instances set-machine-type`でVM再作成無しに変更可能（要一時停止） | `e2-medium` |
-| `imageFamily` | OSイメージファミリー。既定`ubuntu-2404-lts-amd64`。gws（`@googleworkspace/cli`）が`GLIBC_2.39`を要求するため22.04（glibc 2.35）では動かず、24.04（glibc 2.39）が必須 | `ubuntu-2404-lts-amd64` |
+| `imageFamily` | OSイメージファミリー | `ubuntu-2204-lts` |
 | `imageProject` | イメージ提供元プロジェクト | `ubuntu-os-cloud` |
 | `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `30` |
 | `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-balanced` |
