@@ -20,11 +20,12 @@ tailnet の CIDR（`100.64.0.0/10`）はハードコードせず、実行時に�
 ### `Enable-TailnetPort`
 
 ```powershell
+Enable-TailnetPort              # -Port 省略時は 22 (SSH) を開放
 Enable-TailnetPort -Port 8080
 Enable-TailnetPort -Port 8080 -Protocol UDP
 ```
 
-- `-Port`（必須）: 開放するローカルポート（1〜65535）
+- `-Port`: 開放するローカルポート（1〜65535）。省略時は既定値 `22`
 - `-Protocol`: `TCP`（既定）または `UDP`
 - 現在の `tailscale ip -4` から tailnet CIDR を自動検出し、`Allow <Protocol> <Port> (Tailnet only)` という
   `DisplayName` の Inbound 許可ルールを作成する

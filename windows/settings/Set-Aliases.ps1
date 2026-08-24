@@ -1,4 +1,4 @@
-param([string]$ProfileType = '')
+﻿param([string]$ProfileType = '')
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
@@ -61,10 +61,12 @@ function pplx-chrome  { & chrome 'https://www.perplexity.ai/' }
 function nlm-chrome   { & chrome 'https://notebooklm.google.com/' }
 function hf-chrome    { & chrome 'https://huggingface.co/' }
 function context7     { Start-Process 'https://context7.com/dashboard' }
-function github       { & chrome 'https://github.com/' }
-function repository   { & chrome 'https://community.chocolatey.org/packages' }
-function winstall     { & chrome 'https://winstall.app/' }
+function grepo        { & chrome 'https://github.com/' }
+function crepo        { & chrome 'https://community.chocolatey.org/packages' }
+function wrepo        { & chrome 'https://winstall.app/' }
 function tailnet      { & chrome 'https://login.tailscale.com/admin' }
+function vercel       { & chrome 'https://vercel.com/' }
+function gwsc         { & chrome 'https://admin.google.com/' }
 function gdrive       { & chrome 'https://drive.google.com/drive/' }
 function gmail        { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
 function gcp          { & chrome 'https://console.cloud.google.com/welcome?hl=ja' }
@@ -145,6 +147,16 @@ function Clear-DesktopTaskbar {
     }
 }
 
+function Set-ServerMode {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Set-ServerMode.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
+}
+
 function Setup-Windows {
     param(
         [switch]$Update,
@@ -202,7 +214,7 @@ function claude {
             if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
         }
         $sbxWorkdir = '/' + $sbxDir[0].ToString().ToLower() + ($sbxDir.Substring(2) -replace '\\', '/')
-        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude --dangerously-skip-permissions @Rest
+        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude --permission-mode auto @Rest
         return
     }
 
@@ -275,6 +287,64 @@ function claude {
     }
     $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
     sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
+}
+
+function nlm-login {
+    param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.'
+    )
+    $targetDir = (Get-Item $Directory).FullName
+    $scriptPath = Join-Path $targetDir '.devcontainer\nlm-login.ps1'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "$scriptPath が見つかりません。"
+        return
+    }
+    & $scriptPath
+}
+
+function gws-login {
+    param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.',
+        [switch]$Force
+    )
+
+    $targetDir = (Get-Item $Directory).FullName
+
+    if (-not (Test-Path (Join-Path $targetDir '.devcontainer') -PathType Container)) {
+        Write-Error "$targetDir に .devcontainer が見つかりません。"
+        return
+    }
+
+    $compose   = Join-Path $targetDir '.devcontainer\docker-compose.yml'
+    $container = (Get-Item $targetDir).Name
+
+    $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+    if ($status -ne 'running') {
+        Write-Host "Starting container..." -ForegroundColor Cyan
+        docker compose -f $compose up -d
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
+
+        $ready = $false
+        for ($i = 0; $i -lt 30; $i++) {
+            $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+            if ($status -eq 'running') { $ready = $true; break }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $ready) {
+            Write-Error "$container did not start"
+            docker compose -f $compose logs node
+            return
+        }
+    } else {
+        Write-Host "Container already running ($container)" -ForegroundColor Green
+    }
+
+    $loginArgs = @('auth', 'login')
+    if ($Force) { $loginArgs += '--force' }
+
+    docker exec -it $container gws @loginArgs
 }
 
 function Get-CpuPower {
@@ -367,9 +437,8 @@ function Set-CpuPower {
 
 function Enable-TailnetPort {
     param(
-        [Parameter(Mandatory=$true)]
         [ValidateRange(1,65535)]
-        [int]$Port,
+        [int]$Port = 22,
 
         [ValidateSet('TCP','UDP')]
         [string]$Protocol = 'TCP'
@@ -484,7 +553,8 @@ if ($existingContent -and $existingContent -match [regex]::Escape($markerStart))
     $stripped = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd`r?`n?", "")
     if ($stripped.Trim()) {
         $newContent = $stripped.TrimEnd() + "`n`n$managedSection`n"
-    } else {
+    }
+    else {
         $newContent = "$managedSection`n"
     }
 }

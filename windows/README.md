@@ -81,7 +81,7 @@ Start-Setup.ps1
 ├── settings/Set-McpServers.ps1           # MCP サーバー登録（冪等）
 ├── settings/Set-WindowsSettings.ps1      # Windows 機能・デスクトップ・Docker Desktop（冪等）
 ├── settings/Set-Workspace.ps1            # ワークスペースディレクトリ作成（初回のみ）
-└── settings/Set-ServerMode.ps1           # 24時間サーバー化設定（単体サブコマンドのみ）
+└── settings/Set-ServerMode.ps1           # 24時間サーバー化設定
 ```
 
 ---
@@ -213,6 +213,7 @@ PowerShell プロファイル（`$PROFILE`）を上書きし、エイリアス�
 | `Load-SecretEnvironment` | SecretStore のシークレットを環境変数に展開。プロファイル読み込み時に自動実行 |
 | `Sync-ApiKeys` | `Start-Setup.ps1 -Update -SyncSecrets` のエイリアス。Bitwarden から最新キーを取得・反映 |
 | `Setup-Windows` | `Start-Setup.ps1` のエイリアス。全パラメーターを透過的に渡す |
+| `Set-ServerMode` | `settings/Set-ServerMode.ps1` のエイリアス。`-DryRun` を透過的に渡す |
 
 **冪等性:** プロファイルはマーカーセクション方式で管理される。再実行時はマーカー内のみ上書きし、ユーザーのカスタマイズ（マーカー外）は保持される。バックアップは `.bak` / `.bak.2` / `.bak.3` の3世代を保持。
 
@@ -285,4 +286,8 @@ $AutoLoginPassword = "pass"     # パスワード（平文注意）
 Start-Setup.ps1 -ServerMode
 Start-Setup.ps1 -ServerMode -DryRun
 Setup-Windows   -ServerMode
+
+# プロファイル関数（Set-Aliases.ps1 適用後）
+Set-ServerMode
+Set-ServerMode -DryRun
 ```
