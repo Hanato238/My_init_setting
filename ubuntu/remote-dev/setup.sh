@@ -88,44 +88,46 @@ else
     echo "NOTE: ufw not installed - skipping firewall enablement."
 fi
 
-# --- Workspace repo (optional) ---
-# Set via the "workspace-repo-url" GCE instance metadata attribute (see
-# vm-config.json's workspaceRepoUrl / Create-Vm.ps1). Cloning happens lazily
-# on each user's first interactive login (via /etc/profile.d), NOT here at
-# boot time - on first boot the OS login user's home directory often doesn't
-# exist yet (GCE creates it on first `gcloud compute ssh`, which races with
-# this script), so a one-shot clone here can easily miss it. Login-time is
-# the first point $HOME is guaranteed to exist for any given user.
-if [ -n "${WORKSPACE_REPO_URL:-}" ]; then
+# --- Workspace repos (optional) ---
+# Set via the "workspace-repo-urls" GCE instance metadata attribute (see
+# vm-config.json's workspaceRepoUrls / Create-Vm.ps1) as a space-separated
+# list of repo URLs. Cloning happens lazily on each user's first interactive
+# login (via /etc/profile.d), NOT here at boot time - on first boot the OS
+# login user's home directory often doesn't exist yet (GCE creates it on
+# first `gcloud compute ssh`, which races with this script), so a one-shot
+# clone here can easily miss it. Login-time is the first point $HOME is
+# guaranteed to exist for any given user.
+if [ -n "${WORKSPACE_REPO_URLS:-}" ]; then
     if ! command -v git &>/dev/null; then
         sudo apt-get install -y git
     fi
-    echo "--- Workspace repo ($WORKSPACE_REPO_URL) ---"
+    echo "--- Workspace repos ($WORKSPACE_REPO_URLS) ---"
     sudo mkdir -p /etc/remote-dev
-    echo "$WORKSPACE_REPO_URL" | sudo tee /etc/remote-dev/workspace-repo-url > /dev/null
+    echo "$WORKSPACE_REPO_URLS" | sudo tee /etc/remote-dev/workspace-repo-urls > /dev/null
 
     PROFILE_D_SCRIPT="/etc/profile.d/99-remote-dev-workspace.sh"
     echo "Installing/updating login-time workspace clone script at $PROFILE_D_SCRIPT..."
     sudo tee "$PROFILE_D_SCRIPT" > /dev/null << 'EOF'
-# Auto-clone the workspace repo configured via vm-config.json's
-# workspaceRepoUrl (see ubuntu/remote-dev/setup.sh) into ~/workspace on first
-# interactive login. Runs for every login shell but does nothing once the
-# repo is already cloned. Service accounts (e.g. "orca", shell=/usr/sbin/nologin)
+# Auto-clone the workspace repos configured via vm-config.json's
+# workspaceRepoUrls (see ubuntu/remote-dev/setup.sh) into ~/workspace on first
+# interactive login. Runs for every login shell but does nothing once a repo
+# is already cloned. Service accounts (e.g. "orca", shell=/usr/sbin/nologin)
 # never get an interactive login shell, so this never runs for them.
-_repo_url_file="/etc/remote-dev/workspace-repo-url"
-if [ -r "$_repo_url_file" ] && [ -n "$HOME" ] && command -v git >/dev/null 2>&1; then
-    _repo_url="$(cat "$_repo_url_file")"
-    _repo_name="$(basename "$_repo_url" .git)"
-    _dest="$HOME/workspace/$_repo_name"
-    if [ -n "$_repo_url" ] && [ ! -d "$_dest/.git" ]; then
-        mkdir -p "$HOME/workspace"
-        git clone "$_repo_url" "$_dest"
-    fi
+_repo_urls_file="/etc/remote-dev/workspace-repo-urls"
+if [ -r "$_repo_urls_file" ] && [ -n "$HOME" ] && command -v git >/dev/null 2>&1; then
+    for _repo_url in $(cat "$_repo_urls_file"); do
+        _repo_name="$(basename "$_repo_url" .git)"
+        _dest="$HOME/workspace/$_repo_name"
+        if [ ! -d "$_dest/.git" ]; then
+            mkdir -p "$HOME/workspace"
+            git clone "$_repo_url" "$_dest"
+        fi
+    done
 fi
-unset _repo_url_file _repo_url _repo_name _dest
+unset _repo_urls_file _repo_url _repo_name _dest
 EOF
 else
-    echo "NOTE: workspace-repo-url not set - skipping workspace auto-clone setup."
+    echo "NOTE: workspace-repo-urls not set - skipping workspace auto-clone setup."
 fi
 
 # --- Orca headless server (AppImage) ---
@@ -158,6 +160,30 @@ if ! id -u orca &>/dev/null; then
     sudo useradd --system --create-home --shell /usr/sbin/nologin orca
 fi
 sudo chown -R orca:orca "$ORCA_DIR"
+
+# Give orca-serve (running as the dedicated `orca` user above) its own clone of
+# each workspace repo so it can add them as projects/worktrees. This is separate
+# from the interactive-login clone below (~/workspace under each SSH user):
+# orca-serve can't read another user's home directory (default home perms are
+# 700/750), so it needs its own copy under /home/orca, which already exists at
+# this point (useradd --create-home ran above, unlike interactive users whose
+# home doesn't exist until their first login - see the login-time clone below).
+if [ -n "${WORKSPACE_REPO_URLS:-}" ]; then
+    if ! command -v git &>/dev/null; then
+        sudo apt-get install -y git
+    fi
+    sudo -u orca mkdir -p /home/orca/workspace
+    for repo_url in $WORKSPACE_REPO_URLS; do
+        repo_name="$(basename "$repo_url" .git)"
+        dest="/home/orca/workspace/$repo_name"
+        if [ -d "$dest/.git" ]; then
+            echo "OK: $dest already cloned for orca"
+        else
+            echo "Cloning $repo_url for orca ($dest)..."
+            sudo -u orca git clone "$repo_url" "$dest"
+        fi
+    done
+fi
 
 # systemd service (waits for a Tailscale IP so it survives reboots before auth
 # has run, and always pairs on the current Tailscale address)
@@ -310,7 +336,7 @@ DOCKERFILE
 
     local -a claude_args=("${rest[@]}")
     if (( sbx )); then
-        claude_args=(--dangerously-skip-permissions "${rest[@]}")
+        claude_args=(--permission-mode auto "${rest[@]}")
     fi
 
     docker exec -it "$container_name" claude "${claude_args[@]}"
@@ -442,8 +468,16 @@ echo ""
 echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'not authenticated yet')"
 echo "orca-serve.service: $(systemctl is-active orca-serve.service 2>/dev/null || true)"
 echo "ufw: $(sudo ufw status 2>/dev/null | head -n1 || echo 'not installed')"
-if [ -n "${WORKSPACE_REPO_URL:-}" ]; then
-    echo "Workspace: ~/workspace/$(basename "$WORKSPACE_REPO_URL" .git) (cloned on each user's first login)"
+if [ -n "${WORKSPACE_REPO_URLS:-}" ]; then
+    echo "Workspace repos cloned for orca (usable as Orca projects/worktrees):"
+    for _repo_url in $WORKSPACE_REPO_URLS; do
+        echo "  /home/orca/workspace/$(basename "$_repo_url" .git)"
+    done
+    echo "Workspace repos cloned per SSH user on their first login (for manual editing):"
+    for _repo_url in $WORKSPACE_REPO_URLS; do
+        echo "  ~/workspace/$(basename "$_repo_url" .git)"
+    done
+    unset _repo_url
 fi
 echo ""
 echo "Remaining manual steps:"
@@ -462,7 +496,7 @@ echo ""
 echo "Login shells get an 'orca' function (runs the CLI as the orca user), a"
 echo "'claude' function (--as-host runs it directly; otherwise it runs inside a"
 echo "per-directory Docker sandbox, or the project's .devcontainer if present;"
-echo "--sbx adds --dangerously-skip-permissions; --rebuild forces a rebuild),"
+echo "--sbx adds --permission-mode auto; --rebuild forces a rebuild),"
 echo "plus orca-status / orca-restart / orca-logs / ts-ip / ts-status aliases,"
 echo "and enable-tailnet-port <port> [tcp|udp] / get-tailnet-ports (ufw rules"
 echo "scoped to the tailnet CIDR, auto-detected from this VM's Tailscale IP) -"

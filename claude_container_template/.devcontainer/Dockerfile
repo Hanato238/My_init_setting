@@ -23,6 +23,13 @@ RUN npm install -g @anthropic-ai/claude-code \
 RUN curl -fsSL https://antigravity.google/cli/install.sh | bash \
     && mv /root/.local/bin/agy /usr/local/bin/agy
 
+# gws (Google Workspace CLI)
+RUN npm install -g @googleworkspace/cli
+
+# notebooklm-mcp-cli (uv tool) - redirect the install to a shared location
+# instead of root's home, same reasoning as ubuntu/remote-agy/setup.sh
+RUN UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install notebooklm-mcp-cli
+
 # claude-env: ローカルパッケージを COPY して install + setup
 COPY packages/claude-env /tmp/claude-env
 RUN npm install -g /tmp/claude-env \

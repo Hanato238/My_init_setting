@@ -1,18 +1,22 @@
 <#
 .SYNOPSIS
-    GCP上にリモート開発用Ubuntu VMを作成する
+    GCP上にlife-os運用VMを作成する（Tailscale SSH経由の外部操作 + exit node + リポジトリclone）
 .DESCRIPTION
     config/vm-config.json の設定を使って `gcloud compute instances create` を実行する。
     startup-script.sh を起動スクリプトとして添付するため、VM起動後は自動的に
-    ubuntu/remote-dev/setup.sh が実行され、Tailscale（tailscaled起動・IP forwarding）
-    と Orca headless server（orca-serve.service）のセットアップが完了する。
-    -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了し、その後 orca-serve が
-    起動するまでSSH経由で自動ポーリングし、Orcaクライアントのペアリング情報（journalctl出力）を
+    ubuntu/life-os/setup.sh が実行され、Tailscale（tailscaled起動・IP forwarding・SSH有効化・
+    exit node広告）と、workspaceRepoUrls で指定したリポジトリのログイン時自動clone
+    のセットアップが完了する。このVMには常駐サービス（Docker・Orca等）は無く、
+    外部からは Tailscale SSH のみで接続し、人が手動でclone先のリポジトリを編集・pushする
+    構造になっている。
+    -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了し、その後SSH経由で
+    自動ポーリングし、このVMのTailscale IPが確認できた時点でそのアドレスを
     このスクリプトの出力にそのまま表示する（最大4分待機。タイムアウト時は手動確認コマンドを案内）。
     未指定の場合はTailscale認証のみ手動（SSHで入って `sudo tailscale up ...`）が必要で、
-    ペアリング情報の自動表示も行われない（orca-serveがTailscale認証完了まで起動しないため）。
-    Exit node承認（Tailscale管理コンソール）とOrcaクライアントへの実際のペアリング操作は
-    どちらの場合も引き続き手動。
+    IPアドレスの自動表示も行われない。
+    Exit node承認（Tailscale管理コンソール）は自動化されない、引き続き手動。
+    git pushの認証（gh auth login や SSH deploy keyの設置）も意図的に自動化していない
+    （手動セットアップ方式。詳細はREADME.md参照）。
 .PARAMETER ConfigPath
     VM設定JSONファイルのパス（既定: config/vm-config.json）
 .PARAMETER ProjectId
@@ -41,7 +45,12 @@
     setup.sh が /etc/profile.d にログイン時clone用スクリプトを設置し、各ユーザーが
     最初にSSHログインしたタイミングで ~/workspace ディレクトリへ自動でclone（複数可）する
     （起動時点ではまだOSユーザーのホームディレクトリが存在しないことがあるため、
-    ログイン時の遅延cloneにしている。private リポジトリの認証には未対応）。
+    ログイン時の遅延cloneにしている。private リポジトリの認証には未対応 - private の場合は
+    clone自体も手動セットアップが必要）。
+    git pushの認証は意図的に自動化していない（手動セットアップ方式）: Tailscale SSHで
+    ログイン後、`gh auth login` または SSH deploy key の設置を一度だけ行えばよく、
+    その設定はブートディスク上に永続する（VMの再起動では消えない。-Recreate で
+    ディスクごと作り直した場合のみ再設定が必要）。
     -Recreate はTailscale側のIPアドレスまでは引き継がない（VM再作成でtailscaledの
     ノードキーが失われるため、必ず新しいIPが割り当てられる）。-TailscaleApiKey を指定すると
     古いデバイスの自動削除だけは行われる。
@@ -94,14 +103,14 @@ function Remove-TailscaleDevice {
     }
 }
 
-function Wait-OrcaPairingInfo {
+function Wait-TailscaleIp {
     <#
     .SYNOPSIS
-        Polls the VM over SSH until orca-serve is active, then returns its recent
-        journal output (which includes the pairing URL/address). Only meaningful
-        when Tailscale auth was automated (-TailscaleAuthKey), since orca-serve's
-        ExecStartPre blocks on `tailscale ip -4` succeeding first. Returns $null
-        on timeout so the caller can fall back to manual instructions.
+        Polls the VM over SSH until `tailscale ip -4` succeeds, then returns that
+        address. Only meaningful when Tailscale auth was automated
+        (-TailscaleAuthKey) - otherwise auth itself is a manual step and this
+        would just time out. Returns $null on timeout so the caller can fall
+        back to manual instructions.
     #>
     param(
         [Parameter(Mandatory)][string]$VmName,
@@ -114,9 +123,9 @@ function Wait-OrcaPairingInfo {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         $out = gcloud compute ssh $VmName --zone=$Zone --project=$ProjectId --quiet `
-            --command "sudo systemctl is-active --quiet orca-serve && sudo journalctl -u orca-serve --no-pager -n 50" 2>$null
+            --command "tailscale ip -4" 2>$null
         if ($LASTEXITCODE -eq 0 -and $out) {
-            return $out
+            return ($out | Select-Object -First 1)
         }
         Start-Sleep -Seconds $PollIntervalSeconds
     }
@@ -257,42 +266,39 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n=== VM created ===" -ForegroundColor Green
-Write-Host "The startup script bootstraps Tailscale + Orca automatically on first boot"
-Write-Host "(usually takes 1-2 minutes). SSH in to check progress:"
+Write-Host "The startup script bootstraps Tailscale (SSH + exit node) automatically on first boot"
+Write-Host "(usually takes 1-2 minutes). SSH in (via gcloud, over eth0) to check progress:"
 Write-Host "  gcloud compute ssh $($config.vmName) --zone=$($config.zone) --project=$($config.projectId)"
 Write-Host "  sudo journalctl -u google-startup-scripts -f"
 Write-Host ""
 if ($TailscaleAuthKey) {
     Write-Host "-TailscaleAuthKey was supplied, so Tailscale auth is automated too." -ForegroundColor Green
 
-    Write-Host "`nWaiting for orca-serve to come up so the pairing info can be shown"
-    Write-Host "automatically (SSH + Tailscale auth + Orca startup - can take a few minutes)..."
-    $pairingLog = Wait-OrcaPairingInfo -VmName $config.vmName -Zone $config.zone -ProjectId $config.projectId
-    if ($pairingLog) {
-        Write-Host "`n=== Orca pairing info ===" -ForegroundColor Green
-        $pairingLines = @($pairingLog -split "`r?`n" | Where-Object { $_ -match 'pairing|http' })
-        if ($pairingLines.Count -gt 0) {
-            $pairingLines | ForEach-Object { Write-Host $_ }
-        } else {
-            Write-Host $pairingLog
-        }
+    Write-Host "`nWaiting for this VM to get a Tailscale IP so it can be shown automatically"
+    Write-Host "(SSH + Tailscale auth - can take a minute or two)..."
+    $tsIp = Wait-TailscaleIp -VmName $config.vmName -Zone $config.zone -ProjectId $config.projectId
+    if ($tsIp) {
+        Write-Host "`n=== Tailscale IP ===" -ForegroundColor Green
+        Write-Host "  $tsIp"
+        Write-Host "Connect from any device on the tailnet with:"
+        Write-Host "  tailscale ssh $($config.vmName)"
+        Write-Host "  ssh $tsIp"
     } else {
-        Write-Host "`nCould not fetch Orca pairing info automatically (timed out). Check manually:" -ForegroundColor Yellow
+        Write-Host "`nCould not fetch the Tailscale IP automatically (timed out). Check manually:" -ForegroundColor Yellow
         Write-Host "  gcloud compute ssh $($config.vmName) --zone=$($config.zone) --project=$($config.projectId)"
-        Write-Host "  sudo journalctl -u orca-serve -f"
+        Write-Host "  tailscale ip -4"
     }
 } else {
     Write-Host "No -TailscaleAuthKey supplied, so Tailscale auth is NOT automated." -ForegroundColor Yellow
-    Write-Host "After SSH-ing in, authenticate manually:"
+    Write-Host "After SSH-ing in (via gcloud), authenticate manually:"
     Write-Host "  sudo tailscale up --ssh --advertise-exit-node"
 }
 Write-Host ""
 Write-Host "Remaining manual steps (either way):"
-Write-Host "  1. If this VM should be a Tailscale exit node, approve it in the"
-Write-Host "     Tailscale admin console."
-Write-Host "  2. Pair an external Orca client (desktop/mobile) using the pairing URL"
-Write-Host "     (shown above if -TailscaleAuthKey was supplied; otherwise check manually):"
-Write-Host "       sudo journalctl -u orca-serve -f"
+Write-Host "  1. Approve this VM as an exit node in the Tailscale admin console."
+Write-Host "  2. Log in over Tailscale SSH and set up git push credentials once"
+Write-Host "     (gh auth login, or an SSH deploy key) - intentionally not"
+Write-Host "     automated. This persists on the boot disk until -Recreate."
 if ($config.workspaceRepoUrls -and $config.workspaceRepoUrls.Count -gt 0) {
     Write-Host ""
     Write-Host "workspaceRepoUrls was set, so ~/workspace will be auto-cloned with:" -ForegroundColor Green

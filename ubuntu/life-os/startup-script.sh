@@ -1,6 +1,6 @@
 #!/bin/bash
 # GCE startup-script: bootstraps this VM unattended by cloning My_init_setting and
-# running ubuntu/remote-dev/setup.sh (Tailscale + Orca headless server).
+# running ubuntu/life-os/setup.sh (Tailscale SSH access + exit node + repo clone).
 #
 # Installed automatically by Create-Vm.ps1 via `--metadata-from-file startup-script=`.
 # GCE runs this as root on every boot; it is safe to re-run (setup.sh is idempotent).
@@ -39,4 +39,4 @@ WORKSPACE_REPO_URLS="$(curl -sf -H 'Metadata-Flavor: Google' \
     2>/dev/null || true)"
 export WORKSPACE_REPO_URLS
 
-bash "$REPO_DIR/ubuntu/remote-dev/setup.sh"
+bash "$REPO_DIR/ubuntu/life-os/setup.sh"

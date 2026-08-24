@@ -14,12 +14,14 @@ ubuntu/<name>/
 
 新しいプロジェクトを追加するには`ubuntu/<name>/setup.sh`を置くだけでよい。
 
-現在ある3プロジェクト:
+現在ある5プロジェクト:
 
 | プロジェクト | 用途 |
 |------------|------|
 | [`wsl-setup/`](wsl-setup/) | WSLホスト共通のセットアップ（パッケージ、ワークスペース、エイリアス、Bitwarden連携、MCP、GUI） |
 | [`remote-dev/`](remote-dev/README.md) | GCP等のVMをTailscale経由のリモート開発機にする |
+| [`life-os/`](life-os/README.md) | GCP等のVMをTailscale SSH専用のclone/push機にする（`remote-dev/`の簡易版・常駐サービス無し） |
+| [`remote-agy/`](remote-agy/README.md) | GCP等のVMをTailscale SSH（CLI）+ xrdp（GUI）で操作するAntigravity CLI向け開発機にする |
 | [`nanoclaw/`](nanoclaw/) | Telegram ボットフレームワーク NanoClaw のセットアップ |
 
 ---
@@ -211,6 +213,72 @@ remote-dev/
 3. 外部のOrcaクライアント（デスクトップ/モバイル）とのペアリング（`sudo journalctl -u orca-serve -f` でURL確認）
 
 VMの作成（Windows側・gcloud SDK使用）については [`remote-dev/README.md`](remote-dev/README.md) を参照。
+
+---
+
+## `life-os/` — clone/push専用VMセットアップ（GCP VM 向け・オプション）
+
+`remote-dev/`の簡易版。GCP等のUbuntu VMを、**Tailscale SSH経由でのみ**外部から接続できるようにし、
+指定したリポジトリをclone済みの状態にしておくためのプロジェクト。Orca headless serverやDocker常駐は
+無く、常駐サービスが無い分`remote-dev/`より最小構成。役割は「cloneしたリポジトリを保持し、人が
+Tailscale SSHでログインして編集・pushする」だけ。このVMは常にTailscale exit nodeとしての利用を
+前提としている（Tailscale管理コンソールでの承認は引き続き手動）。
+
+**構成:**
+
+```
+life-os/
+├── startup-script.sh      # GCE起動スクリプト（repoをclone/pullしてsetup.shを実行）
+├── setup.sh               # OS側セットアップ本体（Tailscale SSH + exit node + リポジトリclone）
+├── packages.sh            # apt パッケージ一覧（curl, git, vim, ufw のみ）
+├── config/vm-config.json  # VM作成パラメータ（Create-Vm.ps1用）
+├── Create-Vm.ps1         # gcloudでVMを作成するラッパー（Windows側）
+└── README.md
+```
+
+**git pushの認証は意図的に自動化していない**（手動セットアップ方式）: Tailscale SSHでログイン後、
+`gh auth login` またはSSH deploy keyの設置を一度だけ行えばよく、その設定はブートディスク上に
+永続する（`-Recreate`でディスクごと作り直した場合のみ再設定が必要）。詳細は
+[`life-os/README.md`](life-os/README.md) を参照。
+
+---
+
+## `remote-agy/` — Antigravity CLI向けリモート開発環境セットアップ（GCP VM 向け・オプション）
+
+GCP等のUbuntu VMを、クライアントPCから**Tailscale SSH（CLI）**と**xrdp（GUI）**の
+両方で操作できるリモート開発機にするためのプロジェクト。Antigravity CLI（`agy`）・uv・
+notebooklm-mcp-cli・gws（`@googleworkspace/cli`）を導入する。`remote-dev`/`life-os`と同様、
+このVMもTailscale exit nodeとしての利用を前提としている。`remote-agy/Create-Vm.ps1`
+（Windows側）でVMを作成すると、起動スクリプト経由で`setup.sh`が**自動実行される**。
+手動でSSHして叩く必要はない（冪等スクリプトなので、SSHして`remote-agy/setup.sh`を
+手動で叩き直すことも可能）。
+
+**構成:**
+
+```
+remote-agy/
+├── startup-script.sh      # GCE起動スクリプト（repoをclone/pullしてsetup.shを実行）
+├── setup.sh               # OS側セットアップ本体（SSH + Tailscale + xrdp + 開発ツール）
+├── packages.sh            # apt パッケージ一覧（openssh-server, ufw, xfce4, xrdp等）
+├── config/vm-config.json  # VM作成パラメータ（Create-Vm.ps1用）
+├── Create-Vm.ps1          # gcloudでVMを作成するラッパー（Windows側）
+└── README.md
+```
+
+**`setup.sh`がインストールするもの:**
+
+| 項目 | 内容 |
+|------|------|
+| apt パッケージ | `packages.sh` の一覧（openssh-server, ufw, xfce4, xrdp等） |
+| Tailscale | 公式インストールスクリプト経由。IP forwardingも有効化（exit node用）。`Create-Vm.ps1 -TailscaleAuthKey` 指定時は`--ssh --advertise-exit-node`での認証も自動 |
+| xrdp | RDP接続時のみXFCEセッションを起動（Chrome Remote Desktopと違い常駐しない）。ペアリング不要 - Windows標準のリモートデスクトップ接続からTailscale IP・ポート3389にそのまま接続できる |
+| 開発ツール | uv・Antigravity CLI（`agy`）・notebooklm-mcp-cli（uv tool）・gws（npmパッケージ`@googleworkspace/cli`）を`/usr/local/bin`配下に配置し、全ログインユーザーから利用可能に |
+
+**自動化されない手動ステップ:**
+1. `Create-Vm.ps1 -TailscaleAuthKey` を指定しなかった場合のTailscale認証（`sudo tailscale up --ssh --advertise-exit-node`）
+2. このVMをexit nodeにしたい場合、Tailscale管理コンソールでの承認
+
+VMの作成（Windows側・gcloud SDK使用）については [`remote-agy/README.md`](remote-agy/README.md) を参照。
 
 ---
 
