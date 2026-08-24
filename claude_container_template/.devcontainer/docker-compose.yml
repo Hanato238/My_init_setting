@@ -1,6 +1,10 @@
 # claude 関数用汎用テンプレート
 # name と container_name は `claude` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
 # このテンプレートをコピーして使う際はプロジェクトのディレクトリ名に合わせること。
+#
+# gws-login / nlm-login (プロファイル関数) はこの .devcontainer 内のスクリプトに委譲する形で
+# 対応済み。gws-login は client_secret.json (下記マウント) を前提とするため、ホスト側で
+# 事前に `gws auth login` 済みであること (~/.config/gws/client_secret.json が存在すること)。
 
 name: claude_container_template
 
@@ -15,6 +19,7 @@ services:
       - ..:/workspace:cached
       - .:/workspace/.devcontainer:ro
       - ../.mcp.json:/workspace/.mcp.json:ro
+      - ${USERPROFILE}/.config/gws/client_secret.json:/home/node/.config/gws/client_secret.json:ro
     working_dir: /workspace
     command: ["sleep", "infinity"]
     environment:

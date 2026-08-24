@@ -341,10 +341,12 @@ function gws-login {
         Write-Host "Container already running ($container)" -ForegroundColor Green
     }
 
-    $loginArgs = @('auth', 'login')
-    if ($Force) { $loginArgs += '--force' }
-
-    docker exec -it $container gws @loginArgs
+    $scriptPath = Join-Path $targetDir '.devcontainer\gws-login.ps1'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "$scriptPath が見つかりません。"
+        return
+    }
+    & $scriptPath -ContainerName $container -Force:$Force
 }
 
 function Get-CpuPower {
