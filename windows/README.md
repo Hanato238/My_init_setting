@@ -77,7 +77,7 @@ Start-Setup.ps1
 ├── installer/Install-Office.ps1          # Microsoft Office（-IncludeOffice 指定時のみ）
 ├── installer/Initialize-Security.ps1     # Bitwarden → SecretStore（-SyncSecrets 指定時のみ）
 ├── installer/Setup-Wsl.ps1              # WSL Ubuntu セットアップ／更新
-├── settings/Set-Aliases.ps1              # PowerShell プロファイル設定（冪等）
+├── settings/Set-Aliases.ps1              # PowerShell プロファイル設定（毎回リセットして書き直し）
 ├── settings/Set-McpServers.ps1           # MCP サーバー登録（冪等）
 ├── settings/Set-WindowsSettings.ps1      # Windows 機能・デスクトップ・Docker Desktop（冪等）
 ├── settings/Set-Workspace.ps1            # ワークスペースディレクトリ作成（初回のみ）
@@ -189,7 +189,7 @@ Bitwarden (クラウド)
 
 ### `settings/Set-Aliases.ps1` — PowerShell プロファイル設定
 
-PowerShell プロファイル（`$PROFILE`）を上書きし、エイリアスと関数を設定する。既存プロファイルは `.bak` としてバックアップされる。
+PowerShell プロファイル（`$PROFILE`）をリセットしてから、エイリアスと関数を書き込む。実行時はまず既存プロファイルをバックアップして空ファイルに戻し、その後で内容を書き出す。
 
 **アプリエイリアス（主なもの）:**
 
@@ -213,8 +213,9 @@ PowerShell プロファイル（`$PROFILE`）を上書きし、エイリアス�
 | `Load-SecretEnvironment` | SecretStore のシークレットを環境変数に展開。プロファイル読み込み時に自動実行 |
 | `Sync-ApiKeys` | `Start-Setup.ps1 -Update -SyncSecrets` のエイリアス。Bitwarden から最新キーを取得・反映 |
 | `Setup-Windows` | `Start-Setup.ps1` のエイリアス。全パラメーターを透過的に渡す |
+| `servermode` / `Get-ServerMode` | `Set-ServerMode.ps1` で設定したサーバー化設定の現在状態をチェックリスト表示（読み取りのみ） |
 
-**冪等性:** プロファイルはマーカーセクション方式で管理される。再実行時はマーカー内のみ上書きし、ユーザーのカスタマイズ（マーカー外）は保持される。バックアップは `.bak` / `.bak.2` / `.bak.3` の3世代を保持。
+**リセット方式:** 実行のたびにプロファイルを空にしてから丸ごと書き直す。マーカー行はセクションの目印として残るが、マーカー外のユーザーカスタマイズも含めて破棄される。実行前のプロファイルはバックアップされ、`.bak` / `.bak.2` / `.bak.3` の3世代を保持する。
 
 ---
 
@@ -282,4 +283,12 @@ $AutoLoginPassword = "pass"     # パスワード（平文注意）
 Start-Setup.ps1 -ServerMode
 Start-Setup.ps1 -ServerMode -DryRun
 Setup-Windows   -ServerMode
+```
+
+**設定状態の確認:** `Set-Aliases.ps1` が定義する `servermode`（= `Get-ServerMode`）で、
+電源プラン・スリープ・蓋閉じ・Windows Update・sshd・Tailscale の現在状態を期待値と
+突き合わせて表示する。変更は行わない。
+
+```powershell
+servermode
 ```

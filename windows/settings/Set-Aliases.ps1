@@ -12,16 +12,29 @@ Write-Host "Running with administrative privileges..." -ForegroundColor Green
 
 $profilePath = $PROFILE
 
-if (-not (Test-Path -Path $profilePath -PathType Leaf)) {
-    New-Item -Path $profilePath -ItemType File -Force | Out-Null
+# ------------------------------------------------------------
+# Step 1: reset the old $PROFILE
+#   Back up the current profile (keep 3 generations), then start
+#   from an empty file. Every write below happens after this reset.
+# ------------------------------------------------------------
+$profileDir = Split-Path -Parent $profilePath
+if ($profileDir -and -not (Test-Path -Path $profileDir -PathType Container)) {
+    New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
 }
 
-# Rotate backups: keep 3 generations
 if (Test-Path "$profilePath.bak.2") { Move-Item "$profilePath.bak.2" "$profilePath.bak.3" -Force }
-if (Test-Path "$profilePath.bak") { Move-Item "$profilePath.bak"   "$profilePath.bak.2" -Force }
-if (Test-Path $profilePath) { Copy-Item $profilePath "$profilePath.bak" -Force }
+if (Test-Path "$profilePath.bak")   { Move-Item "$profilePath.bak"   "$profilePath.bak.2" -Force }
+if (Test-Path $profilePath)         { Copy-Item $profilePath "$profilePath.bak" -Force }
 
-$markerStart = "# === MANAGED BY Set-Aliases.ps1 — DO NOT EDIT BETWEEN THESE MARKERS ==="
+# Recreate an empty profile (discards any previous content)
+New-Item -Path $profilePath -ItemType File -Force | Out-Null
+
+Write-Host "Profile reset. Previous version backed up to $profilePath.bak" -ForegroundColor Green
+
+# ------------------------------------------------------------
+# Step 2: build and write the profile content
+# ------------------------------------------------------------
+$markerStart = "# === MANAGED BY Set-Aliases.ps1 - REGENERATED ON EVERY RUN, DO NOT EDIT ==="
 $markerEnd = "# === END MANAGED SECTION ==="
 
 # Part 1: aliases and URL shortcuts (double-quote heredoc; $ escaped as `$)
@@ -153,8 +166,9 @@ function Setup-Windows {
 }
 
 function Get-SbxSandboxes {
-    # sbx daemon が未起動だと "Starting ..." 等のメッセージが stdout に混じり、
-    # ConvertFrom-Json がそのまま失敗するため、最初に JSON らしき行が現れる位置以降だけを抽出する。
+    # If the sbx daemon is not running, messages like "Starting ..." are mixed into
+    # stdout and ConvertFrom-Json fails, so keep only the lines from the first
+    # JSON-looking line onward.
     $sbxRaw = @(sbx ls --json 2>$null)
     $jsonStartLine = $sbxRaw | Where-Object { $_ -match '^\s*[\{\[]' } | Select-Object -First 1
     if (-not $jsonStartLine) { return @() }
@@ -163,7 +177,7 @@ function Get-SbxSandboxes {
     try {
         return @((ConvertFrom-Json $sbxJson).sandboxes)
     } catch {
-        Write-Warning "sbx ls --json の出力を解析できませんでした: $_"
+        Write-Warning "Failed to parse the output of 'sbx ls --json': $_"
         return @()
     }
 }
@@ -266,6 +280,92 @@ function claude {
     $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
     sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
 }
+
+function Get-ServerMode {
+    <#
+    .SYNOPSIS
+        Show the current state of the 24/7 server settings applied by Set-ServerMode.ps1.
+    .DESCRIPTION
+        Checks power plan, sleep, lid action, Windows Update, sshd and Tailscale
+        against their expected values and prints a checklist. Read-only (no changes).
+    #>
+    [CmdletBinding()]
+    param()
+
+    function Write-Check([string]$Label, [bool]$Ok, [string]$Detail) {
+        $mark  = if ($Ok) { '[OK]' } else { '[--]' }
+        $color = if ($Ok) { 'Green' } else { 'Yellow' }
+        Write-Host ('  {0,-4} {1,-34} {2}' -f $mark, $Label, $Detail) -ForegroundColor $color
+    }
+
+    function Get-PowerIndex([string]$SubGroup, [string]$Setting) {
+        # powercfg output is localized, so key on the AC/DC token plus the
+        # trailing hex value instead of the English "Power Setting Index" label.
+        $out = powercfg /query SCHEME_CURRENT $SubGroup $Setting 2>$null
+        $r = [pscustomobject]@{ AC = $null; DC = $null }
+        foreach ($line in $out) {
+            if ($line -match '(0x[0-9a-fA-F]+)\s*$') {
+                $val = [Convert]::ToInt64($Matches[1], 16)
+                if ($line -match '(?i)(^|\s)AC(\s|$)')     { $r.AC = $val }
+                elseif ($line -match '(?i)(^|\s)DC(\s|$)') { $r.DC = $val }
+            }
+        }
+        return $r
+    }
+
+    Write-Host ''
+    Write-Host '=== Server mode settings status ===' -ForegroundColor Cyan
+
+    # Power plan
+    $active     = ((powercfg /getactivescheme) -join ' ').Trim()
+    $activeGuid = if ($active -match '([0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})') { $Matches[1] } else { $active }
+    Write-Check 'High performance power plan' ($activeGuid -eq '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c') $activeGuid
+
+    # Sleep (STANDBYIDLE)
+    $sleep = Get-PowerIndex 'SUB_SLEEP' 'STANDBYIDLE'
+    Write-Check 'Sleep disabled (AC/DC)' (($sleep.AC -eq 0) -and ($sleep.DC -eq 0)) "AC=$($sleep.AC) DC=$($sleep.DC) (0=disabled)"
+
+    # Hibernation feature
+    $hibOff = -not (Test-Path (Join-Path $env:SystemRoot 'hiberfil.sys'))
+    Write-Check 'Hibernation feature OFF' $hibOff $(if ($hibOff) { 'no hiberfil.sys' } else { 'hiberfil.sys present' })
+
+    # Lid close action (LIDACTION)
+    $lid = Get-PowerIndex 'SUB_BUTTONS' '5ca83367-6e45-459f-a27b-476b1d01c936'
+    Write-Check 'Lid close -> do nothing (AC/DC)' (($lid.AC -eq 0) -and ($lid.DC -eq 0)) "AC=$($lid.AC) DC=$($lid.DC) (0=do nothing)"
+
+    # Windows Update policy
+    $auPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'
+    $noAuto = (Get-ItemProperty -Path $auPath -Name 'NoAutoUpdate' -ErrorAction SilentlyContinue).NoAutoUpdate
+    Write-Check 'WU auto-update policy disabled' ($noAuto -eq 1) "NoAutoUpdate=$noAuto"
+
+    foreach ($svcName in 'wuauserv', 'UsoSvc') {
+        $s = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+        if ($s) {
+            Write-Check "$svcName disabled" ($s.StartType -eq 'Disabled') "StartType=$($s.StartType) Status=$($s.Status)"
+        } else {
+            Write-Check "$svcName disabled" $false 'not found'
+        }
+    }
+
+    # sshd
+    $sshd = Get-Service -Name 'sshd' -ErrorAction SilentlyContinue
+    if ($sshd) {
+        Write-Check 'sshd automatic & running' (($sshd.StartType -eq 'Automatic') -and ($sshd.Status -eq 'Running')) "StartType=$($sshd.StartType) Status=$($sshd.Status)"
+    } else {
+        Write-Check 'sshd' $false 'not installed'
+    }
+
+    # Tailscale
+    $ts = Get-Service -Name 'Tailscale' -ErrorAction SilentlyContinue
+    if ($ts) {
+        Write-Check 'Tailscale automatic' ($ts.StartType -eq 'Automatic') "StartType=$($ts.StartType) Status=$($ts.Status)"
+    } else {
+        Write-Check 'Tailscale' $false 'service not found'
+    }
+
+    Write-Host ''
+}
+Set-Alias -Name servermode -Value Get-ServerMode
 '@
 
 $part2Clinic = @'
@@ -306,25 +406,13 @@ if ($ProfileType -eq 'Clinic') {
 
 $managedSection = "$markerStart`n$part1`n$part2`n$markerEnd"
 
-# Replace existing managed section or append to profile
-$existingContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
-
-if ($existingContent -and $existingContent -match [regex]::Escape($markerStart)) {
-    $escapedStart = [regex]::Escape($markerStart)
-    $escapedEnd = [regex]::Escape($markerEnd)
-    $newContent = [regex]::Replace($existingContent, "(?s)$escapedStart.*?$escapedEnd", $managedSection)
-}
-elseif ($existingContent -and $existingContent.Trim()) {
-    $newContent = $existingContent.TrimEnd() + "`n`n$managedSection`n"
-}
-else {
-    $newContent = "$managedSection`n"
-}
+# The profile was reset in step 1, so write the managed section to the clean file
+$newContent = "$managedSection`n"
 
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($profilePath, $newContent, $utf8NoBom)
 
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 
-Write-Host "PowerShell profile updated (managed section replaced)." -ForegroundColor Green
+Write-Host "PowerShell profile written from scratch." -ForegroundColor Green
 Write-Host "Please restart PowerShell to apply the changes." -ForegroundColor Yellow
