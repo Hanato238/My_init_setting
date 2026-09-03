@@ -6,3 +6,7 @@ node_modules/
 # These are large and/or licensed and must never be committed - see
 # windows/installer/packages/local/README.md.
 /my_apps/
+
+# Locally built Chocolatey packages and per-directory Claude settings.
+windows/installer/packages/local/**/*.nupkg
+windows/installer/packages/local/**/.claude/
