@@ -6,9 +6,12 @@
     startup-script.sh を起動スクリプトとして添付するため、VM起動後は自動的に
     ubuntu/remote-dev/setup.sh が実行され、Tailscale（tailscaled起動・IP forwarding）
     と Orca headless server（orca-serve.service）のセットアップが完了する。
-    -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了する。
-    未指定の場合はTailscale認証のみ手動（SSHで入って `sudo tailscale up ...`）が必要。
-    Exit node承認（Tailscale管理コンソール）とOrcaクライアントのペアリングは
+    -TailscaleAuthKey を指定した場合はTailscale認証も非対話で完了し、その後 orca-serve が
+    起動するまでSSH経由で自動ポーリングし、Orcaクライアントのペアリング情報（journalctl出力）を
+    このスクリプトの出力にそのまま表示する（最大4分待機。タイムアウト時は手動確認コマンドを案内）。
+    未指定の場合はTailscale認証のみ手動（SSHで入って `sudo tailscale up ...`）が必要で、
+    ペアリング情報の自動表示も行われない（orca-serveがTailscale認証完了まで起動しないため）。
+    Exit node承認（Tailscale管理コンソール）とOrcaクライアントへの実際のペアリング操作は
     どちらの場合も引き続き手動。
 .PARAMETER ConfigPath
     VM設定JSONファイルのパス（既定: config/vm-config.json）
@@ -34,9 +37,9 @@
     実際にはVMを作成せず、実行される gcloud コマンドを表示するだけのモード
 .NOTES
     事前に gcloud SDK のインストールと `gcloud auth login` が必要。
-    vm-config.json の workspaceRepoUrl に public な GitHub リポジトリURLを設定しておくと、
+    vm-config.json の workspaceRepoUrls に public な GitHub リポジトリURLを配列で設定しておくと、
     setup.sh が /etc/profile.d にログイン時clone用スクリプトを設置し、各ユーザーが
-    最初にSSHログインしたタイミングで ~/workspace ディレクトリへ自動でcloneする
+    最初にSSHログインしたタイミングで ~/workspace ディレクトリへ自動でclone（複数可）する
     （起動時点ではまだOSユーザーのホームディレクトリが存在しないことがあるため、
     ログイン時の遅延cloneにしている。private リポジトリの認証には未対応）。
     -Recreate はTailscale側のIPアドレスまでは引き継がない（VM再作成でtailscaledの
@@ -89,6 +92,35 @@ function Remove-TailscaleDevice {
             Write-Warning "Failed to remove Tailscale device $($device.id): $_"
         }
     }
+}
+
+function Wait-OrcaPairingInfo {
+    <#
+    .SYNOPSIS
+        Polls the VM over SSH until orca-serve is active, then returns its recent
+        journal output (which includes the pairing URL/address). Only meaningful
+        when Tailscale auth was automated (-TailscaleAuthKey), since orca-serve's
+        ExecStartPre blocks on `tailscale ip -4` succeeding first. Returns $null
+        on timeout so the caller can fall back to manual instructions.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$VmName,
+        [Parameter(Mandatory)][string]$Zone,
+        [Parameter(Mandatory)][string]$ProjectId,
+        [int]$TimeoutSeconds = 240,
+        [int]$PollIntervalSeconds = 15
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $out = gcloud compute ssh $VmName --zone=$Zone --project=$ProjectId --quiet `
+            --command "sudo systemctl is-active --quiet orca-serve && sudo journalctl -u orca-serve --no-pager -n 50" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $out) {
+            return $out
+        }
+        Start-Sleep -Seconds $PollIntervalSeconds
+    }
+    return $null
 }
 
 if (-not (Test-Path $ConfigPath)) {
@@ -195,8 +227,8 @@ $metadataPairs = @()
 if ($TailscaleAuthKey) {
     $metadataPairs += "tailscale-authkey=$TailscaleAuthKey"
 }
-if ($config.workspaceRepoUrl) {
-    $metadataPairs += "workspace-repo-url=$($config.workspaceRepoUrl)"
+if ($config.workspaceRepoUrls -and $config.workspaceRepoUrls.Count -gt 0) {
+    $metadataPairs += "workspace-repo-urls=$($config.workspaceRepoUrls -join ' ')"
 }
 if ($metadataPairs.Count -gt 0) {
     $gcloudArgs += "--metadata=$($metadataPairs -join ',')"
@@ -232,6 +264,23 @@ Write-Host "  sudo journalctl -u google-startup-scripts -f"
 Write-Host ""
 if ($TailscaleAuthKey) {
     Write-Host "-TailscaleAuthKey was supplied, so Tailscale auth is automated too." -ForegroundColor Green
+
+    Write-Host "`nWaiting for orca-serve to come up so the pairing info can be shown"
+    Write-Host "automatically (SSH + Tailscale auth + Orca startup - can take a few minutes)..."
+    $pairingLog = Wait-OrcaPairingInfo -VmName $config.vmName -Zone $config.zone -ProjectId $config.projectId
+    if ($pairingLog) {
+        Write-Host "`n=== Orca pairing info ===" -ForegroundColor Green
+        $pairingLines = @($pairingLog -split "`r?`n" | Where-Object { $_ -match 'pairing|http' })
+        if ($pairingLines.Count -gt 0) {
+            $pairingLines | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host $pairingLog
+        }
+    } else {
+        Write-Host "`nCould not fetch Orca pairing info automatically (timed out). Check manually:" -ForegroundColor Yellow
+        Write-Host "  gcloud compute ssh $($config.vmName) --zone=$($config.zone) --project=$($config.projectId)"
+        Write-Host "  sudo journalctl -u orca-serve -f"
+    }
 } else {
     Write-Host "No -TailscaleAuthKey supplied, so Tailscale auth is NOT automated." -ForegroundColor Yellow
     Write-Host "After SSH-ing in, authenticate manually:"
@@ -241,10 +290,13 @@ Write-Host ""
 Write-Host "Remaining manual steps (either way):"
 Write-Host "  1. If this VM should be a Tailscale exit node, approve it in the"
 Write-Host "     Tailscale admin console."
-Write-Host "  2. Pair an external Orca client (desktop/mobile) using the pairing URL:"
+Write-Host "  2. Pair an external Orca client (desktop/mobile) using the pairing URL"
+Write-Host "     (shown above if -TailscaleAuthKey was supplied; otherwise check manually):"
 Write-Host "       sudo journalctl -u orca-serve -f"
-if ($config.workspaceRepoUrl) {
+if ($config.workspaceRepoUrls -and $config.workspaceRepoUrls.Count -gt 0) {
     Write-Host ""
-    Write-Host "workspaceRepoUrl was set, so ~/workspace will be auto-cloned with:" -ForegroundColor Green
-    Write-Host "  $($config.workspaceRepoUrl)"
+    Write-Host "workspaceRepoUrls was set, so ~/workspace will be auto-cloned with:" -ForegroundColor Green
+    foreach ($url in $config.workspaceRepoUrls) {
+        Write-Host "  $url"
+    }
 }

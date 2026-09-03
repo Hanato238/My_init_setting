@@ -28,7 +28,7 @@ remote-dev/
 - `config/vm-config.json` を編集し、`projectId` をプレースホルダーから実際の値に置き換える
 - （任意）Tailscale認証も自動化したい場合は、Tailscale管理コンソール（Settings > Keys）で auth key を発行しておく
 - （任意）VM上に開発用ワークスペースを自動セットアップしたい場合は、`config/vm-config.json` の
-  `workspaceRepoUrl` にcloneしたいpublicなGitHubリポジトリURLを設定しておく
+  `workspaceRepoUrls` にcloneしたいpublicなGitHubリポジトリURLを配列で設定しておく（複数可）
 
 ### 2. VM作成
 
@@ -36,7 +36,7 @@ remote-dev/
 cd remote-dev
 .\Create-Vm.ps1                                              # 作成（Tailscale認証は手動で残る）
 .\Create-Vm.ps1 -ProjectId my-project-123456                 # projectIdをvm-config.jsonの値から上書き
-.\Create-Vm.ps1 -TailscaleAuthKey tskey-auth-xxxxx            # Tailscale認証も自動化
+.\Create-Vm.ps1 -TailscaleAuthKey tskey-auth-xxxxx            # Tailscale認証も自動化（Orcaペアリング情報も自動表示）
 .\Create-Vm.ps1 -Recreate                                     # 同名VMが既存なら確認の上、削除してから作り直す
 .\Create-Vm.ps1 -Recreate -TailscaleApiKey tskey-api-xxxxx    # recreate時、Tailscale側の古いデバイスも自動削除
 .\Create-Vm.ps1 -DryRun                                       # 実行されるgcloudコマンドの確認のみ
@@ -76,10 +76,17 @@ sudo journalctl -u orca-serve -f               # Orcaのペアリングurlはこ
 自動化されるもの: `tailscaled`起動・IP forwarding有効化・（`-TailscaleAuthKey`指定時のみ）Tailscale認証・
 Orca headless AppImageのインストールと`orca-serve.service`の起動・`orca` CLIコマンドのPATH登録・
 ログイン時エイリアス（後述）の設置・
-（`workspaceRepoUrl`指定時のみ）`~/workspace/<リポジトリ名>`へのリポジトリclone・
+（`workspaceRepoUrls`指定時のみ）各リポジトリの`/home/orca/workspace/<リポジトリ名>`（Orca用）と
+`~/workspace/<リポジトリ名>`（SSHユーザー用）へのclone・
 git/vim/python3のインストール・Node.js(LTS)/Docker Engine/GitHub CLI(`gh`)のインストール・
 Claude Code CLI(`claude`)とClaude Agent SDK(npm/pip)のインストール・LINE LIFF SDK(npm)の
 グローバルインストール・Antigravity CLIのインストール。
+
+**Orcaペアリング情報の自動表示**: `-TailscaleAuthKey`を指定した場合、`Create-Vm.ps1`はVM作成後
+SSH経由で`orca-serve`が起動するまで自動でポーリングし（最大4分）、起動でき次第そのログ
+（ペアリングURL/アドレスを含む）をそのままコンソールに表示する。タイムアウトした場合は上記の
+手動確認コマンドを案内する。`-TailscaleAuthKey`未指定時はTailscale認証自体が手動のため
+`orca-serve`が起動せず、この自動表示は行われない（手動で`sudo journalctl -u orca-serve -f`を確認する）。
 
 **ログイン時エイリアス**: `orca-serve.service`は専用の非rootユーザー`orca`で動作する
 （対話ログインユーザーとは意図的に分離。理由は下記）。`setup.sh`は`/etc/profile.d/90-remote-dev-aliases.sh`
@@ -95,12 +102,14 @@ Claude Code CLI(`claude`)とClaude Agent SDK(npm/pip)のインストール・LIN
 | `ts-ip` | `tailscale ip -4` |
 | `ts-status` | `tailscale status` |
 | `claude [dir] [--as-host] [--sbx] [--rebuild]` | `windows/settings/Set-Aliases.ps1`の`claude`関数の移植（後述） |
+| `enable-tailnet-port <port> [tcp\|udp]` | tailnetからのみ到達可能な`ufw`許可ルールを追加。詳細は[`../../TAILNET-PORTS.md`](../../TAILNET-PORTS.md) |
+| `get-tailnet-ports` | `enable-tailnet-port`で追加したルール一覧を表示 |
 
 **`claude`関数**: 対象ディレクトリに`.devcontainer/docker-compose.yml`があればそれを
 `docker compose`で起動し`zellij`経由で接続する（Windows版と同じ挙動）。無ければ、
 このVMには`sbx`（Windows専用のサンドボックスツール）が無いため、代わりにディレクトリ単位の
 Dockerコンテナ（`claude-sandbox`イメージ、初回のみビルド）を作成し、以降は`docker exec`で
-使い回す。`--sbx`を付けると`--dangerously-skip-permissions`付きで実行する（Windows版の`-Sbx`相当）。
+使い回す。`--sbx`を付けると`--permission-mode auto`付きで実行する（Windows版の`-Sbx`相当）。
 `--as-host`はDockerを使わずホスト上の`claude`を直接実行し、`--rebuild`はサンドボックス
 コンテナ/イメージ（または`.devcontainer`側）を作り直す。
 
@@ -122,19 +131,27 @@ Webサーバーとして一部ポートを公開する可能性があるため�
 | `projectId` | GCPプロジェクトID（`-ProjectId` / `$env:GCP_PROJECT_ID` で上書き可） | `my-project-123456` |
 | `zone` | 作成するゾーン | `asia-northeast1-a` |
 | `vmName` | インスタンス名 | `remote-dev-vm` |
-| `machineType` | マシンタイプ | `e2-medium` |
+| `machineType` | マシンタイプ | `e2-micro` |
 | `imageFamily` | OSイメージファミリー | `ubuntu-2204-lts` |
 | `imageProject` | イメージ提供元プロジェクト | `ubuntu-os-cloud` |
-| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `30` |
-| `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-balanced` |
+| `diskSizeGb` | ブートディスクサイズ(GB)。省略時 `30` | `15` |
+| `diskType` | ブートディスクタイプ。省略時 `pd-balanced` | `pd-standard` |
 | `enableIpForward` | IP forwardingを有効化するか（exit node化に必須）。**作成後は変更不可** | `true` |
 | `networkTags` | ネットワークタグ（ファイアウォールルール等で利用、省略可） | `["remote-dev"]` |
-| `workspaceRepoUrl` | 自動cloneするpublic GitHubリポジトリのURL（省略可。privateリポジトリは未対応） | `https://github.com/you/your-repo.git` |
+| `workspaceRepoUrls` | 自動cloneするpublic GitHubリポジトリURLの配列（省略可。privateリポジトリは未対応） | `["https://github.com/you/your-repo.git"]` |
 
 `vm-config.json` は複数環境用にコピーして使ってもよい（例: `config/staging-vm-config.json`）。その場合は `Create-Vm.ps1 -ConfigPath` で明示的に指定する。
 
-`workspaceRepoUrl` を設定すると、`setup.sh` は `/etc/profile.d/` にログイン時clone用のスクリプトを設置する。
-実際のcloneはVM起動時ではなく、**各ユーザーが最初にSSHログインしたタイミング**で `~/workspace/<リポジトリ名>` に
-行われる（起動時点ではまだそのユーザーのホームディレクトリが存在しないことがあり、起動時に一度だけcloneする
-方式だと取りこぼすため、ログイン時の遅延clone方式にしている）。`orca`のようなサービスアカウント
-（`/usr/sbin/nologin`）は対話ログインしないため対象にならない。既にcloneされていればスキップされる（冪等）。
+`workspaceRepoUrls` を設定すると、`setup.sh` は配列内の各リポジトリを**2箇所**にcloneする（用途が異なるため別々）:
+
+1. **`/home/orca/workspace/<リポジトリ名>`**（`orca`ユーザー所有、VM起動時に即clone）: `orca-serve.service`は
+   専用の`orca`システムユーザーで動作するため、他ユーザーのホームディレクトリ（既定で700/750）を読めない。
+   OrcaクライアントからプロジェクトとしてAddし、`orca worktree create`等でworktree管理させる対象は
+   ここを指定する。`orca`ユーザーのホームは`useradd --create-home`実行時点で存在するため、他ユーザーの
+   ログイン待ちをせずVM起動時にcloneできる。
+2. **`~/workspace/<リポジトリ名>`**（各SSHログインユーザー所有、**各ユーザーが最初にSSHログインしたタイミング**で
+   clone）: `setup.sh`が`/etc/profile.d/`にログイン時clone用のスクリプトを設置し、人間が直接`cd`して
+   編集する用。起動時点ではまだそのユーザーのホームディレクトリが存在しないことがあり、起動時に
+   一度だけcloneする方式だと取りこぼすため、ログイン時の遅延clone方式にしている。
+
+どちらもリポジトリごとに既にcloneされていればそのリポジトリだけスキップされる（冪等）。

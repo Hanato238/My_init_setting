@@ -2,12 +2,15 @@
     "projectId": "your-gcp-project-id",
     "zone": "asia-northeast1-a",
     "vmName": "remote-dev-vm",
-    "machineType": "e2-medium",
+    "machineType": "e2-micro",
     "imageFamily": "ubuntu-2204-lts",
     "imageProject": "ubuntu-os-cloud",
-    "diskSizeGb": 30,
-    "diskType": "pd-balanced",
+    "diskSizeGb": 15,
+    "diskType": "pd-standard",
     "enableIpForward": true,
     "networkTags": ["remote-dev"],
-    "workspaceRepoUrl": "https://github.com/Hanato238/My_init_setting.git"
+    "workspaceRepoUrls": [
+        "https://github.com/Hanato238/My_init_setting.git",
+        "https://github.com/Hanato238/life-os"
+    ]
 }

@@ -10,9 +10,9 @@
 # Tailscale auth is left as a manual step (see setup.sh's own output, viewable via
 # `sudo journalctl -u google-startup-scripts -f`).
 #
-# If the "workspace-repo-url" instance metadata attribute is set (see
-# vm-config.json's workspaceRepoUrl), setup.sh installs a login-time hook that
-# clones that repo into ~/workspace on each user's first interactive login.
+# If the "workspace-repo-urls" instance metadata attribute is set (see
+# vm-config.json's workspaceRepoUrls), setup.sh installs a login-time hook that
+# clones those repos into ~/workspace on each user's first interactive login.
 set -e
 
 REPO_DIR="/opt/My_init_setting"
@@ -34,9 +34,9 @@ TAILSCALE_AUTHKEY="$(curl -sf -H 'Metadata-Flavor: Google' \
     2>/dev/null || true)"
 export TAILSCALE_AUTHKEY
 
-WORKSPACE_REPO_URL="$(curl -sf -H 'Metadata-Flavor: Google' \
-    'http://metadata.google.internal/computeMetadata/v1/instance/attributes/workspace-repo-url' \
+WORKSPACE_REPO_URLS="$(curl -sf -H 'Metadata-Flavor: Google' \
+    'http://metadata.google.internal/computeMetadata/v1/instance/attributes/workspace-repo-urls' \
     2>/dev/null || true)"
-export WORKSPACE_REPO_URL
+export WORKSPACE_REPO_URLS
 
 bash "$REPO_DIR/ubuntu/remote-dev/setup.sh"

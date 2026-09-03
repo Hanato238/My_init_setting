@@ -2,7 +2,7 @@ $wingetPackages = @(
     "Chocolatey.Chocolatey",
     "Google.Chrome",
     "Google.GoogleDrive",
-    "ExpressVPN.ExpressVPN",
+    "Tailscale.Tailscale",
     "Git.Git",
     "Microsoft.WindowsTerminal"
 )

@@ -22,4 +22,7 @@ REMOTE_DEV_APT_PACKAGES=(
     vim
     python3
     python3-pip
+    # Used by the enable-tailnet-port/get-tailnet-ports login aliases (see
+    # setup.sh) to scope inbound ports to the tailnet CIDR only.
+    ufw
 )

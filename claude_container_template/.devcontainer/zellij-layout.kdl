@@ -10,7 +10,12 @@ layout {
     }
     tab name="claude" {
         pane command="claude" close_on_exit=true {
-            args "--dangerously-skip-permissions"
+            args "--permission-mode" "auto"
+        }
+    }
+    tab name="agy" {
+        pane command="agy" close_on_exit=true {
+            args "--mode=accept-edits"
         }
     }
 }

@@ -42,39 +42,8 @@ if ($needRestart) {
 
 Write-Host ""
 
-# === Desktop Environment ===
-Write-Host "[ Desktop Environment ]" -ForegroundColor Cyan
-
-$shortcutFilter = { ($_.Extension -match '^\.(lnk|url)$') -and ($_.Name -notmatch '(?i)Recycle Bin|Trash') }
-
-$desktopPaths = @("C:\Users\Public\Desktop", "$HOME\Desktop")
-foreach ($path in $desktopPaths) {
-    if (-not (Test-Path $path)) { continue }
-    if ($DryRun) {
-        Write-Host "[DRY RUN] Remove shortcuts from $path" -ForegroundColor Yellow
-    } else {
-        try {
-            Get-ChildItem -Path $path -File | Where-Object $shortcutFilter | Remove-Item -Force -ErrorAction Stop
-            Write-Host "Cleared shortcuts from $path" -ForegroundColor Green
-        } catch {
-            Write-Warning "Failed to clear some items in $path"
-        }
-    }
-}
-
-$taskbarPath = "$HOME\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
-if (Test-Path $taskbarPath) {
-    if ($DryRun) {
-        Write-Host "[DRY RUN] Remove shortcuts from taskbar" -ForegroundColor Yellow
-    } else {
-        try {
-            Get-ChildItem -Path $taskbarPath -File | Where-Object $shortcutFilter | Remove-Item -Force -ErrorAction Stop
-            Write-Host "Cleared shortcuts from taskbar" -ForegroundColor Green
-        } catch {
-            Write-Warning "Failed to clear taskbar shortcuts"
-        }
-    }
-}
+# === Desktop Environment & Taskbar ===
+& "$PSScriptRoot\Clear-DesktopTaskbar.ps1" -DryRun:$DryRun
 
 Write-Host ""
 
