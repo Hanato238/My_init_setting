@@ -81,7 +81,7 @@ Start-Setup.ps1
 ├── settings/Set-McpServers.ps1           # MCP サーバー登録（冪等）
 ├── settings/Set-WindowsSettings.ps1      # Windows 機能・デスクトップ・Docker Desktop（冪等）
 ├── settings/Set-Workspace.ps1            # ワークスペースディレクトリ作成（初回のみ）
-└── settings/Set-ServerMode.ps1           # 24時間サーバー化設定（単体サブコマンドのみ）
+└── settings/Set-ServerMode.ps1           # 24時間サーバー化設定
 ```
 
 ---
@@ -213,9 +213,13 @@ PowerShell プロファイル（`$PROFILE`）をリセットしてから、エ�
 | `Load-SecretEnvironment` | SecretStore のシークレットを環境変数に展開。プロファイル読み込み時に自動実行 |
 | `Sync-ApiKeys` | `Start-Setup.ps1 -Update -SyncSecrets` のエイリアス。Bitwarden から最新キーを取得・反映 |
 | `Setup-Windows` | `Start-Setup.ps1` のエイリアス。全パラメーターを透過的に渡す |
+| `Set-ServerMode` | `settings/Set-ServerMode.ps1` のエイリアス。`-DryRun` を透過的に渡す |
 | `servermode` / `Get-ServerMode` | `Set-ServerMode.ps1` で設定したサーバー化設定の現在状態をチェックリスト表示（読み取りのみ） |
 
 **リセット方式:** 実行のたびにプロファイルを空にしてから丸ごと書き直す。マーカー行はセクションの目印として残るが、マーカー外のユーザーカスタマイズも含めて破棄される。実行前のプロファイルはバックアップされ、`.bak` / `.bak.2` / `.bak.3` の3世代を保持する。
+
+**tailnet 限定ポート公開:** `Enable-TailnetPort` / `Get-TailnetPorts` の使い方は
+[`../TAILNET-PORTS.md`](../TAILNET-PORTS.md) を参照。
 
 ---
 
@@ -283,6 +287,10 @@ $AutoLoginPassword = "pass"     # パスワード（平文注意）
 Start-Setup.ps1 -ServerMode
 Start-Setup.ps1 -ServerMode -DryRun
 Setup-Windows   -ServerMode
+
+# プロファイル関数（Set-Aliases.ps1 適用後）
+Set-ServerMode
+Set-ServerMode -DryRun
 ```
 
 **設定状態の確認:** `Set-Aliases.ps1` が定義する `servermode`（= `Get-ServerMode`）で、

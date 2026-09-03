@@ -74,10 +74,12 @@ function pplx-chrome  { & chrome 'https://www.perplexity.ai/' }
 function nlm-chrome   { & chrome 'https://notebooklm.google.com/' }
 function hf-chrome    { & chrome 'https://huggingface.co/' }
 function context7     { Start-Process 'https://context7.com/dashboard' }
-function github       { & chrome 'https://github.com/' }
-function repository   { & chrome 'https://community.chocolatey.org/packages' }
-function winstall     { & chrome 'https://winstall.app/' }
+function grepo        { & chrome 'https://github.com/' }
+function crepo        { & chrome 'https://community.chocolatey.org/packages' }
+function wrepo        { & chrome 'https://winstall.app/' }
 function tailnet      { & chrome 'https://login.tailscale.com/admin' }
+function vercel       { & chrome 'https://vercel.com/' }
+function gwsc         { & chrome 'https://admin.google.com/' }
 function gdrive       { & chrome 'https://drive.google.com/drive/' }
 function gmail        { & chrome 'https://mail.google.com/mail/u/0/?tab=rm&ogbl#inbox' }
 function gcp          { & chrome 'https://console.cloud.google.com/welcome?hl=ja' }
@@ -124,7 +126,7 @@ function qq       { & chrome 'https://www.e-igakukai.jp/user_service/kaiin_porta
 function oe       { & chrome 'https://www.openevidence.com/' }
 "@
 
-# Part 2: function definitions (single-quote heredoc; $ is literal — correct for profile runtime)
+# Part 2: function definitions (single-quote heredoc; $ is literal - correct for profile runtime)
 $part2 = @'
 
 function Load-SecretEnvironment {
@@ -140,9 +142,29 @@ function Load-SecretEnvironment {
 Load-SecretEnvironment
 
 function Sync-ApiKeys {
-    $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\installer\Initialize-Security.ps1"
     if (Test-Path $scriptPath) {
-        & $scriptPath -Update -SyncSecrets
+        & $scriptPath
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
+}
+
+function Clear-DesktopTaskbar {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Clear-DesktopTaskbar.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
+}
+
+function Set-ServerMode {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Set-ServerMode.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
     } else {
         Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
     }
@@ -166,9 +188,8 @@ function Setup-Windows {
 }
 
 function Get-SbxSandboxes {
-    # If the sbx daemon is not running, messages like "Starting ..." are mixed into
-    # stdout and ConvertFrom-Json fails, so keep only the lines from the first
-    # JSON-looking line onward.
+    # If the sbx daemon is not running, messages like "Starting ..." get mixed into stdout,
+    # causing ConvertFrom-Json to fail. Extract only from the line where JSON starts.
     $sbxRaw = @(sbx ls --json 2>$null)
     $jsonStartLine = $sbxRaw | Where-Object { $_ -match '^\s*[\{\[]' } | Select-Object -First 1
     if (-not $jsonStartLine) { return @() }
@@ -177,7 +198,7 @@ function Get-SbxSandboxes {
     try {
         return @((ConvertFrom-Json $sbxJson).sandboxes)
     } catch {
-        Write-Warning "Failed to parse the output of 'sbx ls --json': $_"
+        Write-Warning "Failed to parse output of sbx ls --json: $_"
         return @()
     }
 }
@@ -206,7 +227,7 @@ function claude {
             if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
         }
         $sbxWorkdir = '/' + $sbxDir[0].ToString().ToLower() + ($sbxDir.Substring(2) -replace '\\', '/')
-        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude --dangerously-skip-permissions @Rest
+        sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude --permission-mode auto @Rest
         return
     }
 
@@ -279,6 +300,211 @@ function claude {
     }
     $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
     sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
+}
+
+function nlm-login {
+    param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.'
+    )
+    $targetDir = (Get-Item $Directory).FullName
+    $scriptPath = Join-Path $targetDir '.devcontainer\nlm-login.ps1'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "$scriptPath が見つかりません。"
+        return
+    }
+    & $scriptPath
+}
+
+function gws-login {
+    param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.',
+        [switch]$Force
+    )
+
+    $targetDir = (Get-Item $Directory).FullName
+
+    if (-not (Test-Path (Join-Path $targetDir '.devcontainer') -PathType Container)) {
+        Write-Error "$targetDir に .devcontainer が見つかりません。"
+        return
+    }
+
+    $compose   = Join-Path $targetDir '.devcontainer\docker-compose.yml'
+    $container = (Get-Item $targetDir).Name
+
+    $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+    if ($status -ne 'running') {
+        Write-Host "Starting container..." -ForegroundColor Cyan
+        docker compose -f $compose up -d
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
+
+        $ready = $false
+        for ($i = 0; $i -lt 30; $i++) {
+            $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+            if ($status -eq 'running') { $ready = $true; break }
+            Start-Sleep -Seconds 2
+        }
+        if (-not $ready) {
+            Write-Error "$container did not start"
+            docker compose -f $compose logs node
+            return
+        }
+    } else {
+        Write-Host "Container already running ($container)" -ForegroundColor Green
+    }
+
+    $scriptPath = Join-Path $targetDir '.devcontainer\gws-login.ps1'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "$scriptPath が見つかりません。"
+        return
+    }
+    & $scriptPath -ContainerName $container -Force:$Force
+}
+
+function Get-CpuPower {
+    param(
+        [Parameter(Mandatory=$false)]
+        [ValidateSet('AC','DC','Both')]
+        [string]$Power = 'Both'
+    )
+
+    # Auto-detect the GUID and Name of the active power scheme
+    $activeScheme = powercfg /getactivescheme
+    $guid = if ($activeScheme -match '([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') { $Matches[1] } else { '' }
+    $schemeName = if ($activeScheme -match '\((.*)\)') { $Matches[1] } else { '' }
+
+    Write-Host "`n=== Active Power Scheme: $guid ($schemeName) ===" -ForegroundColor Cyan
+
+    $targets = @('PROCTHROTTLEMAX', 'PERFBOOSTMODE', 'PROCTHROTTLEMIN')
+    $results = [System.Collections.Generic.List[PSObject]]::new()
+
+    foreach ($target in $targets) {
+        $query = powercfg /q $guid SUB_PROCESSOR $target 2>$null
+        if (-not $query) { continue }
+        $queryStr = $query -join "`n"
+
+        $acHex = if ($queryStr -match '(?:AC|AC 電源設定|Current AC Power Setting).*?: 0x([0-9a-fA-F]+)') { $Matches[1] } else { $null }
+        $dcHex = if ($queryStr -match '(?:DC|DC 電源設定|Current DC Power Setting).*?: 0x([0-9a-fA-F]+)') { $Matches[1] } else { $null }
+
+        if ($acHex -or $dcHex) {
+            $acVal = if ($acHex) { [Convert]::ToInt32($acHex, 16) } else { 'N/A' }
+            $dcVal = if ($dcHex) { [Convert]::ToInt32($dcHex, 16) } else { 'N/A' }
+
+            if ($target -like '*THROTTLE*') {
+                $acDisp = if ($acVal -ne 'N/A') { "$acVal%" } else { 'N/A' }
+                $dcDisp = if ($dcVal -ne 'N/A') { "$dcVal%" } else { 'N/A' }
+            } elseif ($target -eq 'PERFBOOSTMODE') {
+                $boostMap = @{0='0 (Disabled)'; 1='1 (Enabled)'; 2='2 (Aggressive)'}
+                $acDisp = if ($boostMap.ContainsKey($acVal)) { $boostMap[$acVal] } else { "$acVal" }
+                $dcDisp = if ($boostMap.ContainsKey($dcVal)) { $boostMap[$dcVal] } else { "$dcVal" }
+            } else {
+                $acDisp = "$acVal"
+                $dcDisp = "$dcVal"
+            }
+
+            $obj = [PSCustomObject]@{ Setting = $target }
+            if ($Power -eq 'AC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'AC (Power)' -Value $acDisp }
+            if ($Power -eq 'DC' -or $Power -eq 'Both') { $obj | Add-Member -MemberType NoteProperty -Name 'DC (Battery)' -Value $dcDisp }
+
+            $results.Add($obj)
+        }
+    }
+
+    if ($results.Count -gt 0) {
+        $results | Format-Table -AutoSize
+    } else {
+        Write-Host "Processor power settings not found." -ForegroundColor Yellow
+    }
+}
+
+function Set-CpuPower {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateRange(0,100)]
+        [int]$ThrottleMax,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet(0,1,2)]  # 0=Disabled, 1=Enabled, 2=Aggressive
+        [int]$BoostMode = 0,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateSet('AC','DC','Both')]
+        [string]$Power = 'DC'  # DC = on battery
+    )
+
+    # Auto-detect the GUID of the active power scheme
+    $activeScheme = powercfg /getactivescheme
+    $guid = if ($activeScheme -match '([0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12})') { $Matches[1] } else { '' }
+
+    if ($Power -eq 'DC' -or $Power -eq 'Both') {
+        powercfg /setdcvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX $ThrottleMax
+        powercfg /setdcvalueindex $guid SUB_PROCESSOR PERFBOOSTMODE $BoostMode
+    }
+    if ($Power -eq 'AC' -or $Power -eq 'Both') {
+        powercfg /setacvalueindex $guid SUB_PROCESSOR PROCTHROTTLEMAX $ThrottleMax
+        powercfg /setacvalueindex $guid SUB_PROCESSOR PERFBOOSTMODE $BoostMode
+    }
+
+    powercfg /setactive $guid
+    Write-Host "Applied: GUID=$guid / ThrottleMax=$ThrottleMax% / BoostMode=$BoostMode / Target=$Power"
+}
+
+function Enable-TailnetPort {
+    param(
+        [ValidateRange(1,65535)]
+        [int]$Port = 22,
+
+        [ValidateSet('TCP','UDP')]
+        [string]$Protocol = 'TCP'
+    )
+
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        Write-Error "Administrator privileges required. Please reopen PowerShell as Administrator."
+        return
+    }
+
+    # Auto-detect the tailnet range from this machine's current Tailscale IP
+    $tailscaleIp = (tailscale ip -4 2>$null | Select-Object -First 1)
+    if (-not $tailscaleIp) {
+        Write-Error "Could not retrieve Tailscale IP. Please check that Tailscale is running."
+        return
+    }
+
+    $octets = $tailscaleIp.Trim() -split '\.'
+    $maskedSecondOctet = [int]$octets[1] -band 0xC0
+    $tailnetCidr = "{0}.{1}.0.0/10" -f $octets[0], $maskedSecondOctet
+
+    try {
+        New-NetFirewallRule -DisplayName "Allow $Protocol $Port (Tailnet only)" -Direction Inbound -Protocol $Protocol -LocalPort $Port -RemoteAddress $tailnetCidr -Action Allow -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Error "Failed to create firewall rule: $($_.Exception.Message)"
+        return
+    }
+
+    Write-Host "Firewall rule created: $Protocol $Port allowed from $tailnetCidr (detected via $tailscaleIp)" -ForegroundColor Green
+}
+
+function Get-TailnetPorts {
+    $rules = Get-NetFirewallRule -DisplayName "Allow * (Tailnet only)" -ErrorAction SilentlyContinue
+    if (-not $rules) {
+        Write-Host "No tailnet-only firewall rules found." -ForegroundColor DarkGray
+        return
+    }
+
+    $rules | ForEach-Object {
+        $portFilter = $_ | Get-NetFirewallPortFilter
+        $addressFilter = $_ | Get-NetFirewallAddressFilter
+        [PSCustomObject]@{
+            DisplayName   = $_.DisplayName
+            Protocol      = $portFilter.Protocol
+            LocalPort     = $portFilter.LocalPort
+            RemoteAddress = $addressFilter.RemoteAddress -join ','
+            Direction     = $_.Direction
+            Enabled       = $_.Enabled
+        }
+    } | Format-Table -AutoSize
 }
 
 function Get-ServerMode {
@@ -397,6 +623,16 @@ function Setup-Windows {
     $scriptPath = "$HOME\workspace\My_init_setting\windows\Start-Setup.ps1"
     & $scriptPath @PSBoundParameters
 }
+
+function Clear-DesktopTaskbar {
+    param([switch]$DryRun)
+    $scriptPath = "$HOME\workspace\My_init_setting\windows\settings\Clear-DesktopTaskbar.ps1"
+    if (Test-Path $scriptPath) {
+        & $scriptPath @PSBoundParameters
+    } else {
+        Write-Host "Error: Could not find $scriptPath" -ForegroundColor Red
+    }
+}
 '@
 
 if ($ProfileType -eq 'Clinic') {
@@ -409,8 +645,11 @@ $managedSection = "$markerStart`n$part1`n$part2`n$markerEnd"
 # The profile was reset in step 1, so write the managed section to the clean file
 $newContent = "$managedSection`n"
 
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($profilePath, $newContent, $utf8NoBom)
+# Write file with UTF-8 BOM. Without BOM, Windows PowerShell 5.1 reads the profile
+# using the system ANSI code page (e.g. Shift-JIS in Japanese locale),
+# which misinterprets UTF-8 bytes in comments/messages and causes parse errors.
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($profilePath, $newContent, $utf8Bom)
 
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 
