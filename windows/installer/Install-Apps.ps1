@@ -1,6 +1,53 @@
-﻿param([switch]$Update, [switch]$DryRun, [string]$Profile = '', [switch]$IncludeLocalApps)
+﻿param([switch]$Update, [switch]$DryRun, [string]$Profile = '', [switch]$IncludeLocalApps,
+      [switch]$Prune, [switch]$Force)
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
+
+# --- Managed-package manifest ---
+# Records the exact package lists applied on the last successful (non-DryRun) run so
+# that -Prune can tell which packages this script previously managed but that have
+# since been removed from the list files. Lives next to Start-Setup.ps1's
+# install-profile.txt.
+$manifestFile = "$env:LOCALAPPDATA\MyInitSetting\installed-manifest.json"
+
+# Pure helper (no side effects) so it can be unit-tested: returns, per manager, the
+# IDs present in $Previous but absent from $Current.
+function Get-PrunePlan {
+    param([hashtable]$Previous, [hashtable]$Current)
+    $plan = @{}
+    foreach ($mgr in 'winget', 'choco', 'npm', 'uv') {
+        $old = @($Previous[$mgr])
+        $new = @($Current[$mgr])
+        $plan[$mgr] = @($old | Where-Object { $_ -and ($_ -notin $new) })
+    }
+    return $plan
+}
+
+function Read-InstalledManifest {
+    if (-not (Test-Path $manifestFile)) { return $null }
+    try {
+        return Get-Content $manifestFile -Raw | ConvertFrom-Json
+    } catch {
+        Write-Warning "Could not parse manifest ${manifestFile}: $_"
+        return $null
+    }
+}
+
+function Save-InstalledManifest {
+    param([hashtable]$Lists, [string]$ProfileName)
+    if ($DryRun) { return }
+    $dir = Split-Path $manifestFile
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $payload = [ordered]@{
+        profile   = $ProfileName
+        updatedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        winget    = @($Lists.winget)
+        choco     = @($Lists.choco)
+        npm       = @($Lists.npm)
+        uv        = @($Lists.uv)
+    }
+    $payload | ConvertTo-Json | Set-Content -Path $manifestFile -Encoding UTF8
+}
 
 if ($Profile -eq 'Clinic') {
     . "$PSScriptRoot\packages\winget-packages-clinic.ps1"
@@ -12,6 +59,14 @@ if ($Profile -eq 'Clinic') {
     . "$PSScriptRoot\packages\choco-packages.ps1"
     . "$PSScriptRoot\packages\npm-packages.ps1"
     . "$PSScriptRoot\packages\uv-packages.ps1"
+}
+
+$effectiveProfile = if ($Profile -eq 'Clinic') { 'Clinic' } else { 'Default' }
+$currentLists = @{
+    winget = @($wingetPackages)
+    choco  = @($chocoPackages)
+    npm    = @($npmPackages)
+    uv     = @($uvToolPackages)
 }
 
 # --- winget ---
@@ -175,3 +230,121 @@ if ($uvToolPackages.Count -gt 0) {
         if ($Update) { uv tool upgrade $pkg }
     }
 }
+
+# --- Reconcile: remove packages dropped from the lists ---
+# Only touches packages this script previously recorded as managed (in the
+# manifest) that are no longer present in the current list files. Manual apps and
+# anything not in the manifest are never considered. Opt-in via -Prune.
+$pruneResults = @()
+function Add-PruneResult([string]$Pkg, [string]$Status, [string]$Message) {
+    $script:pruneResults += @{ Pkg = $Pkg; Status = $Status; Message = $Message }
+}
+
+function Test-PackageInstalled([string]$Manager, [string]$Id) {
+    switch ($Manager) {
+        'winget' {
+            winget list -e --id $Id --accept-source-agreements | Out-Null
+            return $LASTEXITCODE -eq 0
+        }
+        'choco' {
+            $installedIds = (choco list --local-only -r) | ForEach-Object { ($_ -split '\|')[0] }
+            return $Id -in $installedIds
+        }
+        'npm' {
+            npm ls -g --depth=0 $Id 2>&1 | Out-Null
+            return $LASTEXITCODE -eq 0
+        }
+        'uv' {
+            $tools = uv tool list 2>$null
+            return [bool]($tools | Where-Object { $_ -match "^$([regex]::Escape($Id))(\s|$)" })
+        }
+    }
+    return $false
+}
+
+function Invoke-PackageUninstall([string]$Manager, [string]$Id) {
+    switch ($Manager) {
+        'winget' { winget uninstall -e --id $Id --accept-source-agreements }
+        'choco'  { choco uninstall $Id -y }
+        'npm'    { npm uninstall -g $Id }
+        'uv'     { uv tool uninstall $Id }
+    }
+}
+
+if ($Prune) {
+    Write-Host "`nReconciling installed packages against the lists..." -ForegroundColor Cyan
+    $manifest = Read-InstalledManifest
+
+    if ($null -eq $manifest) {
+        Write-Host "No manifest found - recording current state, nothing to prune on first run." -ForegroundColor DarkGray
+    } elseif ($manifest.profile -and $manifest.profile -ne $effectiveProfile) {
+        Write-Warning "Manifest profile '$($manifest.profile)' differs from current '$effectiveProfile'; skipping prune. Re-run -Prune to reconcile against the new profile."
+    } else {
+        $previousLists = @{
+            winget = @($manifest.winget)
+            choco  = @($manifest.choco)
+            npm    = @($manifest.npm)
+            uv     = @($manifest.uv)
+        }
+        $plan = Get-PrunePlan -Previous $previousLists -Current $currentLists
+        $totalToRemove = @($plan.Values | ForEach-Object { $_ }).Count
+
+        if ($totalToRemove -eq 0) {
+            Write-Host "Nothing to prune - installed set already matches the lists." -ForegroundColor DarkGray
+        }
+
+        foreach ($mgr in 'winget', 'choco', 'npm', 'uv') {
+            foreach ($pkg in $plan[$mgr]) {
+                if (-not (Test-PackageInstalled $mgr $pkg)) {
+                    Write-Host "$pkg ($mgr) already absent, skipping." -ForegroundColor DarkGray
+                    Add-PruneResult $pkg 'SKIP' 'already absent'
+                    continue
+                }
+                if ($DryRun) {
+                    switch ($mgr) {
+                        'winget' { Write-Host "[DRY RUN] winget uninstall -e --id $pkg" -ForegroundColor Yellow }
+                        'choco'  { Write-Host "[DRY RUN] choco uninstall $pkg -y" -ForegroundColor Yellow }
+                        'npm'    { Write-Host "[DRY RUN] npm uninstall -g $pkg" -ForegroundColor Yellow }
+                        'uv'     { Write-Host "[DRY RUN] uv tool uninstall $pkg" -ForegroundColor Yellow }
+                    }
+                    Add-PruneResult $pkg 'DRYRUN' "$mgr"
+                    continue
+                }
+                if (-not $Force) {
+                    $answer = Read-Host "Uninstall $pkg ($mgr)? [y/N]"
+                    if ($answer -notmatch '^(y|yes)$') {
+                        Write-Host "Keeping $pkg." -ForegroundColor DarkGray
+                        Add-PruneResult $pkg 'SKIP' 'declined'
+                        continue
+                    }
+                }
+                Write-Host "Uninstalling $pkg ($mgr)..." -ForegroundColor Cyan
+                try {
+                    Invoke-PackageUninstall $mgr $pkg
+                    Add-PruneResult $pkg 'OK' "removed via $mgr"
+                } catch {
+                    Write-Warning "Failed to uninstall ${pkg}: $_"
+                    Add-PruneResult $pkg 'ERR' $_.Exception.Message
+                }
+            }
+        }
+
+        if ($pruneResults.Count -gt 0) {
+            Write-Host "`n=== Prune Summary ===" -ForegroundColor Cyan
+            foreach ($r in $pruneResults) {
+                $color = 'White'
+                if ($r.Status -eq 'OK')     { $color = 'Green' }
+                if ($r.Status -eq 'SKIP')   { $color = 'DarkGray' }
+                if ($r.Status -eq 'DRYRUN') { $color = 'Yellow' }
+                if ($r.Status -eq 'ERR')    { $color = 'Red' }
+                $msg = if ($r.Message) { "  - $($r.Message)" } else { '' }
+                Write-Host ("[$($r.Status)]".PadRight(9) + "$($r.Pkg)$msg") -ForegroundColor $color
+            }
+        }
+    }
+}
+
+# --- Save the managed-package manifest ---
+# Always reflects the state this run converged to, so the next -Prune knows what
+# was previously managed.
+Save-InstalledManifest -Lists $currentLists -ProfileName $effectiveProfile

@@ -27,6 +27,37 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | `Start-Setup.ps1 -SyncSecrets` | Bitwarden → SecretStore 同期のみ |
 | `Start-Setup.ps1 -DryRun` | 変更なしで実行内容を確認 |
 | `Start-Setup.ps1 -Update -DryRun` | 更新内容を確認 |
+| `Start-Setup.ps1 -Prune` | パッケージリストから削除された項目をアンインストール（[詳細](#パッケージ整合prune)） |
+| `Start-Setup.ps1 -Prune -Force` | 同上。個別確認をスキップ |
+| `Start-Setup.ps1 -Update -Prune` | 更新と同時に整合 |
+
+#### パッケージ整合（prune）
+
+`-Prune` を付けると、`installer/packages/*.ps1` から**削除した**パッケージを実機からアンインストールする。
+
+**仕組み**
+
+- `Install-Apps.ps1` は正常終了時（`-DryRun` 以外）に、その回のパッケージリスト（winget / choco / npm / uv）を
+  `%LOCALAPPDATA%\MyInitSetting\installed-manifest.json` に記録する。
+- 次回 `-Prune` を付けて実行すると、マニフェストに載っていて現在のリストに無いものだけを削除候補にする。
+- **マニフェストに記録されていないパッケージ（手動導入アプリ、Store アプリ、システムコンポーネント等）には一切触れない。**
+- 対象は winget / choco / npm グローバル / uv tools のみ。PowerShell モジュール・Node.js・`packages/local/`（orca/bartender）は対象外。
+
+**運用フロー**
+
+```powershell
+# 1. 不要になったパッケージを installer/packages/choco-packages.ps1 等から削除
+# 2. 何が消えるか確認
+Start-Setup.ps1 -Prune -DryRun
+# 3. 実行（各パッケージごとに y/N を確認）
+Start-Setup.ps1 -Prune
+```
+
+**注意**
+
+- **初回**（マニフェスト未生成）は記録のみで、削除は行わない。整合が効くのは 2 回目以降。
+- profile（Default / Clinic）が前回と変わっている場合は誤削除防止のため prune をスキップする。同じ profile で再実行すること。
+- `-Force` は個別確認（`y/N`）を省略して一括削除する。
 
 #### settings サブコマンド
 
@@ -135,6 +166,13 @@ Chocolatey コミュニティリポジトリに存在しない社内/私物ア�
 |----|------|
 | `orca` | AI orchestrator CLI。GitHub Releases から都度ダウンロード |
 | `bartender` | BarTender ラベル発行ソフト（クリニック用）。インストーラーは別途 `CHOCO_LOCAL_ASSETS` 配下に配置が必要 |
+
+**パッケージ整合（`-Prune`）:**
+
+正常終了時に適用済みパッケージリストを `%LOCALAPPDATA%\MyInitSetting\installed-manifest.json` に記録する。
+`-Prune` を付けて実行すると、マニフェストに載っていて現在のリストに無い winget / choco / npm / uv パッケージを
+（インストール済みか確認したうえで、既定では個別 `y/N` 確認、`-Force` で一括）アンインストールする。
+マニフェスト非記録のパッケージには触れない。詳細は [パラメーター > パッケージ整合](#パッケージ整合prune) を参照。
 
 ---
 

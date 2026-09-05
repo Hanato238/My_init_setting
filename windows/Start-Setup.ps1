@@ -7,6 +7,8 @@ param(
     [switch]$IncludeLocalApps,
     [switch]$Clinic,
     [switch]$DryRun,
+    [switch]$Prune,
+    [switch]$Force,
     # Settings subcommands
     [switch]$ServerMode,
     [switch]$Aliases,
@@ -37,6 +39,8 @@ if (-not $PSScriptRoot) {
     if ($IncludeLocalApps) { $argList += '-IncludeLocalApps' }
     if ($Clinic)          { $argList += '-Clinic' }
     if ($DryRun)          { $argList += '-DryRun' }
+    if ($Prune)           { $argList += '-Prune' }
+    if ($Force)           { $argList += '-Force' }
     if ($ServerMode)      { $argList += '-ServerMode' }
     if ($Aliases)         { $argList += '-Aliases' }
     if ($McpServers)      { $argList += '-McpServers' }
@@ -110,7 +114,7 @@ if ($settingsSubcommand) {
 }
 
 if ($Clinic) {
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic'; IncludeLocalApps = $IncludeLocalApps }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; Profile = 'Clinic'; IncludeLocalApps = $IncludeLocalApps; Prune = $Prune; Force = $Force }
     Save-InstallProfile 'Clinic'
     Add-Result 'Install-Office.ps1'         'WARN' 'skipped (not required for Clinic)'
     Add-Result 'Initialize-Security.ps1'    'WARN' 'skipped (not required for Clinic)'
@@ -122,7 +126,7 @@ if ($Clinic) {
 } elseif ($Update) {
     $savedProfile = if (Test-Path $profileFile) { (Get-Content $profileFile -Raw).Trim() } else { '' }
     $isClinic     = $savedProfile -eq 'Clinic'
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun; Profile = $savedProfile; IncludeLocalApps = $IncludeLocalApps }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ Update = $true; DryRun = $DryRun; Profile = $savedProfile; IncludeLocalApps = $IncludeLocalApps; Prune = $Prune; Force = $Force }
     if ($isClinic) {
         Add-Result 'Initialize-Security.ps1' 'WARN' 'skipped (not required for Clinic)'
         Add-Result 'Setup-Wsl.ps1'           'WARN' 'skipped (not required for Clinic)'
@@ -141,7 +145,7 @@ if ($Clinic) {
     }
     Invoke-Script 'Set-WindowsSettings.ps1' "$PSScriptRoot\settings\Set-WindowsSettings.ps1"  @{ DryRun = $DryRun }
 } else {
-    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; IncludeLocalApps = $IncludeLocalApps }
+    Invoke-Script 'Install-Apps.ps1'        "$PSScriptRoot\installer\Install-Apps.ps1"        @{ DryRun = $DryRun; IncludeLocalApps = $IncludeLocalApps; Prune = $Prune; Force = $Force }
     Save-InstallProfile 'Default'
     if ($IncludeOffice) {
         Invoke-Script 'Install-Office.ps1'  "$PSScriptRoot\installer\Install-Office.ps1"      @{ DryRun = $DryRun }
