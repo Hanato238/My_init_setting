@@ -457,6 +457,7 @@ claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</s
           <h3>取り込む API キーを宣言する</h3>
           <p>
             <code>.devcontainer/secrets.list</code> に環境変数名を 1 行 1 つ書く（値は書かない）。
+            よく使う API キー名の候補がコメントで入っているので、使う行の <code>#</code> を外すだけでよい。
             <code>bws-login</code> 実行時に <code>load-secrets.sh</code> が走り、
             ホスト env → bws の順に解決して <code>~/.secrets</code>（600）へ。以降シェル起動時に自動読込。
           </p>
@@ -532,7 +533,7 @@ claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボ�
 BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
         </div>
         <dl>
-          <dt>リスト</dt><dd><code>.devcontainer/secrets.list</code> — 1 行 1 変数名、<code>#</code> コメント可</dd>
+          <dt>リスト</dt><dd><code>.devcontainer/secrets.list</code> — 1 行 1 変数名、<code>#</code> コメント可。よく使うキーの候補入り</dd>
           <dt>ホスト側</dt><dd>ホストから渡したい変数は <code>environment:</code> にも名前を追加する</dd>
           <dt>保存先</dt><dd><code>~/.secrets</code>（600）／ <code>/etc/profile.d/secrets.sh</code> がシェル起動時に source</dd>
           <dt>安全側</dt><dd>bws を参照できない（トークン無し／認証失敗）ときは既存の <code>~/.secrets</code> を上書きしない</dd>
