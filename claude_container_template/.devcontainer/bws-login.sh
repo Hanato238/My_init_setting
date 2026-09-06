@@ -11,6 +11,13 @@
 #   .devcontainer/bws-login.sh                         # 対話入力 (エコーなし)
 #
 # ホスト側からまとめて実行したい場合は .devcontainer/bws-login.ps1 を使う。
+#
+# セキュリティ注意:
+#  - このトークンは対象プロジェクトの全シークレットへのアクセス権を持つ。dev コンテナ限定で
+#    使い、リポジトリにコミットしたり共有したりしないこと。漏洩時は Bitwarden 側でローテート。
+#  - 保存後はログインシェル/対話シェルが BWS_ACCESS_TOKEN を常時 export する (利便性優先の設計)。
+#    そのシェルから起動した Claude Code や MCP サーバーもトークンを環境変数として参照できる。
+#  - 引数でトークンを渡すとシェル履歴と /proc/<pid>/cmdline に残る。可能なら対話入力を使う。
 set -euo pipefail
 
 TOKEN="${1:-${BWS_ACCESS_TOKEN:-}}"

@@ -18,6 +18,12 @@
   自動 export します。トークンはコンテナを作り直すまで有効です
   (作り直したら再実行してください)。
 
+  セキュリティ: このトークンは対象プロジェクトの全シークレット読み取り権を持ちます。
+  自動 export のため、コンテナ内シェルから起動した Claude Code / MCP サーバーも
+  トークンを環境変数として参照できます (利便性優先の設計)。dev コンテナ限定で使い、
+  コミット・共有はしないこと。漏洩時は Bitwarden 側でトークンをローテートします。
+  -Token 引数はホストのコマンド履歴に残るため、環境変数かプロンプト入力を推奨します。
+
   コンテナ名はこのスクリプトの親ディレクトリ名から自動判定します
   (docker-compose.yml の container_name と同じ規則)。
 
@@ -77,7 +83,11 @@ try {
     docker cp $tmpFile "${ContainerName}:$credPath"
     if ($LASTEXITCODE -ne 0) { Write-Error "コンテナへのトークンのコピーに失敗しました。"; exit $LASTEXITCODE }
 } finally {
-    Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
+    # %TEMP% は本人 ACL のみだが、削除前に上書きして平文トークンをディスクに残さない。
+    if (Test-Path $tmpFile) {
+        [System.IO.File]::WriteAllText($tmpFile, ('0' * 512))
+        Remove-Item -Path $tmpFile -ErrorAction SilentlyContinue
+    }
 }
 
 docker exec -u root $ContainerName bash -lc "chown node:node $credDir $credPath && chmod 600 $credPath"

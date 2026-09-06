@@ -9,7 +9,9 @@
 # bws (Bitwarden Secrets Manager CLI): Dockerfile でバイナリを導入済み。アクセストークンは
 # コンテナ内 ~/.config/bws/access-token に保存する。初回だけコンテナ内で
 # `.devcontainer/bws-login.sh <token>`、またはホストから `.devcontainer/bws-login.ps1` を実行。
-# 保存したトークンはログインシェルで BWS_ACCESS_TOKEN として自動 export される。
+# 保存したトークンはログインシェルで BWS_ACCESS_TOKEN として自動 export される
+# (利便性優先。そのシェルから起動する Claude Code / MCP サーバーもトークンを参照できる点に留意)。
+# トークンは対象プロジェクトの全シークレット読み取り権を持つ。dev 限定・コミット禁止。
 # コンテナ作り直しのたびに保存し直すのが面倒なら、下の access-token マウントを有効化する。
 
 name: claude_container_template
