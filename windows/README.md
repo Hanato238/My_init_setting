@@ -155,7 +155,8 @@ Chocolatey 経由でアプリを一括インストールし、npm でグロー�
 - `@google/gemini-cli`
 
 **cargo パッケージ:**
-- `bws` — Bitwarden Secrets Manager CLI（winget/choco/npm に公式パッケージが無いため crates.io からソースビルド）
+- `bws` — Bitwarden Secrets Manager CLI（winget/choco/npm に公式パッケージが無いため crates.io からソースビルド）。
+  `Initialize-Security.ps1` が API キー取得に使う実行時依存でもある
 
 `installer/packages/cargo-packages.ps1` に定義する。`Rustlang.Rustup`（winget リスト）で入る Rust ツールチェーンと、
 ネイティブ依存をビルドするための MSVC ビルドツールが必要。`cargo` が PATH に無い場合はスキップして警告のみ出す
@@ -199,30 +200,37 @@ WSL2 を有効化し Ubuntu をインストールする。有効化後に再起�
 
 ---
 
-### `installer/Initialize-Security.ps1` — Bitwarden → SecretStore
+### `installer/Initialize-Security.ps1` — Bitwarden Secrets Manager → SecretStore
 
-Bitwarden の `api_keys` フォルダに保存した API キーを PowerShell SecretStore（`LocalStore` Vault）に取り込む。
+Bitwarden Secrets Manager のプロジェクトに登録したシークレットを PowerShell SecretStore（`LocalStore` Vault）に取り込む。
 
 **フロー:**
 
 ```
-Bitwarden (クラウド)
-  └─ bw login / unlock / sync
-      └─ api_keys フォルダのアイテムを取得
+Bitwarden Secrets Manager (クラウド)
+  └─ bws secret list（アクセストークンは環境変数 or 対話貼り付け・非保存）
+      └─ SM secret の key → シークレット名、value → 値
           └─ SecretStore (LocalStore) に保存
               └─ Load-SecretEnvironment → 環境変数として利用可能
 ```
 
-**値の取得優先順位:**
-1. `login.password`
-2. `notes`（Secure Note）
-3. カスタムフィールド（名前が `value / api_key / secret / password / key` にマッチするもの）
+SM secret は素の key/value を持つため、旧 `bw` 方式の「`login.password` → `notes` → フィールド名マッチ」の優先順位ロジックは廃止。
+key が環境変数名として不正なもの（英数字・アンダースコア以外を含む等）は警告してスキップする。
+
+**アクセストークン:**
+- 環境変数 `BWS_ACCESS_TOKEN` があればそれを使用（CI 向け）。無ければ非表示プロンプトで入力。
+- スクリプトプロセス内のみで使用し、プロンプト入力分は終了時に破棄。平文ファイル・恒久環境変数・SecretStore には保存しない。
+- トークンはマシンアカウント権限＝指定プロジェクトの**読み取りのみ**。個人 Vault（ログイン・TOTP・カード等）には一切アクセスしない。
+- 対象プロジェクトを絞る場合は環境変数 `BWS_PROJECT`（名前 or GUID）または `-BwsProject`。未指定ならマシンアカウントが読める全シークレット。
 
 **SecretStore の設定:**
 - `Authentication None` — パスワード不要でアクセス可能
 - `Interaction None` — 対話プロンプトを抑制
 
-セットアップ後は PowerShell プロファイルから `Sync-ApiKeys` コマンドで再同期できる。
+**事前準備（一度きり・手動）:** 旧 `api_keys` Vault フォルダのアイテムを Secrets Manager プロジェクトへ移行する
+（各アイテムの名前を secret の key、値を secret の value にする。key は環境変数として有効な識別子にすること）。
+
+セットアップ後は PowerShell プロファイルから `Sync-ApiKeys` コマンドで再同期できる（アクセストークンの入力を求められる）。
 
 ---
 
@@ -256,7 +264,7 @@ PowerShell プロファイル（`$PROFILE`）をリセットしてから、エ�
 | 関数 | 説明 |
 |------|------|
 | `Load-SecretEnvironment` | SecretStore のシークレットを環境変数に展開。プロファイル読み込み時に自動実行 |
-| `Sync-ApiKeys` | `Start-Setup.ps1 -Update -SyncSecrets` のエイリアス。Bitwarden から最新キーを取得・反映 |
+| `Sync-ApiKeys` | `Initialize-Security.ps1` を実行し Bitwarden Secrets Manager から最新キーを取得・反映（アクセストークンの入力を求められる） |
 | `Setup-Windows` | `Start-Setup.ps1` のエイリアス。全パラメーターを透過的に渡す |
 | `Set-ServerMode` | `settings/Set-ServerMode.ps1` のエイリアス。`-DryRun` を透過的に渡す |
 | `servermode` / `Get-ServerMode` | `Set-ServerMode.ps1` で設定したサーバー化設定の現在状態をチェックリスト表示（読み取りのみ） |

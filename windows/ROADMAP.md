@@ -207,6 +207,28 @@ winget/choco/npm に無いツール（`bws` = Bitwarden Secrets Manager CLI）�
 
 ---
 
+## 追加実装済み — API キー取得を `bw` → `bws`（Secrets Manager）へ移行
+
+`Initialize-Security.ps1` が扱う認証情報を Bitwarden **マスターパスワード**（個人 Vault 全体を読み書き）から
+Secrets Manager の**マシンアカウントトークン**（指定プロジェクトの読み取りのみ）に変更し、漏洩時の被害範囲を縮小した。
+Windows / WSL(`ubuntu/`) / Termux(`android/`) の 3 プラットフォームを同時に移行。
+
+| 項目 | 決定 |
+|------|------|
+| 取得元 | `bws secret list`（`bw login`/`unlock`/`sync`・`BW_SESSION`・`api_keys` フォルダは廃止） |
+| トークン保持 | 環境変数 `BWS_ACCESS_TOKEN` があれば使用、無ければ非表示プロンプト。プロセス内のみ・非保存（平文ファイル/恒久 env/SecretStore いずれも不可）|
+| プロジェクト指定 | 非シークレットの `BWS_PROJECT`（名前 or GUID）/ `-BwsProject`。未指定＝全シークレット |
+| 値の抽出 | SM secret の `key`/`value` を直接使用。旧「`login.password`→`notes`→フィールド名マッチ」ロジック廃止 |
+| key 検証 | 環境変数名として不正な key は警告してスキップ（旧 Termux の `gsub` マングリングは廃止）|
+| 下流 | 変更なし（Windows=SecretStore、WSL/Termux=`~/.secrets` chmod 600、`Load-SecretEnvironment` は据え置き）|
+| bws 導入 | Windows=cargo（既存）、WSL/Termux=`sdk-sm` リリースの musl バイナリを `~/.local/bin` へ |
+| 事前準備 | `api_keys` Vault フォルダ → SM プロジェクトへの移行は手動（一度きり）|
+| WSL の副次改善 | `--passwordenv BW_PASSWORD`（マスターパスワードを環境変数に置く）を完全撤廃 |
+
+未対応（別スコープ）: SM から削除されたシークレットの SecretStore 側への削除伝播（現状は upsert のみ、`bw` 時代と同じ）。
+
+---
+
 ## スコープ外（変更なし）
 
 | スクリプト | 理由 |

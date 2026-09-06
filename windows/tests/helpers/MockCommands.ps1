@@ -6,7 +6,7 @@ function winget   { Write-Host "MOCK: winget $args" }
 function choco    { Write-Host "MOCK: choco $args" }
 function nvm      { Write-Host "MOCK: nvm $args" }
 function npm      { Write-Host "MOCK: npm $args" }
-function bw       { Write-Host "MOCK: bw $args" }
+function bws      { Write-Host "MOCK: bws $args" }
 function jq       { Write-Host "MOCK: jq $args" }
 function claude   { Write-Host "MOCK: claude $args" }
 function gemini   { Write-Host "MOCK: gemini $args" }

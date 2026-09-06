@@ -1,6 +1,11 @@
-﻿param([switch]$DryRun)
+param(
+    [switch]$DryRun,
+    # Non-secret. Bitwarden Secrets Manager project name or GUID to pull from.
+    # Empty = every secret the machine account can read (fine with a single project).
+    [string]$BwsProject = $env:BWS_PROJECT
+)
 
-# Force UTF8 encoding for Bitwarden CLI output
+# Force UTF8 encoding for bws CLI output
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -14,62 +19,68 @@ if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
 }
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 
-# 2. Bitwarden Login & Unlock
-$status = bw status | ConvertFrom-Json
-if ($status.status -eq "unauthenticated") {
-    Write-Host "You are not logged in. Starting Bitwarden login..." -ForegroundColor Cyan
-    bw login
+# 2. Locate the bws binary (cargo installs it under %USERPROFILE%\.cargo\bin,
+#    which is not on PATH until the shell is reopened)
+if (-not (Get-Command bws -ErrorAction SilentlyContinue)) {
+    $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+    if (Test-Path (Join-Path $cargoBin 'bws.exe')) {
+        $env:PATH = "$cargoBin;$env:PATH"
+    } else {
+        Write-Error "bws not found. Run Start-Setup.ps1 first (installs it via cargo)."
+        return
+    }
 }
 
-$unlockOutput = bw unlock --raw
-if ($null -eq $unlockOutput -or [string]::IsNullOrWhiteSpace($unlockOutput)) {
-    Write-Error "Bitwarden unlock failed. Please ensure you are logged in using 'bw login' and try again."
+# 3. Access token. A machine-account token grants read access to one Secrets
+#    Manager project - never the personal vault. It is used from the environment
+#    (CI) or pasted interactively, and is NOT persisted anywhere.
+$tokenFromPrompt = $false
+if ([string]::IsNullOrWhiteSpace($env:BWS_ACCESS_TOKEN)) {
+    $secure = Read-Host -AsSecureString "Bitwarden Secrets Manager access token"
+    $env:BWS_ACCESS_TOKEN = [System.Net.NetworkCredential]::new('', $secure).Password
+    $tokenFromPrompt = $true
+}
+if ([string]::IsNullOrWhiteSpace($env:BWS_ACCESS_TOKEN)) {
+    Write-Error "No access token supplied."
     return
 }
-[string]$session = $unlockOutput.Trim()
-$env:BW_SESSION = $session
-Write-Host "Syncing Bitwarden..." -ForegroundColor Gray
-bw sync --session $env:BW_SESSION | Out-Null
 
-# 3. Get Folder IDs
-$foldersJson = bw list folders --session $env:BW_SESSION | Out-String
-$targetFolders = $foldersJson | ConvertFrom-Json | Where-Object { $_.name -eq "api_keys" }
-
-if (-not $targetFolders) {
-    Write-Error "Folder 'api_keys' not found."
-    return
-}
-
-$allFoundItems = @()
-foreach ($folder in $targetFolders) {
-    $fid = $folder.id
-    Write-Host "Checking folder ID: $fid" -ForegroundColor Gray
-    $itemsJson = bw list items --folderid "$fid" --session "$env:BW_SESSION" | Out-String
-    if ($itemsJson -and $itemsJson -ne "[]") {
-        $itemsInFolder = $itemsJson | ConvertFrom-Json
-        if ($itemsInFolder) { $allFoundItems += $itemsInFolder }
-    }
-}
-
-Write-Host "Found $($allFoundItems.Count) items in total." -ForegroundColor Gray
-
-# 4. Process Items
-$savedList = @()
-foreach ($item in $allFoundItems) {
-    $secretName  = $item.name
-    $secretValue = $null
-
-    if ($item.login -and $item.login.password) {
-        $secretValue = $item.login.password
-    } elseif ($item.notes) {
-        $secretValue = $item.notes
-    }
-    if (-not $secretValue -and $item.fields) {
-        $field = $item.fields | Where-Object { $_.name -match "value|api_key|secret|password|key" } | Select-Object -First 1
-        if ($field) { $secretValue = $field.value }
+try {
+    # Verify auth early for a clean error message
+    bws project list -o none 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "bws authentication failed. Check the access token."
+        return
     }
 
-    if ($secretValue) {
+    # 4. Resolve the optional project filter (accepts a name or a GUID)
+    $projectArg = @()
+    if ($BwsProject) {
+        if ($BwsProject -match '^[0-9a-fA-F-]{36}$') {
+            $projectArg = @($BwsProject)
+        } else {
+            $proj = bws project list -o json | Out-String | ConvertFrom-Json |
+                    Where-Object { $_.name -eq $BwsProject } | Select-Object -First 1
+            if (-not $proj) { Write-Error "Secrets Manager project '$BwsProject' not found."; return }
+            $projectArg = @($proj.id)
+        }
+    }
+
+    # 5. Fetch secrets. Secrets Manager entries carry a real key/value pair, so
+    #    the old login.password / notes / custom-field fallback chain is gone.
+    $secrets = @(bws secret list @projectArg -o json | Out-String | ConvertFrom-Json)
+    Write-Host "Found $($secrets.Count) secret(s) in Secrets Manager." -ForegroundColor Gray
+
+    $savedList = @()
+    foreach ($s in $secrets) {
+        $secretName  = $s.key
+        $secretValue = $s.value
+        if ([string]::IsNullOrWhiteSpace($secretName) -or $null -eq $secretValue) { continue }
+        if ($secretName -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+            Write-Warning "Skipping '$secretName': not a valid environment variable name."
+            continue
+        }
+
         if ($DryRun) {
             Write-Host "[DRY RUN] Would save: $secretName" -ForegroundColor Yellow
         } else {
@@ -79,8 +90,12 @@ foreach ($item in $allFoundItems) {
         $savedList += $secretName
     }
 }
+finally {
+    # Drop the token so it does not linger in the caller's session
+    if ($tokenFromPrompt) { Remove-Item Env:\BWS_ACCESS_TOKEN -ErrorAction SilentlyContinue }
+}
 
-# 5. Final Summary
+# 6. Final Summary
 Write-Host "`n--- Final Summary ---" -ForegroundColor Green
 if ($savedList.Count -gt 0) {
     $savedList | Sort-Object -Unique | ForEach-Object { Write-Host " [+] $_" }

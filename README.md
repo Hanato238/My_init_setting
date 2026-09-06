@@ -44,7 +44,8 @@ bash ubuntu/initialize_security.sh
 ## 設計方針
 
 - **冪等性**: 各スクリプトは何度実行しても安全（既存設定を二重登録しない）
-- **秘密情報管理**: API キーは Bitwarden を唯一の正としてローカルに配布
+- **秘密情報管理**: API キーは Bitwarden Secrets Manager を唯一の正としてローカルに配布
+  - 取得は `bws`（Secrets Manager CLI）+ マシンアカウントのアクセストークン。トークンは実行時に環境変数か対話貼り付けで渡し、平文ファイル・恒久環境変数・SecretStore のいずれにも保存しない
   - Windows: PowerShell SecretStore (`LocalStore` Vault)
-  - Ubuntu: `~/.secrets` ファイル（chmod 600）
+  - Ubuntu / Termux: `~/.secrets` ファイル（chmod 600）
 - **MCP サーバー**: Claude Code・Gemini CLI に共通の MCP サーバー群を登録

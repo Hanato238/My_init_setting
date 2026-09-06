@@ -34,7 +34,7 @@ ubuntu/<name>/
 bash wsl-setup/setup.sh apps        # 1. パッケージ・言語ランタイム・Docker Engine
 bash wsl-setup/setup.sh workspace   # 2. 作業ディレクトリ
 bash wsl-setup/setup.sh aliases     # 3. シェルエイリアス・環境変数ロード
-bash wsl-setup/setup.sh security    # 4. Bitwarden → ~/.secrets
+bash wsl-setup/setup.sh security    # 4. Bitwarden Secrets Manager → ~/.secrets
 bash wsl-setup/setup.sh mcp         # 5. Claude Code MCPサーバー設定
 bash wsl-setup/setup.sh gui         # 6. (任意) GUIデスクトップ環境。WSLでは自動スキップ
 bash wsl-setup/setup.sh all         # 上記 apps/security/aliases/mcp/workspace(/gui) を一括実行
@@ -115,33 +115,41 @@ URL を開くには `wslview`（`wslu` パッケージ）を使用。未イン�
 | 関数 | 説明 |
 |------|------|
 | `load_secret_environment` | `~/.secrets` を読み込んで環境変数に展開。シェル起動時に自動実行 |
-| `sync_api_keys` | `initialize_security.sh` を再実行して Bitwarden から最新のキーを取得し、現在のセッションに反映 |
+| `sync_api_keys` | `initialize_security.sh` を再実行して Bitwarden Secrets Manager から最新のキーを取得し、現在のセッションに反映（アクセストークンの入力を求められる） |
 
 ---
 
-### `initialize_security.sh` — Bitwarden → ~/.secrets
+### `initialize_security.sh` — Bitwarden Secrets Manager → ~/.secrets
 
-Bitwarden の `api_keys` フォルダに保存した API キーを `~/.secrets` に書き出す。
+Bitwarden Secrets Manager のプロジェクトに登録したシークレットを `~/.secrets` に書き出す。
 
 **フロー:**
 
 ```
-Bitwarden (クラウド)
-  └─ bw login / unlock / sync
-      └─ api_keys フォルダのアイテムを取得
-          └─ ~/.secrets に export KEY="value" 形式で書き出し (chmod 600)
+Bitwarden Secrets Manager (クラウド)
+  └─ bws secret list（アクセストークンは環境変数 or 対話貼り付け・非保存）
+      └─ SM secret の key/value
+          └─ ~/.secrets に export KEY='value' 形式で書き出し (chmod 600, @sh で安全にクォート)
               └─ source ~/.secrets → 環境変数として利用可能
 ```
 
-**値の取得優先順位:**
-1. `login.password`
-2. `notes`（Secure Note）
-3. カスタムフィールド（名前が `value / api_key / secret / password / key` にマッチするもの）
+SM secret は素の key/value を持つため、旧 `bw` 方式の優先順位ロジック（`login.password` → `notes` → フィールド名マッチ）は廃止。
+key が環境変数名として不正なものは警告してスキップする。
+
+**アクセストークン:**
+- 環境変数 `BWS_ACCESS_TOKEN` があればそれを使用（CI 向け）。無ければ非表示プロンプトで入力。
+- スクリプトプロセス内のみ・非保存。トークンはマシンアカウント権限＝指定プロジェクトの**読み取りのみ**で、個人 Vault には一切アクセスしない。
+- 旧方式にあった `--passwordenv BW_PASSWORD`（マスターパスワードを環境変数に置く）は撤廃。
+- 対象プロジェクトを絞る場合は環境変数 `BWS_PROJECT`（名前 or GUID）。
 
 **セキュリティ:**
 - `~/.secrets` は `chmod 600`（オーナーのみ読み書き可）
 - Git には含まれない（`.gitignore` 推奨）
-- Bitwarden が唯一の正（ローカルファイルを直接編集しない）
+- Secrets Manager が唯一の正（ローカルファイルを直接編集しない）
+
+**事前準備（一度きり・手動）:** 旧 `api_keys` Vault フォルダのアイテムを Secrets Manager プロジェクトへ移行する
+（アイテム名を secret の key、値を secret の value に。key は環境変数として有効な識別子にすること）。
+`bws` 未インストールならスクリプトが `sdk-sm` リリースの musl バイナリを `~/.local/bin` に入れる。
 
 ```bash
 # 手動で再同期する場合
