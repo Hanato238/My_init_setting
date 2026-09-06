@@ -45,3 +45,11 @@ else
   echo "[bws-login] 警告: bws project list に失敗しました。トークンを確認してください。" >&2
   exit 1
 fi
+
+# secrets.list の許可リストに従って ~/.secrets を生成する（best-effort）。
+LOADER="$(dirname "$0")/load-secrets.sh"
+if [ -r "$LOADER" ]; then
+  echo "[bws-login] secrets.list を読み込みます..."
+  BWS_ACCESS_TOKEN="$TOKEN" bash "$LOADER" \
+    || echo "[bws-login] 警告: load-secrets.sh が失敗しました（後で手動実行できます）。" >&2
+fi

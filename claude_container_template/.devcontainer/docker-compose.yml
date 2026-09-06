@@ -13,6 +13,10 @@
 # (利便性優先。そのシェルから起動する Claude Code / MCP サーバーもトークンを参照できる点に留意)。
 # トークンは対象プロジェクトの全シークレット読み取り権を持つ。dev 限定・コミット禁止。
 # コンテナ作り直しのたびに保存し直すのが面倒なら、下の access-token マウントを有効化する。
+#
+# API キーの取り込みは .devcontainer/secrets.list（許可リスト = 環境変数名の列挙）で制御する。
+# リストの名前を下の environment: にも書けばホストから引き継ぎ（優先）、書かなければ bws から
+# 取得する。反映は .devcontainer/load-secrets.sh（bws-login 実行時にも自動で走り、~/.secrets を生成）。
 
 name: claude_container_template
 

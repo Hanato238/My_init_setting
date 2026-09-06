@@ -44,6 +44,15 @@ RUN printf '%s\n' \
     && chmod 644 /etc/profile.d/bws.sh \
     && printf '\n%s\n' '[ -r /etc/profile.d/bws.sh ] && . /etc/profile.d/bws.sh' >> /etc/bash.bashrc
 
+# API キーは secrets.list の許可リストに従い .devcontainer/load-secrets.sh が
+# ~/.secrets (chmod 600) へ書き込む。ここではそれをシェル起動時に読み込むだけ。
+RUN printf '%s\n' \
+      '# API keys (.devcontainer/load-secrets.sh が ~/.secrets に書く)' \
+      '[ -r "$HOME/.secrets" ] && . "$HOME/.secrets"' \
+      > /etc/profile.d/secrets.sh \
+    && chmod 644 /etc/profile.d/secrets.sh \
+    && printf '\n%s\n' '[ -r /etc/profile.d/secrets.sh ] && . /etc/profile.d/secrets.sh' >> /etc/bash.bashrc
+
 # Google Cloud SDK (gcloud)
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
       > /etc/apt/sources.list.d/google-cloud-sdk.list \

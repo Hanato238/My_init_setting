@@ -13,7 +13,9 @@
     3. ホスト側ファイル %USERPROFILE%\.config\bws\access-token
     4. 対話入力 (エコーなし)
 
-  書き込み後、コンテナ内で `bws project list` を実行して疎通確認します。
+  書き込み後、コンテナ内で `bws project list` を実行して疎通確認し、続けて
+  .devcontainer/load-secrets.sh を実行して secrets.list の許可リストにある変数を
+  ~/.secrets へ取り込みます (ホスト env 優先、無ければ bws)。
   以後コンテナ内のログインシェルは /etc/profile.d/bws.sh 経由で BWS_ACCESS_TOKEN を
   自動 export します。トークンはコンテナを作り直すまで有効です
   (作り直したら再実行してください)。
@@ -98,6 +100,13 @@ docker exec $ContainerName bash -lc 'BWS_ACCESS_TOKEN="$(cat ~/.config/bws/acces
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "bws project list に失敗しました。トークンを確認してください。"
     exit $LASTEXITCODE
+}
+
+Write-Host ""
+Write-Host "secrets.list を読み込みます..."
+docker exec $ContainerName bash -lc 'BWS_ACCESS_TOKEN="$(cat ~/.config/bws/access-token)" bash /workspace/.devcontainer/load-secrets.sh'
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "load-secrets.sh が失敗しました（後でコンテナ内から手動実行できます）。"
 }
 
 Write-Host ""

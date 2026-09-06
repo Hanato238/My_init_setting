@@ -48,4 +48,5 @@ bash ubuntu/initialize_security.sh
   - 取得は `bws`（Secrets Manager CLI）+ マシンアカウントのアクセストークン。トークンは実行時に環境変数か対話貼り付けで渡し、平文ファイル・恒久環境変数・SecretStore のいずれにも保存しない
   - Windows: PowerShell SecretStore (`LocalStore` Vault)
   - Ubuntu / Termux: `~/.secrets` ファイル（chmod 600）
+  - devcontainer: `.devcontainer/secrets.list` に列挙した名前だけを取り込む。ホスト env（`docker-compose.yml` の `environment:`）を優先し、無ければ bws から補完して `~/.secrets`（chmod 600）へ。反映は `.devcontainer/load-secrets.sh`（`bws-login` 実行時に自動）
 - **MCP サーバー**: Claude Code・Gemini CLI に共通の MCP サーバー群を登録

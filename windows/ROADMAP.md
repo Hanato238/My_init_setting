@@ -229,6 +229,23 @@ Windows / WSL(`ubuntu/`) / Termux(`android/`) の 3 プラットフォームを�
 
 ---
 
+## 追加実装済み — devcontainer の API キー取得（許可リスト方式）
+
+`claude_container_template/.devcontainer/` に、取り込む環境変数を絞る許可リスト取得を追加した。
+WSL/Termux の `initialize_security.sh` がプロジェクトの全シークレットをダンプするのに対し、
+devcontainer は `secrets.list` に列挙した名前だけを取り込む。
+
+| 項目 | 決定 |
+|------|------|
+| 許可リスト | `.devcontainer/secrets.list`（1 行 1 環境変数名、`#` コメント可、値は書かない） |
+| 取得元の優先 | ホスト env（`docker-compose.yml` の `environment:` 経由）→ 無ければ bws のシークレット（`key` == 名前） |
+| 保存先 | `~/.secrets`（chmod 600）。`/etc/profile.d/secrets.sh` 経由でシェル起動時に自動 source |
+| 実行 | `.devcontainer/load-secrets.sh`。`bws-login.sh` / `bws-login.ps1` の末尾で best-effort 自動実行。再取得は再実行のみ |
+| 再実行時 | 前回書いた `export` 行を一旦 unset してからホスト判定 → bws 由来の古い値をホスト由来と誤認しない |
+| 値の受け渡し | `bws secret list -o json` → `jq` で base64 化 → デコード（改行・引用符に耐える）。`printf %q` で `~/.secrets` に書く |
+
+---
+
 ## スコープ外（変更なし）
 
 | スクリプト | 理由 |
