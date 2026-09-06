@@ -159,8 +159,8 @@ Chocolatey 経由でアプリを一括インストールし、npm でグロー�
   `Initialize-Security.ps1` が API キー取得に使う実行時依存でもある
 
 `installer/packages/cargo-packages.ps1` に定義する。`Rustlang.Rustup`（winget リスト）で入る Rust ツールチェーンと、
-ネイティブ依存をビルドするための MSVC ビルドツールが必要。`cargo` が PATH に無い場合はスキップして警告のみ出す
-（rustup インストール直後はシェルを開き直す）。
+ネイティブ依存のリンクに必要な MSVC リンカ（choco リストの `visualstudio2022-workload-vctools` で導入）が要る。
+`cargo` が PATH に無い場合はスキップして警告のみ出す（rustup / ビルドツール導入直後はシェルを開き直す）。
 
 **非公開ローカルアプリ（`-IncludeLocalApps` 指定時のみ）:**
 

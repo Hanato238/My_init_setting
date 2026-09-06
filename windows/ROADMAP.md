@@ -200,7 +200,7 @@ winget/choco/npm に無いツール（`bws` = Bitwarden Secrets Manager CLI）�
 |------|------|
 | リストファイル | `installer/packages/cargo-packages.ps1`（`$cargoPackages`） |
 | インストール | `cargo install <pkg> --locked`。install/update 兼用（常に最新版をビルド） |
-| 前提 | `Rustlang.Rustup`（winget リスト）+ MSVC ビルドツール。`cargo` 不在時はスキップして警告 |
+| 前提 | `Rustlang.Rustup`（winget リスト）+ MSVC リンカ（choco リストの `visualstudio2022-workload-vctools`）。`cargo` 不在時はスキップして警告 |
 | PATH | winget フェーズ後に `%USERPROFILE%\.cargo\bin` をプロセス PATH へ追加 |
 | Clinic | 対象外（`$cargoPackages = @()`） |
 | prune | 対応済み（`installed-manifest.json` の `cargo` キー、`cargo uninstall`） |
