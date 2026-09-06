@@ -1,0 +1,645 @@
+<title>Claude DevContainer テンプレート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f5f4;
+    --surface: #ffffff;
+    --surface-2: #eaefed;
+    --ink: #16201e;
+    --ink-soft: #3d4b48;
+    --muted: #63726e;
+    --line: #d8e1de;
+    --line-strong: #c3d0cc;
+    --accent: #0f766e;
+    --accent-ink: #0b5a53;
+    --accent-soft: #dbece8;
+    --host: #9a520a;
+    --host-soft: #f5e7d4;
+    --host-line: #e6c79e;
+    --container: #0f766e;
+    --container-soft: #dbece8;
+    --container-line: #a9d2cb;
+    --shadow: 0 1px 2px rgba(18,36,32,.05), 0 10px 30px -16px rgba(18,36,32,.22);
+    --measure: 46rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #10161a;
+      --surface: #161f22;
+      --surface-2: #1d2729;
+      --ink: #e9f1ee;
+      --ink-soft: #c3d0cc;
+      --muted: #8aa09b;
+      --line: #283437;
+      --line-strong: #35454a;
+      --accent: #55cabb;
+      --accent-ink: #7ddace;
+      --accent-soft: #16302e;
+      --host: #e2a75f;
+      --host-soft: #2c2214;
+      --host-line: #4d3a1e;
+      --container: #55cabb;
+      --container-soft: #16302d;
+      --container-line: #274b47;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #10161a;
+    --surface: #161f22;
+    --surface-2: #1d2729;
+    --ink: #e9f1ee;
+    --ink-soft: #c3d0cc;
+    --muted: #8aa09b;
+    --line: #283437;
+    --line-strong: #35454a;
+    --accent: #55cabb;
+    --accent-ink: #7ddace;
+    --accent-soft: #16302e;
+    --host: #e2a75f;
+    --host-soft: #2c2214;
+    --host-line: #4d3a1e;
+    --container: #55cabb;
+    --container-soft: #16302d;
+    --container-line: #274b47;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 36px -16px rgba(0,0,0,.65);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: var(--measure);
+    margin: 0 auto;
+    padding: 0 1.4rem 6rem;
+  }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  h1, h2, h3 {
+    font-family: "Chivo", var(--fallback, "IBM Plex Sans"), sans-serif;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0;
+  }
+  code, pre, kbd, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  /* ---- header ---- */
+  header {
+    padding: 4.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 3rem;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    letter-spacing: .04em;
+    color: var(--muted);
+    margin: 0 0 1.1rem;
+  }
+  .eyebrow b { color: var(--accent-ink); font-weight: 600; }
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 2.9rem);
+    font-weight: 900;
+    letter-spacing: -.015em;
+  }
+  .lead {
+    font-size: 1.16rem;
+    color: var(--ink-soft);
+    margin: 1.2rem 0 0;
+    max-width: 40rem;
+  }
+  .prereq {
+    margin-top: 2rem;
+    padding: 1rem 1.15rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    font-size: .96rem;
+    color: var(--ink-soft);
+  }
+  .prereq b { color: var(--ink); font-weight: 600; }
+
+  /* ---- sections ---- */
+  section { margin-top: 3.4rem; }
+  h2 {
+    font-size: 1.42rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-intro { color: var(--muted); margin: .9rem 0 0; font-size: .98rem; }
+  p { margin: 1rem 0; }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.4rem;
+    margin-top: 1.4rem;
+    font-size: .88rem;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: .5rem; }
+  .swatch { width: .85rem; height: .85rem; border-radius: 3px; flex: none; }
+  .swatch.host { background: var(--host); }
+  .swatch.container { background: var(--container); }
+
+  /* ---- spec grid ---- */
+  .spec {
+    margin-top: 1.6rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .spec div {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 1rem;
+    padding: .8rem 1.1rem;
+    font-size: .95rem;
+  }
+  .spec div + div { border-top: 1px solid var(--line); }
+  .spec dt {
+    font-weight: 600;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .86rem;
+    color: var(--accent-ink);
+    padding-top: .08rem;
+  }
+  .spec dd { margin: 0; color: var(--ink-soft); }
+  @media (max-width: 34rem) {
+    .spec div { grid-template-columns: 1fr; gap: .2rem; }
+  }
+
+  /* ---- ordered setup ---- */
+  ol.steps {
+    list-style: none;
+    counter-reset: step;
+    margin: 1.8rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.7rem;
+  }
+  ol.steps > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.1rem 1fr;
+    gap: .9rem;
+  }
+  ol.steps > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding-top: .15rem;
+    font-variant-numeric: tabular-nums;
+  }
+  ol.steps h3 {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 1.04rem;
+    font-weight: 600;
+    margin-bottom: .3rem;
+  }
+  ol.steps p { margin: .3rem 0 0; font-size: .96rem; color: var(--ink-soft); }
+
+  /* ---- command blocks ---- */
+  .cmd { margin: 1rem 0 0; }
+  .cmd-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    padding: .2rem .55rem;
+    border-radius: 5px 5px 0 0;
+    border: 1px solid;
+    border-bottom: none;
+    position: relative;
+    top: 1px;
+  }
+  .cmd-tag.host { color: var(--host); background: var(--host-soft); border-color: var(--host-line); }
+  .cmd-tag.container { color: var(--container); background: var(--container-soft); border-color: var(--container-line); }
+  pre {
+    margin: 0;
+    padding: .85rem 1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 0 8px 8px 8px;
+    overflow-x: auto;
+    font-size: .855rem;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .cmd.host pre { border-left: 3px solid var(--host); }
+  .cmd.container pre { border-left: 3px solid var(--container); }
+  pre .c { color: var(--muted); }
+  pre .p { color: var(--accent-ink); user-select: none; }
+  :not(pre) > code {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .08em .38em;
+    font-size: .86em;
+  }
+
+  /* ---- bridge cards ---- */
+  .bridges {
+    margin-top: 1.8rem;
+    display: grid;
+    gap: 1.1rem;
+  }
+  .bridge {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.2rem 1.25rem 1.35rem;
+    box-shadow: var(--shadow);
+  }
+  .bridge-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .5rem .8rem;
+    margin-bottom: .2rem;
+  }
+  .bridge-head h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .bridge-head .role { font-size: .86rem; color: var(--muted); }
+  .bridge > p { margin: .55rem 0 0; font-size: .95rem; color: var(--ink-soft); }
+  .bridge dl {
+    margin: .9rem 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .3rem .9rem;
+    font-size: .88rem;
+  }
+  .bridge dt { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: .8rem; padding-top: .12rem; }
+  .bridge dd { margin: 0; color: var(--ink-soft); }
+  .bridge dd code { font-size: .84em; }
+
+  /* ---- table ---- */
+  .table-scroll { overflow-x: auto; margin-top: 1.5rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .9rem;
+    min-width: 30rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .65rem .8rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-family: "Chivo", sans-serif;
+    font-weight: 600;
+    font-size: .82rem;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line-strong);
+  }
+  td code { font-size: .84em; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  ul.plain { margin: 1rem 0 0; padding-left: 1.1rem; }
+  ul.plain li { margin: .45rem 0; }
+  ul.plain li::marker { color: var(--accent); }
+
+  .note {
+    margin-top: 1.3rem;
+    font-size: .9rem;
+    color: var(--muted);
+    padding-left: .9rem;
+    border-left: 2px solid var(--line-strong);
+  }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: .84rem;
+    color: var(--muted);
+  }
+  footer code { font-size: .9em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow"><b>claude_container_template</b> / .devcontainer &nbsp;·&nbsp; My_init_setting</p>
+    <h1>Claude DevContainer テンプレート</h1>
+    <p class="lead">
+      Claude Code と Antigravity CLI を、ホストを汚さない Docker コンテナの中で走らせるための
+      雛形。zellij・yazi・MCP サーバー・各種 CLI 認証をひとまとめにし、<code>claude</code>
+      シェル関数から一発で起動する。
+    </p>
+    <div class="prereq">
+      <b>前提</b> — Docker（Desktop 等）が動く環境／Windows ホスト＋PowerShell プロファイルに
+      <code>claude</code> 関数（<code>windows/settings/Set-Aliases.ps1</code> が生成）。
+      VS Code の "Reopen in Container" でも起動可。
+    </div>
+    <div class="legend">
+      <span><span class="swatch host"></span> ホスト（Windows / PowerShell）で実行</span>
+      <span><span class="swatch container"></span> コンテナ内（bash / zellij）で実行</span>
+    </div>
+  </header>
+
+  <section id="inside">
+    <h2>コンテナに入っているもの</h2>
+    <p class="section-intro">
+      ベースは <code>node:22-slim</code>。<code>Dockerfile</code> がビルド時に以下を組み込む。
+    </p>
+    <dl class="spec">
+      <div><dt>zellij</dt><dd>ターミナルマルチプレクサ（0.41.2）。起動時に <code>claude</code> / <code>agy</code> の 2 タブが立ち上がる</dd></div>
+      <div><dt>claude-env</dt><dd>ローカル npm パッケージ。yazi ファイラ（<kbd>Ctrl</kbd>+<kbd>f</kbd> で開閉）＋ zjstatus ステータスバー＋ Claude Code の統計 hook</dd></div>
+      <div><dt>claude</dt><dd>Claude Code 本体。native binary まで導入済み</dd></div>
+      <div><dt>agy</dt><dd>Antigravity CLI</dd></div>
+      <div><dt>MCP</dt><dd><code>.mcp.json</code> をマウント。filesystem / memory / sequential-thinking / fetch / git（fetch・git は <code>uvx</code>）</dd></div>
+      <div><dt>bws</dt><dd>Bitwarden Secrets Manager CLI（2.1.0）。API キー配布用</dd></div>
+      <div><dt>gws</dt><dd>Google Workspace CLI</dd></div>
+      <div><dt>nlm</dt><dd>notebooklm-mcp-cli（<code>uv tool</code>）</dd></div>
+      <div><dt>gcloud</dt><dd>Google Cloud SDK</dd></div>
+    </dl>
+  </section>
+
+  <section id="setup">
+    <h2>セットアップ（新プロジェクトに導入する）</h2>
+    <p class="section-intro">テンプレートを自分のプロジェクトへコピーして使う場合の手順。</p>
+    <ol class="steps">
+      <li>
+        <div>
+          <h3><code>.devcontainer/</code> をコピー</h3>
+          <p>このディレクトリ一式を対象プロジェクト直下へ置く。<code>.mcp.json</code> はプロジェクトルートに用意する。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>コンテナ名をディレクトリ名に合わせる</h3>
+          <p>
+            <code>claude</code> 関数はカレントディレクトリ名をコンテナ名として <code>docker exec</code> する。
+            <code>docker-compose.yml</code> の <code>name:</code> と <code>container_name:</code> を
+            プロジェクトのフォルダ名に書き換える（テンプレートでは両方 <code>claude_container_template</code>）。
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>（gws を使うなら）ホスト側の資格情報を用意</h3>
+          <p>
+            <code>%USERPROFILE%\.config\gws\client_secret.json</code> を置いておく。
+            <code>docker-compose.yml</code> がこれを read-only でマウントする。
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>起動する</h3>
+          <div class="cmd host">
+            <span class="cmd-tag host">host · powershell</span>
+            <pre><span class="c"># プロジェクトディレクトリで</span>
+claude              <span class="c"># up -d してから zellij にアタッチ</span>
+claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</span></pre>
+          </div>
+          <p>VS Code なら「Reopen in Container」でも可。<code>postStartCommand</code> が <code>zellij</code>。</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>必要な CLI を認証する</h3>
+          <p>使うものだけでよい。詳細は下の「認証ブリッジ」を参照。</p>
+          <div class="cmd container">
+            <span class="cmd-tag container">container · bash</span>
+            <pre>.devcontainer/bws-login.sh &lt;access-token&gt;   <span class="c"># Bitwarden Secrets Manager</span></pre>
+          </div>
+          <div class="cmd host">
+            <span class="cmd-tag host">host · powershell</span>
+            <pre>.devcontainer\gws-login.ps1                  <span class="c"># Google Workspace</span>
+.devcontainer\nlm-login.ps1                  <span class="c"># NotebookLM</span></pre>
+          </div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>取り込む API キーを宣言する</h3>
+          <p>
+            <code>.devcontainer/secrets.list</code> に環境変数名を 1 行 1 つ書く（値は書かない）。
+            <code>bws-login</code> 実行時に <code>load-secrets.sh</code> が走り、
+            ホスト env → bws の順に解決して <code>~/.secrets</code>（600）へ。以降シェル起動時に自動読込。
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section id="daily">
+    <h2>日常の使い方</h2>
+    <div class="cmd host">
+      <span class="cmd-tag host">host · powershell</span>
+      <pre>claude            <span class="c"># 起動中ならそのままアタッチ、停止中なら up -d</span>
+claude -Rebuild   <span class="c"># イメージを作り直して起動</span>
+claude -AsHost    <span class="c"># コンテナを使わずホストの claude を実行</span>
+claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボックスで実行</span></pre>
+    </div>
+    <p>zellij に入ったあとの操作:</p>
+    <ul class="plain">
+      <li><b>claude タブ</b> — <code>claude --permission-mode auto</code> が起動済み</li>
+      <li><b>agy タブ</b> — <code>agy --mode=accept-edits</code> が起動済み</li>
+      <li><kbd>Ctrl</kbd>+<kbd>f</kbd> — yazi ファイラのフローティングペインを開閉</li>
+      <li><kbd>Ctrl</kbd>+<kbd>o</kbd> → <kbd>d</kbd> — デタッチ（コンテナは動いたまま）。<code>claude</code> で再アタッチ</li>
+      <li>新しいペインを開くと <code>~/.secrets</code> の API キーは環境変数として読込済み</li>
+    </ul>
+  </section>
+
+  <section id="bridges">
+    <h2>認証ブリッジ</h2>
+    <p class="section-intro">
+      コンテナには GUI ブラウザが無いため、ブラウザ認証が要るものはホストで済ませて結果だけ渡す。
+      <code>bws</code> はトークン文字列だけで動くのでコンテナ内で完結する。
+    </p>
+    <div class="bridges">
+
+      <div class="bridge">
+        <div class="bridge-head">
+          <h3>bws-login</h3>
+          <span class="role">Bitwarden Secrets Manager のアクセストークン</span>
+        </div>
+        <p>
+          マシンアカウントのトークンを <code>~/.config/bws/access-token</code>（600）に保存し、
+          ログインシェルで <code>BWS_ACCESS_TOKEN</code> を自動 export。続けて <code>load-secrets.sh</code> を実行。
+        </p>
+        <div class="cmd container">
+          <span class="cmd-tag container">container · bash</span>
+          <pre>.devcontainer/bws-login.sh &lt;token&gt;   <span class="c"># 引数・環境変数・対話入力のいずれか</span></pre>
+        </div>
+        <div class="cmd host">
+          <span class="cmd-tag host">host · powershell</span>
+          <pre>.devcontainer\bws-login.ps1          <span class="c"># -Token / 環境変数 / ホストのファイル / プロンプト</span></pre>
+        </div>
+        <dl>
+          <dt>保存先</dt><dd><code>~/.config/bws/access-token</code>（コンテナ内）</dd>
+          <dt>永続化</dt><dd><code>docker-compose.yml</code> のコメントアウトされた access-token マウントを有効化すると再ビルドでも保持</dd>
+          <dt>注意</dt><dd>対象プロジェクトの全シークレット読取権を持つ。dev 限定・コミット禁止・漏洩時はローテート</dd>
+        </dl>
+      </div>
+
+      <div class="bridge">
+        <div class="bridge-head">
+          <h3>secrets.list + load-secrets.sh</h3>
+          <span class="role">API キーを環境変数として取り込む</span>
+        </div>
+        <p>
+          許可リストに載せた名前だけを解決する。<b>ホスト env</b>（<code>docker-compose.yml</code> の
+          <code>environment:</code> 経由）にあればそれを優先し、無ければ <b>bws</b> のシークレット
+          （<code>key</code> == その名前）から取得。結果は <code>~/.secrets</code> へ。
+        </p>
+        <div class="cmd container">
+          <span class="cmd-tag container">container · bash</span>
+          <pre>bash .devcontainer/load-secrets.sh          <span class="c"># 再取得したいとき（bws-login でも自動実行）</span>
+BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
+        </div>
+        <dl>
+          <dt>リスト</dt><dd><code>.devcontainer/secrets.list</code> — 1 行 1 変数名、<code>#</code> コメント可</dd>
+          <dt>ホスト側</dt><dd>ホストから渡したい変数は <code>environment:</code> にも名前を追加する</dd>
+          <dt>保存先</dt><dd><code>~/.secrets</code>（600）／ <code>/etc/profile.d/secrets.sh</code> がシェル起動時に source</dd>
+          <dt>安全側</dt><dd>bws を参照できない（トークン無し／認証失敗）ときは既存の <code>~/.secrets</code> を上書きしない</dd>
+        </dl>
+      </div>
+
+      <div class="bridge">
+        <div class="bridge-head">
+          <h3>gws-login.ps1</h3>
+          <span class="role">Google Workspace CLI の OAuth</span>
+        </div>
+        <p>
+          ホストで <code>gws auth login</code>（ブラウザ OAuth）を実行し、<code>gws auth export</code> の
+          資格情報をコンテナの <code>~/.config/gws/credentials.json</code> へ <code>docker cp</code> で流し込む。
+        </p>
+        <div class="cmd host">
+          <span class="cmd-tag host">host · powershell</span>
+          <pre>.devcontainer\gws-login.ps1
+.devcontainer\gws-login.ps1 -Force   <span class="c"># 別アカウントで上書き</span></pre>
+        </div>
+        <dl>
+          <dt>前提</dt><dd>ホストに <code>gws</code> CLI ／ <code>%USERPROFILE%\.config\gws\client_secret.json</code></dd>
+          <dt>保存先</dt><dd><code>~/.config/gws/credentials.json</code>（コンテナ内、600）</dd>
+        </dl>
+      </div>
+
+      <div class="bridge">
+        <div class="bridge-head">
+          <h3>nlm-login.ps1</h3>
+          <span class="role">NotebookLM（Chrome CDP 経由）</span>
+        </div>
+        <p>
+          専用プロファイルのホスト Chrome を CDP モードで起動し、コンテナ内の <code>cdp-proxy.js</code> +
+          <code>nlm login --cdp-url</code> でログインを操作する。普段使いの Chrome には触れない。
+        </p>
+        <div class="cmd host">
+          <span class="cmd-tag host">host · powershell</span>
+          <pre>.devcontainer\nlm-login.ps1
+.devcontainer\nlm-login.ps1 -Force</pre>
+        </div>
+        <dl>
+          <dt>手動版</dt><dd>ホストで <code>.devcontainer\host-chrome-debug.ps1</code> → コンテナで <code>.devcontainer/nlm-login.sh</code></dd>
+          <dt>プロファイル</dt><dd><code>%LOCALAPPDATA%\nlm-chrome-profile-&lt;コンテナ名&gt;</code>（次回以降は再ログイン不要）</dd>
+        </dl>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="reference">
+    <h2>リファレンス</h2>
+
+    <h3 style="font-size:1rem;font-weight:600;margin-top:1.6rem;">.devcontainer/ の中身</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+        <tbody>
+          <tr><td><code>Dockerfile</code></td><td>イメージ定義（上記ツール一式 + claude-env）</td></tr>
+          <tr><td><code>docker-compose.yml</code></td><td>サービス・マウント・環境変数。<code>name</code> / <code>container_name</code> をここで合わせる</td></tr>
+          <tr><td><code>devcontainer.json</code></td><td>VS Code 用。<code>postStartCommand: zellij</code></td></tr>
+          <tr><td><code>zellij-layout.kdl</code></td><td>claude / agy の 2 タブ構成</td></tr>
+          <tr><td><code>secrets.list</code></td><td>取り込む環境変数名の許可リスト</td></tr>
+          <tr><td><code>load-secrets.sh</code></td><td>許可リストを解決して <code>~/.secrets</code> を生成</td></tr>
+          <tr><td><code>bws-login.sh</code> / <code>.ps1</code></td><td>bws アクセストークンの保存</td></tr>
+          <tr><td><code>gws-login.ps1</code></td><td>Google Workspace 認証の引き渡し</td></tr>
+          <tr><td><code>nlm-login.sh</code> / <code>.ps1</code></td><td>NotebookLM 認証（Chrome CDP）</td></tr>
+          <tr><td><code>host-chrome-debug.ps1</code></td><td>ホスト Chrome を CDP 起動（nlm のトラブルシュート用）</td></tr>
+          <tr><td><code>cdp-proxy.js</code></td><td>コンテナ→ホスト Chrome の CDP プロキシ</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:1rem;font-weight:600;margin-top:2rem;">環境変数（docker-compose.yml <code>environment:</code>）</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>変数</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>ホストから引き継ぎ</td></tr>
+          <tr><td><code>ANTIGRAVITY_API_KEY</code></td><td>ホストから引き継ぎ</td></tr>
+          <tr><td><code>PROJECT_NAME</code></td><td><code>${COMPOSE_PROJECT_NAME}</code></td></tr>
+          <tr><td><code>BWS_ACCESS_TOKEN</code></td><td><code>~/.config/bws/access-token</code> から <code>/etc/profile.d/bws.sh</code> が自動 export</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      <code>secrets.list</code> の名前をホストから渡したいときは、この <code>environment:</code> にも
+      同じ名前を足す。書かなければ bws から取得される。
+    </p>
+
+    <h3 style="font-size:1rem;font-weight:600;margin-top:2rem;">つまずいたら</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>症状</th><th>対処</th></tr></thead>
+        <tbody>
+          <tr><td>コンテナが起動しない</td><td><code>docker compose -f .devcontainer/docker-compose.yml logs node</code></td></tr>
+          <tr><td><code>claude</code> が別のものを起動する</td><td>フォルダ名と <code>container_name</code> の不一致。両方を揃える</td></tr>
+          <tr><td>Dockerfile の変更が反映されない</td><td><code>claude -Rebuild</code></td></tr>
+          <tr><td>API キーがシェルに無い</td><td><code>source ~/.secrets</code> ／ <code>bws-login</code> 未実行 ／ <code>secrets.list</code> が空</td></tr>
+          <tr><td>bws の値を更新したい</td><td><code>bash .devcontainer/load-secrets.sh</code> を再実行</td></tr>
+          <tr><td>nlm-login が CDP に繋がらない</td><td>ホストで <code>.devcontainer\host-chrome-debug.ps1</code> を先に実行</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <code>claude_container_template/.devcontainer/</code> ·
+    詳細は <code>README.md</code> と <code>windows/ROADMAP.md</code>「追加実装済み」節。
+  </footer>
+</div>
