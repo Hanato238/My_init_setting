@@ -12,6 +12,7 @@ function claude   { Write-Host "MOCK: claude $args" }
 function gemini   { Write-Host "MOCK: gemini $args" }
 function refreshenv { Write-Host "MOCK: refreshenv" }
 function uv       { Write-Host "MOCK: uv $args" }
+function cargo    { Write-Host "MOCK: cargo $args" }
 function npx      { Write-Host "MOCK: npx $args" }
 function git      { Write-Host "MOCK: git $args" }
 

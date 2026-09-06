@@ -184,11 +184,26 @@ param([string]$Category = "all", [switch]$Update, [switch]$DryRun)
 |------|------|
 | 判定基準 | スクリプト管理分のみ（`%LOCALAPPDATA%\MyInitSetting\installed-manifest.json` に前回リストを記録し、そこから外れたものだけ削除） |
 | 実行モード | `-Prune` opt-in。既定は個別 `y/N` 確認、`-Force` で一括、`-DryRun` は計画表示のみ |
-| 対象 | winget / choco / npm global / uv tools（PS モジュール・Node・`packages/local/` は対象外） |
+| 対象 | winget / choco / npm global / uv tools / cargo（PS モジュール・Node・`packages/local/` は対象外） |
 | 初回 | マニフェスト未生成時は記録のみ（削除なし） |
 | profile 切替時 | 誤削除防止のため prune スキップ |
 
 詳細は `README.md` の「パッケージ整合（prune）」節。
+
+---
+
+## 追加実装済み — cargo パッケージ対応
+
+winget/choco/npm に無いツール（`bws` = Bitwarden Secrets Manager CLI）を入れるため、5 つ目のパッケージマネージャーとして cargo を追加した。
+
+| 項目 | 決定 |
+|------|------|
+| リストファイル | `installer/packages/cargo-packages.ps1`（`$cargoPackages`） |
+| インストール | `cargo install <pkg> --locked`。install/update 兼用（常に最新版をビルド） |
+| 前提 | `Rustlang.Rustup`（winget リスト）+ MSVC ビルドツール。`cargo` 不在時はスキップして警告 |
+| PATH | winget フェーズ後に `%USERPROFILE%\.cargo\bin` をプロセス PATH へ追加 |
+| Clinic | 対象外（`$cargoPackages = @()`） |
+| prune | 対応済み（`installed-manifest.json` の `cargo` キー、`cargo uninstall`） |
 
 ---
 

@@ -1,0 +1,3 @@
+$cargoPackages = @(
+    "bws"
+)

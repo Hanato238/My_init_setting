@@ -37,14 +37,15 @@ Describe "Get-PrunePlan" {
     }
 
     It "flags every previously-managed package when Current is empty" {
-        $prev = @{ winget = @('A', 'B'); choco = @('x'); npm = @('n'); uv = @('u') }
-        $cur  = @{ winget = @();         choco = @();    npm = @();    uv = @() }
+        $prev = @{ winget = @('A', 'B'); choco = @('x'); npm = @('n'); uv = @('u'); cargo = @('c') }
+        $cur  = @{ winget = @();         choco = @();    npm = @();    uv = @();    cargo = @() }
         $plan = Get-PrunePlan -Previous $prev -Current $cur
 
         $plan.winget | Should -Be @('A', 'B')
         $plan.choco  | Should -Be @('x')
         $plan.npm    | Should -Be @('n')
         $plan.uv     | Should -Be @('u')
+        $plan.cargo  | Should -Be @('c')
     }
 
     It "ignores blank entries in the previous list" {

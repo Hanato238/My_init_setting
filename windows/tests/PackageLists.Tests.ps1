@@ -78,6 +78,30 @@ Describe "npm-packages.ps1" {
     }
 }
 
+Describe "cargo-packages.ps1" {
+    BeforeAll {
+        . "$packagesDir\cargo-packages.ps1"
+    }
+
+    It "defines cargoPackages variable" {
+        $cargoPackages | Should -Not -BeNullOrEmpty
+    }
+
+    It "has no duplicate entries" {
+        $dupes = $cargoPackages | Group-Object | Where-Object { $_.Count -gt 1 }
+        if ($dupes) { $dupes | ForEach-Object { Write-Host "DUPE: $($_.Name)" -ForegroundColor Red } }
+        $dupes | Should -BeNullOrEmpty
+    }
+
+    It "has no blank entries" {
+        $cargoPackages | Where-Object { [string]::IsNullOrWhiteSpace($_) } | Should -BeNullOrEmpty
+    }
+
+    It "includes bws" {
+        $cargoPackages | Should -Contain "bws"
+    }
+}
+
 Describe "Cross-list duplicate check" {
     BeforeAll {
         . "$packagesDir\winget-packages.ps1"

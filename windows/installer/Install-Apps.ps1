@@ -15,7 +15,7 @@ $manifestFile = "$env:LOCALAPPDATA\MyInitSetting\installed-manifest.json"
 function Get-PrunePlan {
     param([hashtable]$Previous, [hashtable]$Current)
     $plan = @{}
-    foreach ($mgr in 'winget', 'choco', 'npm', 'uv') {
+    foreach ($mgr in 'winget', 'choco', 'npm', 'uv', 'cargo') {
         $old = @($Previous[$mgr])
         $new = @($Current[$mgr])
         $plan[$mgr] = @($old | Where-Object { $_ -and ($_ -notin $new) })
@@ -45,6 +45,7 @@ function Save-InstalledManifest {
         choco     = @($Lists.choco)
         npm       = @($Lists.npm)
         uv        = @($Lists.uv)
+        cargo     = @($Lists.cargo)
     }
     $payload | ConvertTo-Json | Set-Content -Path $manifestFile -Encoding UTF8
 }
@@ -54,11 +55,13 @@ if ($Profile -eq 'Clinic') {
     . "$PSScriptRoot\packages\choco-packages-clinic.ps1"
     $npmPackages = @()
     $uvToolPackages = @()
+    $cargoPackages = @()
 } else {
     . "$PSScriptRoot\packages\winget-packages.ps1"
     . "$PSScriptRoot\packages\choco-packages.ps1"
     . "$PSScriptRoot\packages\npm-packages.ps1"
     . "$PSScriptRoot\packages\uv-packages.ps1"
+    . "$PSScriptRoot\packages\cargo-packages.ps1"
 }
 
 $effectiveProfile = if ($Profile -eq 'Clinic') { 'Clinic' } else { 'Default' }
@@ -67,6 +70,7 @@ $currentLists = @{
     choco  = @($chocoPackages)
     npm    = @($npmPackages)
     uv     = @($uvToolPackages)
+    cargo  = @($cargoPackages)
 }
 
 # --- winget ---
@@ -104,6 +108,11 @@ if (-not $DryRun) {
     foreach ($var in @("NVM_HOME", "NVM_SYMLINK")) {
         $val = [System.Environment]::GetEnvironmentVariable($var, "Machine")
         if ($val) { [System.Environment]::SetEnvironmentVariable($var, $val, "Process") }
+    }
+    # rustup (Rustlang.Rustup) drops cargo here but only adds it to PATH for new shells.
+    $cargoBin = "$env:USERPROFILE\.cargo\bin"
+    if ((Test-Path $cargoBin) -and ($env:PATH -notlike "*$cargoBin*")) {
+        $env:PATH = "$env:PATH;$cargoBin"
     }
 }
 
@@ -231,6 +240,31 @@ if ($uvToolPackages.Count -gt 0) {
     }
 }
 
+# --- cargo packages ---
+# `cargo install` always builds the latest published version, so it doubles as
+# the install and the upgrade path. Skipped when cargo is not on PATH (rustup
+# missing / shell not reopened). Crates like bws compile from source and need the
+# MSVC build tools in addition to the Rust toolchain.
+if ($cargoPackages.Count -gt 0) {
+    $cargoAction = if ($Update) { "Upgrading" } else { "Installing" }
+    Write-Host "$cargoAction cargo packages..." -ForegroundColor Cyan
+    if ($DryRun) {
+        $cargoPackages | ForEach-Object { Write-Host "[DRY RUN] cargo install $_ --locked" -ForegroundColor Yellow }
+    } elseif (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        Write-Warning "cargo not found on PATH; skipping cargo packages. Install Rustlang.Rustup and reopen the shell."
+    } else {
+        $installedCrates = cargo install --list
+        foreach ($pkg in $cargoPackages) {
+            $isInstalled = [bool]($installedCrates | Where-Object { $_ -match "^$([regex]::Escape($pkg)) v" })
+            if ($isInstalled -and -not $Update) {
+                Write-Host "$pkg is already installed, skipping." -ForegroundColor DarkGray
+                continue
+            }
+            cargo install $pkg --locked
+        }
+    }
+}
+
 # --- Reconcile: remove packages dropped from the lists ---
 # Only touches packages this script previously recorded as managed (in the
 # manifest) that are no longer present in the current list files. Manual apps and
@@ -258,6 +292,11 @@ function Test-PackageInstalled([string]$Manager, [string]$Id) {
             $tools = uv tool list 2>$null
             return [bool]($tools | Where-Object { $_ -match "^$([regex]::Escape($Id))(\s|$)" })
         }
+        'cargo' {
+            if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { return $false }
+            $crates = cargo install --list 2>$null
+            return [bool]($crates | Where-Object { $_ -match "^$([regex]::Escape($Id)) v" })
+        }
     }
     return $false
 }
@@ -268,6 +307,7 @@ function Invoke-PackageUninstall([string]$Manager, [string]$Id) {
         'choco'  { choco uninstall $Id -y }
         'npm'    { npm uninstall -g $Id }
         'uv'     { uv tool uninstall $Id }
+        'cargo'  { cargo uninstall $Id }
     }
 }
 
@@ -285,6 +325,7 @@ if ($Prune) {
             choco  = @($manifest.choco)
             npm    = @($manifest.npm)
             uv     = @($manifest.uv)
+            cargo  = @($manifest.cargo)
         }
         $plan = Get-PrunePlan -Previous $previousLists -Current $currentLists
         $totalToRemove = @($plan.Values | ForEach-Object { $_ }).Count
@@ -293,7 +334,7 @@ if ($Prune) {
             Write-Host "Nothing to prune - installed set already matches the lists." -ForegroundColor DarkGray
         }
 
-        foreach ($mgr in 'winget', 'choco', 'npm', 'uv') {
+        foreach ($mgr in 'winget', 'choco', 'npm', 'uv', 'cargo') {
             foreach ($pkg in $plan[$mgr]) {
                 if (-not (Test-PackageInstalled $mgr $pkg)) {
                     Write-Host "$pkg ($mgr) already absent, skipping." -ForegroundColor DarkGray
@@ -306,6 +347,7 @@ if ($Prune) {
                         'choco'  { Write-Host "[DRY RUN] choco uninstall $pkg -y" -ForegroundColor Yellow }
                         'npm'    { Write-Host "[DRY RUN] npm uninstall -g $pkg" -ForegroundColor Yellow }
                         'uv'     { Write-Host "[DRY RUN] uv tool uninstall $pkg" -ForegroundColor Yellow }
+                        'cargo'  { Write-Host "[DRY RUN] cargo uninstall $pkg" -ForegroundColor Yellow }
                     }
                     Add-PruneResult $pkg 'DRYRUN' "$mgr"
                     continue

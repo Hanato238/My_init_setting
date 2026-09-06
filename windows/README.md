@@ -37,11 +37,11 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 **仕組み**
 
-- `Install-Apps.ps1` は正常終了時（`-DryRun` 以外）に、その回のパッケージリスト（winget / choco / npm / uv）を
+- `Install-Apps.ps1` は正常終了時（`-DryRun` 以外）に、その回のパッケージリスト（winget / choco / npm / uv / cargo）を
   `%LOCALAPPDATA%\MyInitSetting\installed-manifest.json` に記録する。
 - 次回 `-Prune` を付けて実行すると、マニフェストに載っていて現在のリストに無いものだけを削除候補にする。
 - **マニフェストに記録されていないパッケージ（手動導入アプリ、Store アプリ、システムコンポーネント等）には一切触れない。**
-- 対象は winget / choco / npm グローバル / uv tools のみ。PowerShell モジュール・Node.js・`packages/local/`（orca/bartender）は対象外。
+- 対象は winget / choco / npm グローバル / uv tools / cargo のみ。PowerShell モジュール・Node.js・`packages/local/`（orca/bartender）は対象外。
 
 **運用フロー**
 
@@ -154,6 +154,13 @@ Chocolatey 経由でアプリを一括インストールし、npm でグロー�
 - `@anthropic-ai/sdk`
 - `@google/gemini-cli`
 
+**cargo パッケージ:**
+- `bws` — Bitwarden Secrets Manager CLI（winget/choco/npm に公式パッケージが無いため crates.io からソースビルド）
+
+`installer/packages/cargo-packages.ps1` に定義する。`Rustlang.Rustup`（winget リスト）で入る Rust ツールチェーンと、
+ネイティブ依存をビルドするための MSVC ビルドツールが必要。`cargo` が PATH に無い場合はスキップして警告のみ出す
+（rustup インストール直後はシェルを開き直す）。
+
 **非公開ローカルアプリ（`-IncludeLocalApps` 指定時のみ）:**
 
 Chocolatey コミュニティリポジトリに存在しない社内/私物アプリは
@@ -170,7 +177,7 @@ Chocolatey コミュニティリポジトリに存在しない社内/私物ア�
 **パッケージ整合（`-Prune`）:**
 
 正常終了時に適用済みパッケージリストを `%LOCALAPPDATA%\MyInitSetting\installed-manifest.json` に記録する。
-`-Prune` を付けて実行すると、マニフェストに載っていて現在のリストに無い winget / choco / npm / uv パッケージを
+`-Prune` を付けて実行すると、マニフェストに載っていて現在のリストに無い winget / choco / npm / uv / cargo パッケージを
 （インストール済みか確認したうえで、既定では個別 `y/N` 確認、`-Force` で一括）アンインストールする。
 マニフェスト非記録のパッケージには触れない。詳細は [パラメーター > パッケージ整合](#パッケージ整合prune) を参照。
 
