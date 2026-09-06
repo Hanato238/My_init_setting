@@ -5,6 +5,12 @@
 # gws-login / nlm-login (プロファイル関数) はこの .devcontainer 内のスクリプトに委譲する形で
 # 対応済み。gws-login は client_secret.json (下記マウント) を前提とするため、ホスト側で
 # 事前に `gws auth login` 済みであること (~/.config/gws/client_secret.json が存在すること)。
+#
+# bws (Bitwarden Secrets Manager CLI): Dockerfile でバイナリを導入済み。アクセストークンは
+# コンテナ内 ~/.config/bws/access-token に保存する。初回だけコンテナ内で
+# `.devcontainer/bws-login.sh <token>`、またはホストから `.devcontainer/bws-login.ps1` を実行。
+# 保存したトークンはログインシェルで BWS_ACCESS_TOKEN として自動 export される。
+# コンテナ作り直しのたびに保存し直すのが面倒なら、下の access-token マウントを有効化する。
 
 name: claude_container_template
 
@@ -20,6 +26,9 @@ services:
       - .:/workspace/.devcontainer:ro
       - ../.mcp.json:/workspace/.mcp.json:ro
       - ${USERPROFILE}/.config/gws/client_secret.json:/home/node/.config/gws/client_secret.json:ro
+      # bws トークンをホスト側ファイルで永続化したい場合はコメント解除
+      # (先に %USERPROFILE%\.config\bws\access-token を用意しておくこと):
+      # - ${USERPROFILE}/.config/bws/access-token:/home/node/.config/bws/access-token:ro
     working_dir: /workspace
     command: ["sleep", "infinity"]
     environment:
