@@ -243,16 +243,16 @@ if ($uvToolPackages.Count -gt 0) {
 # --- cargo packages ---
 # `cargo install` always builds the latest published version, so it doubles as
 # the install and the upgrade path. Skipped when cargo is not on PATH (rustup
-# missing / shell not reopened). Crates like bws compile from source and need
-# the MSVC linker in addition to the Rust toolchain - installed via the choco
-# list (visualstudio2022-workload-vctools).
+# missing / shell not reopened). Crates compile from source and need the MSVC
+# linker in addition to the Rust toolchain. The list is currently empty - bws
+# moved to packages\local\bws (prebuilt binary) to avoid that toolchain.
 if ($cargoPackages.Count -gt 0) {
     $cargoAction = if ($Update) { "Upgrading" } else { "Installing" }
     Write-Host "$cargoAction cargo packages..." -ForegroundColor Cyan
     if ($DryRun) {
         $cargoPackages | ForEach-Object { Write-Host "[DRY RUN] cargo install $_ --locked" -ForegroundColor Yellow }
     } elseif (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
-        Write-Warning "cargo not found on PATH; skipping cargo packages. Install Rustlang.Rustup (+ the choco VC++ build tools) and reopen the shell."
+        Write-Warning "cargo not found on PATH; skipping cargo packages. Install Rustlang.Rustup and reopen the shell."
     } else {
         $installedCrates = cargo install --list
         foreach ($pkg in $cargoPackages) {

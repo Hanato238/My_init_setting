@@ -18,6 +18,5 @@
     "ngrok",
     "wireshark",
     "procmon",
-    "pdf24",
-    "visualstudio2022-workload-vctools"  # MSVC linker/toolset: `cargo install bws` needs link.exe
+    "pdf24"
 )

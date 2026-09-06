@@ -200,10 +200,25 @@ winget/choco/npm に無いツール（`bws` = Bitwarden Secrets Manager CLI）�
 |------|------|
 | リストファイル | `installer/packages/cargo-packages.ps1`（`$cargoPackages`） |
 | インストール | `cargo install <pkg> --locked`。install/update 兼用（常に最新版をビルド） |
-| 前提 | `Rustlang.Rustup`（winget リスト）+ MSVC リンカ（choco リストの `visualstudio2022-workload-vctools`）。`cargo` 不在時はスキップして警告 |
+| 前提 | `Rustlang.Rustup`（winget リスト）+ MSVC リンカ。`cargo` 不在時はスキップして警告 |
 | PATH | winget フェーズ後に `%USERPROFILE%\.cargo\bin` をプロセス PATH へ追加 |
 | Clinic | 対象外（`$cargoPackages = @()`） |
 | prune | 対応済み（`installed-manifest.json` の `cargo` キー、`cargo uninstall`） |
+
+### 更新 — `bws` を cargo → ローカル choco パッケージへ
+
+`cargo install bws` は MSVC リンカ（`link.exe` = Visual Studio Build Tools）が無いと
+"linker `link.exe` not found" で失敗する。Build Tools の導入も環境によって不安定なため、
+`bws` は sdk-sm の**ビルド済みバイナリ**を配る `installer/packages/local/bws/` へ移した
+（WSL/Termux/devcontainer と同じ入手方式）。
+
+| 項目 | 決定 |
+|------|------|
+| 形式 | `packages/local/bws/`（`bws.nuspec` + `tools/chocolateyInstall.ps1`）。`Install-ChocolateyZipPackage` で GitHub Releases の zip を取得し sha256 検証、`bws.exe` を choco が自動 shim |
+| アーキ | `PROCESSOR_ARCHITECTURE` を見て x86_64 / ARM64 の zip を選択 |
+| 実行 | `Start-Setup.ps1 -IncludeLocalApps`（`-SyncSecrets` と併用）。`choco pack` → 一時フィード → `choco install` |
+| cargo 側 | `$cargoPackages = @()`。ループ・prune・`Rustlang.Rustup` の足場は将来用に温存 |
+| Initialize-Security.ps1 | choco shim を PATH から検出。旧 `.cargo\bin\bws.exe` もフォールバックとして残す |
 
 ---
 

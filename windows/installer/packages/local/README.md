@@ -20,6 +20,7 @@ Start-Setup.ps1 -Update -IncludeLocalApps
 
 | ID | 内容 | インストーラーの入手方法 |
 |----|------|------------------------|
+| `bws` | Bitwarden Secrets Manager CLI ([bitwarden/sdk-sm](https://github.com/bitwarden/sdk-sm)) | GitHub Releases のビルド済み zip を `Install-ChocolateyZipPackage` で取得（`chocolateyInstall.ps1` に URL・sha256 を記載）。事前配置は不要。`cargo install` が MSVC リンカを要するのを避けるためこちらに置いた |
 | `orca` | AI orchestrator CLI ([stablyai/orca](https://github.com/stablyai/orca)) | GitHub Releases から都度ダウンロード（`chocolateyInstall.ps1` 内にURL・checksumを記載） |
 | `bartender` | BarTender ラベル発行ソフト + Seagull プリンタドライバ（クリニック用） | 別途配置が必要（下記参照） |
 

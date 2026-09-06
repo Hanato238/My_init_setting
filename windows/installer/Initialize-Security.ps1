@@ -19,14 +19,16 @@ if (-not (Get-SecretVault -Name LocalStore -ErrorAction SilentlyContinue)) {
 }
 Set-SecretStoreConfiguration -Authentication None -Interaction None -Confirm:$false
 
-# 2. Locate the bws binary (cargo installs it under %USERPROFILE%\.cargo\bin,
-#    which is not on PATH until the shell is reopened)
+# 2. Locate the bws binary. It normally comes from the local Chocolatey package
+#    (packages\local\bws) and lands on PATH as a choco shim. Older setups that
+#    installed it with `cargo install` keep it under %USERPROFILE%\.cargo\bin,
+#    which is not on PATH until the shell is reopened - fall back to that.
 if (-not (Get-Command bws -ErrorAction SilentlyContinue)) {
     $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
     if (Test-Path (Join-Path $cargoBin 'bws.exe')) {
         $env:PATH = "$cargoBin;$env:PATH"
     } else {
-        Write-Error "bws not found. Run Start-Setup.ps1 first (installs it via cargo)."
+        Write-Error "bws not found. Run Start-Setup.ps1 -IncludeLocalApps first (installs the bws package)."
         return
     }
 }

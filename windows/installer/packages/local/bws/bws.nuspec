@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>bws</id>
+    <version>2.1.0</version>
+    <title>Bitwarden Secrets Manager CLI</title>
+    <authors>Bitwarden</authors>
+    <projectUrl>https://bitwarden.com/products/secrets-manager/</projectUrl>
+    <projectSourceUrl>https://github.com/bitwarden/sdk-sm</projectSourceUrl>
+    <licenseUrl>https://github.com/bitwarden/sdk-sm/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>Command-line client for Bitwarden Secrets Manager.</summary>
+    <description>bws is the command-line interface for Bitwarden Secrets Manager. This package installs the official prebuilt binary from the sdk-sm GitHub releases, so no Rust/cargo toolchain or MSVC linker is required. Not published to the Chocolatey community repository; built locally via packages/local/.</description>
+    <tags>bitwarden secrets-manager bws cli secrets devtools</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

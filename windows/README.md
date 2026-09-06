@@ -155,12 +155,11 @@ Chocolatey 経由でアプリを一括インストールし、npm でグロー�
 - `@google/gemini-cli`
 
 **cargo パッケージ:**
-- `bws` — Bitwarden Secrets Manager CLI（winget/choco/npm に公式パッケージが無いため crates.io からソースビルド）。
-  `Initialize-Security.ps1` が API キー取得に使う実行時依存でもある
 
-`installer/packages/cargo-packages.ps1` に定義する。`Rustlang.Rustup`（winget リスト）で入る Rust ツールチェーンと、
-ネイティブ依存のリンクに必要な MSVC リンカ（choco リストの `visualstudio2022-workload-vctools` で導入）が要る。
-`cargo` が PATH に無い場合はスキップして警告のみ出す（rustup / ビルドツール導入直後はシェルを開き直す）。
+`installer/packages/cargo-packages.ps1` に定義する。現在は空。`cargo install` はネイティブ依存の
+リンクに MSVC リンカ（Visual Studio Build Tools）が要り、それ無しでは失敗するため、唯一の利用者だった
+`bws` はビルド済みバイナリを配る `packages/local/bws`（下記）へ移した。`Rustlang.Rustup` は
+将来用に winget リストへ残してある。
 
 **非公開ローカルアプリ（`-IncludeLocalApps` 指定時のみ）:**
 
@@ -172,6 +171,7 @@ Chocolatey コミュニティリポジトリに存在しない社内/私物ア�
 
 | ID | 内容 |
 |----|------|
+| `bws` | Bitwarden Secrets Manager CLI。sdk-sm の GitHub Releases からビルド済みバイナリを取得（cargo/MSVC 不要）。`Initialize-Security.ps1` の実行時依存 |
 | `orca` | AI orchestrator CLI。GitHub Releases から都度ダウンロード |
 | `bartender` | BarTender ラベル発行ソフト（クリニック用）。インストーラーは別途 `CHOCO_LOCAL_ASSETS` 配下に配置が必要 |
 

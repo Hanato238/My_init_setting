@@ -83,8 +83,8 @@ Describe "cargo-packages.ps1" {
         . "$packagesDir\cargo-packages.ps1"
     }
 
-    It "defines cargoPackages variable" {
-        $cargoPackages | Should -Not -BeNullOrEmpty
+    It "defines cargoPackages as an array (may be empty)" {
+        $cargoPackages -is [array] | Should -BeTrue
     }
 
     It "has no duplicate entries" {
@@ -96,9 +96,25 @@ Describe "cargo-packages.ps1" {
     It "has no blank entries" {
         $cargoPackages | Where-Object { [string]::IsNullOrWhiteSpace($_) } | Should -BeNullOrEmpty
     }
+}
 
-    It "includes bws" {
-        $cargoPackages | Should -Contain "bws"
+Describe "packages/local/bws" {
+    BeforeAll {
+        $bwsDir = "$packagesDir\local\bws"
+    }
+
+    It "has a nuspec and both chocolatey tool scripts" {
+        Test-Path "$bwsDir\bws.nuspec"                      | Should -BeTrue
+        Test-Path "$bwsDir\tools\chocolateyInstall.ps1"     | Should -BeTrue
+        Test-Path "$bwsDir\tools\chocolateyUninstall.ps1"   | Should -BeTrue
+    }
+
+    It "install script pins a version and a sha256 checksum" {
+        $install = Get-Content "$bwsDir\tools\chocolateyInstall.ps1" -Raw
+        $nuspec  = [xml](Get-Content "$bwsDir\bws.nuspec" -Raw)
+        $install | Should -Match "\`$version\s*=\s*'\d+\.\d+\.\d+'"
+        $install | Should -Match "sha256"
+        $nuspec.package.metadata.version | Should -Match "^\d+\.\d+\.\d+$"
     }
 }
 
