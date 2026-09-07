@@ -316,6 +316,25 @@ function nlm-login {
     & $scriptPath
 }
 
+function bws-login {
+    param(
+        [Parameter(Position=0)]
+        [string]$Directory = '.',
+        [string]$Token
+    )
+    $targetDir = (Get-Item $Directory).FullName
+    $scriptPath = Join-Path $targetDir '.devcontainer\bws-login.ps1'
+    if (-not (Test-Path $scriptPath)) {
+        Write-Error "$scriptPath が見つかりません。"
+        return
+    }
+    if ($Token) {
+        & $scriptPath -Token $Token
+    } else {
+        & $scriptPath
+    }
+}
+
 function gws-login {
     param(
         [Parameter(Position=0)]
