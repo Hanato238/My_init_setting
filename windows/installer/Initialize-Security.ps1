@@ -70,13 +70,17 @@ try {
 
     # 5. Fetch secrets. Secrets Manager entries carry a real key/value pair, so
     #    the old login.password / notes / custom-field fallback chain is gone.
-    $secrets = @(bws secret list @projectArg -o json | Out-String | ConvertFrom-Json)
+    # Windows PowerShell 5.1's ConvertFrom-Json emits a JSON array as a single
+    # (non-enumerated) object, so `@(... | ConvertFrom-Json)` would nest the whole
+    # array in one element. Capture to a variable first, then wrap to enumerate.
+    $parsed  = (bws secret list @projectArg -o json | Out-String).Trim() | ConvertFrom-Json
+    $secrets = @($parsed)
     Write-Host "Found $($secrets.Count) secret(s) in Secrets Manager." -ForegroundColor Gray
 
     $savedList = @()
     foreach ($s in $secrets) {
-        $secretName  = $s.key
-        $secretValue = $s.value
+        $secretName  = [string]$s.key
+        $secretValue = [string]$s.value
         if ([string]::IsNullOrWhiteSpace($secretName) -or $null -eq $secretValue) { continue }
         if ($secretName -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
             Write-Warning "Skipping '$secretName': not a valid environment variable name."
