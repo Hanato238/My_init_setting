@@ -70,6 +70,8 @@ if (-not $Token) {
     Write-Error "アクセストークンが空です。"
     exit 1
 }
+$colon = if ($Token.Contains(':')) { 'コロンあり' } else { 'コロンなし = 切れています' }
+Write-Host ("トークン: {0} 文字 ({1})" -f $Token.Length, $colon)
 
 $credDir  = "/home/node/.config/bws"
 $credPath = "$credDir/access-token"
@@ -96,7 +98,9 @@ docker exec -u root $ContainerName bash -lc "chown node:node $credDir $credPath 
 if ($LASTEXITCODE -ne 0) { Write-Error "コンテナ側の権限設定に失敗しました。"; exit $LASTEXITCODE }
 
 Write-Host "コンテナ内で疎通確認します..."
-docker exec $ContainerName bash -lc 'BWS_ACCESS_TOKEN="$(cat ~/.config/bws/access-token)" bws project list -o table'
+# ログインシェルが /etc/profile.d/bws.sh 経由で BWS_ACCESS_TOKEN を自動 export するので、
+# ここでインライン指定はしない（PowerShell 5.1 が docker.exe への引数中の " を壊すため）。
+docker exec $ContainerName bash -lc 'bws project list -o table'
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "bws project list に失敗しました。トークンを確認してください。"
     exit $LASTEXITCODE
@@ -104,7 +108,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "secrets.list を読み込みます..."
-docker exec $ContainerName bash -lc 'BWS_ACCESS_TOKEN="$(cat ~/.config/bws/access-token)" bash /workspace/.devcontainer/load-secrets.sh'
+docker exec $ContainerName bash -lc 'bash /workspace/.devcontainer/load-secrets.sh'
 if ($LASTEXITCODE -ne 0) {
     Write-Warning "load-secrets.sh が失敗しました（後でコンテナ内から手動実行できます）。"
 }

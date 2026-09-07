@@ -106,7 +106,9 @@ $inspect = 'bash /workspace/verify/verify-in-container.sh'
 
 if ($SimulateHostVar) {
     Write-Host "(VERIFY_HOST_VAR を注入して load-secrets.sh を再実行します)" -ForegroundColor DarkGray
-    $reload = 'BWS_ACCESS_TOKEN="$(cat ~/.config/bws/access-token 2>/dev/null)" bash /workspace/.devcontainer/load-secrets.sh; echo'
+    # BWS_ACCESS_TOKEN はログインシェルが /etc/profile.d/bws.sh 経由で export する。
+    # インライン指定しないのは PowerShell 5.1 が docker.exe への引数中の " を壊すため。
+    $reload = 'bash /workspace/.devcontainer/load-secrets.sh; echo'
     docker exec -e VERIFY_HOST_VAR=hello-from-host-sim $ContainerName bash -lc "$reload; $inspect"
 }
 else {
