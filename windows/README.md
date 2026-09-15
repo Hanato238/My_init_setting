@@ -30,6 +30,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 | `Start-Setup.ps1 -Prune` | パッケージリストから削除された項目をアンインストール（[詳細](#パッケージ整合prune)） |
 | `Start-Setup.ps1 -Prune -Force` | 同上。個別確認をスキップ |
 | `Start-Setup.ps1 -Update -Prune` | 更新と同時に整合 |
+| `installer\Install-Apps.ps1 -Only choco,npm` | choco と npm のパッケージだけをインストール/更新（下記「アプリ一括インストール」参照） |
 
 #### パッケージ整合（prune）
 
@@ -133,6 +134,19 @@ choco --version  # 確認
 ### `installer/Install-Apps.ps1` — アプリ一括インストール
 
 Chocolatey 経由でアプリを一括インストールし、npm でグローバルパッケージを追加する。
+
+`-Only winget,choco,npm,uv,cargo` のいずれかをカンマ区切りで指定すると、そのパッケージマネージャーの
+セクションだけを実行する（未指定時は従来どおり全部実行）。`-Prune` と併用した場合、整合対象も
+`-Only` で指定したマネージャーだけに絞られる。PowerShell モジュールのインストールはどのマネージャーにも
+属さない付随処理のため、`-Only` 指定時は実行されない。
+
+```powershell
+# choco と npm パッケージだけをインストール/更新
+& .\installer\Install-Apps.ps1 -Only choco,npm
+```
+
+Chocolatey 自体は winget（`Chocolatey.Chocolatey`）経由でインストールされるため、
+`-Only choco` を choco 未インストールの環境で単体使用すると失敗する。
 
 **Chocolatey でインストールするアプリ（主なもの）:**
 
