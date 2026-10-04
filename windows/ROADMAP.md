@@ -253,11 +253,23 @@ devcontainer は `secrets.list` に列挙した名前だけを取り込む。
 | 項目 | 決定 |
 |------|------|
 | 許可リスト | `.devcontainer/secrets.list`（1 行 1 環境変数名、`#` コメント可、値は書かない） |
-| 取得元の優先 | ホスト env（`docker-compose.yml` の `environment:` 経由）→ 無ければ bws のシークレット（`key` == 名前） |
-| 保存先 | `~/.secrets`（chmod 600）。`/etc/profile.d/secrets.sh` 経由でシェル起動時に自動 source |
+| 取得元の優先 | ホスト env（`claude` 関数が起動のたびに `docker exec -e NAME` で注入。値はコンテナ設定に残らない）→ 無ければ bws のシークレット（`key` == 名前） |
+| 保存先（bws 由来のみ） | `~/.secrets`（chmod 600）。`/etc/profile.d/secrets.sh` 経由でシェル起動時に自動 source |
 | 実行 | `.devcontainer/load-secrets.sh`。`bws-login.sh` / `bws-login.ps1` の末尾で best-effort 自動実行。再取得は再実行のみ |
-| 再実行時 | 前回書いた `export` 行を一旦 unset してからホスト判定 → bws 由来の古い値をホスト由来と誤認しない |
+| 優先の実現 | `~/.secrets` の各行は `[ -n "${NAME+x}" ] \|\| export NAME=...`（未設定のときだけ設定）。ホスト注入値を上書きしない |
 | 値の受け渡し | `bws secret list -o json` → `jq` で base64 化 → デコード（改行・引用符に耐える）。`printf %q` で `~/.secrets` に書く |
+
+### sbx からの離脱（段階的）
+
+ホストが sbx 非対応 OS（Ubuntu 等）になっても同じ構成で動くよう、`claude` 関数を全てコンテナ起動へ寄せる。
+
+| 段階 | 内容 | 状態 |
+|------|------|------|
+| 1 | `.devcontainer` が無いディレクトリの既定を sbx → 汎用コンテナ（`claude-sandbox` イメージ = テンプレートの Dockerfile、コンテナ名はディレクトリ名と同名）へ。devcontainer と同じく zellij で起動。sbx は `-Sbx` 明示時のみ | 実装済み（Windows ホストでの動作確認待ち） |
+| 2 | Ubuntu ホストへ移植（`ubuntu/wsl-setup/set_aliases.sh` の `claude` / `sbxcc`。ホスト env は `~/.secrets`）。compose の `${USERPROFILE}` マウントを OS 非依存に | 未着手 |
+| 3 | sbx 撤去（`-Sbx`、`Get-SbxSandboxes`、`winget-packages.ps1` の `Docker.sbx`、`sbxcc`、関連ドキュメント） | 未着手 |
+
+汎用コンテナは sbx と違いネットワーク制限が無い（隔離はマウントしたディレクトリのみ）。
 
 ---
 
