@@ -7,16 +7,19 @@
 # 事前に `gws auth login` 済みであること (~/.config/gws/client_secret.json が存在すること)。
 #
 # bws (Bitwarden Secrets Manager CLI): Dockerfile でバイナリを導入済み。アクセストークンは
-# コンテナ内 ~/.config/bws/access-token に保存する。初回だけコンテナ内で
-# `.devcontainer/bws-login.sh <token>`、またはホストから `.devcontainer/bws-login.ps1` を実行。
+# コンテナ内 ~/.config/bws/access-token に保存する。コンテナ内で
+# `.devcontainer/bws-login.sh <token>`、またはホストから `.devcontainer/bws-login.ps1` を実行し、
+# その場で引数または対話入力で手動指定する（環境変数・ホストファイルからの自動取得は無し）。
 # 保存したトークンはログインシェルで BWS_ACCESS_TOKEN として自動 export される
 # (利便性優先。そのシェルから起動する Claude Code / MCP サーバーもトークンを参照できる点に留意)。
 # トークンは対象プロジェクトの全シークレット読み取り権を持つ。dev 限定・コミット禁止。
-# コンテナ作り直しのたびに保存し直すのが面倒なら、下の access-token マウントを有効化する。
+# トークンはホストに保存しない方針のため、コンテナを作り直すたびに bws-login を再実行する。
 #
 # API キーの取り込みは .devcontainer/secrets.list（許可リスト = 環境変数名の列挙）で制御する。
-# リストの名前を下の environment: にも書けばホストから引き継ぎ（優先）、書かなければ bws から
-# 取得する。反映は .devcontainer/load-secrets.sh（bws-login 実行時にも自動で走り、~/.secrets を生成）。
+# リストの名前のうちホストの環境変数にあるものは、`claude` 関数が起動のたびに docker exec -e で
+# 注入する（優先。値はコンテナ設定に残らない）ので、下の environment: に足す必要はない。
+# ホストに無い名前は bws から取得する（.devcontainer/load-secrets.sh。bws-login 実行時にも
+# 自動で走り、~/.secrets を生成）。
 
 name: claude_container_template
 
@@ -32,9 +35,6 @@ services:
       - .:/workspace/.devcontainer:ro
       - ../.mcp.json:/workspace/.mcp.json:ro
       - ${USERPROFILE}/.config/gws/client_secret.json:/home/node/.config/gws/client_secret.json:ro
-      # bws トークンをホスト側ファイルで永続化したい場合はコメント解除
-      # (先に %USERPROFILE%\.config\bws\access-token を用意しておくこと):
-      # - ${USERPROFILE}/.config/bws/access-token:/home/node/.config/bws/access-token:ro
     working_dir: /workspace
     command: ["sleep", "infinity"]
     environment:

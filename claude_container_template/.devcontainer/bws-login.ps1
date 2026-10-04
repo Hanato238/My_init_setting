@@ -9,9 +9,10 @@
 
   トークンの取得元は次の優先順位:
     1. -Token 引数
-    2. 環境変数 BWS_ACCESS_TOKEN
-    3. ホスト側ファイル %USERPROFILE%\.config\bws\access-token
-    4. 対話入力 (エコーなし)
+    2. 対話入力 (エコーなし)
+
+  環境変数やホスト側ファイルからの自動取得は行わない。常に明示的な引数か
+  その場での手動入力のみを使う（トークンをホストに保存しない方針）。
 
   書き込み後、コンテナ内で `bws project list` を実行して疎通確認し、続けて
   .devcontainer/load-secrets.sh を実行して secrets.list の許可リストにある変数を
@@ -52,14 +53,6 @@ if (-not $running) {
     exit 1
 }
 
-if (-not $Token) { $Token = $env:BWS_ACCESS_TOKEN }
-if (-not $Token) {
-    $hostTokenFile = Join-Path $env:USERPROFILE ".config\bws\access-token"
-    if (Test-Path $hostTokenFile) {
-        $Token = (Get-Content -Raw -Path $hostTokenFile).Trim()
-        Write-Host "ホスト側 $hostTokenFile からトークンを読み込みました。"
-    }
-}
 if (-not $Token) {
     $secure = Read-Host -AsSecureString "bws access token"
     $Token = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(

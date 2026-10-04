@@ -443,7 +443,7 @@ claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</s
           <p>使うものだけでよい。詳細は下の「認証ブリッジ」を参照。</p>
           <div class="cmd container">
             <span class="cmd-tag container">container · bash</span>
-            <pre>.devcontainer/bws-login.sh &lt;access-token&gt;   <span class="c"># Bitwarden Secrets Manager</span></pre>
+            <pre>.devcontainer/bws-login.sh &lt;access-token&gt;   <span class="c"># Bitwarden Secrets Manager（手動入力）</span></pre>
           </div>
           <div class="cmd host">
             <span class="cmd-tag host">host · powershell</span>
@@ -458,8 +458,9 @@ claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</s
           <p>
             <code>.devcontainer/secrets.list</code> に環境変数名を 1 行 1 つ書く（値は書かない）。
             よく使う API キー名の候補がコメントで入っているので、使う行の <code>#</code> を外すだけでよい。
-            <code>bws-login</code> 実行時に <code>load-secrets.sh</code> が走り、
-            ホスト env → bws の順に解決して <code>~/.secrets</code>（600）へ。以降シェル起動時に自動読込。
+            ホストの環境変数にある名前は <code>claude</code> 起動のたびに自動で注入される。
+            ホストに無い名前は <code>bws-login</code> 実行時に <code>load-secrets.sh</code> が bws から取得して
+            <code>~/.secrets</code>（600）へ。以降シェル起動時に自動読込。
           </p>
         </div>
       </li>
@@ -473,7 +474,7 @@ claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</s
       <pre>claude            <span class="c"># 起動中ならそのままアタッチ、停止中なら up -d</span>
 claude -Rebuild   <span class="c"># イメージを作り直して起動</span>
 claude -AsHost    <span class="c"># コンテナを使わずホストの claude を実行</span>
-claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボックスで実行</span></pre>
+claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボックスで実行（廃止予定）</span></pre>
     </div>
     <p>zellij に入ったあとの操作:</p>
     <ul class="plain">
@@ -504,15 +505,15 @@ claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボ�
         </p>
         <div class="cmd container">
           <span class="cmd-tag container">container · bash</span>
-          <pre>.devcontainer/bws-login.sh &lt;token&gt;   <span class="c"># 引数・環境変数・対話入力のいずれか</span></pre>
+          <pre>.devcontainer/bws-login.sh &lt;token&gt;   <span class="c"># 引数 or 対話入力</span></pre>
         </div>
         <div class="cmd host">
           <span class="cmd-tag host">host · powershell</span>
-          <pre>.devcontainer\bws-login.ps1          <span class="c"># -Token / 環境変数 / ホストのファイル / プロンプト</span></pre>
+          <pre>.devcontainer\bws-login.ps1          <span class="c"># -Token / プロンプト</span></pre>
         </div>
         <dl>
           <dt>保存先</dt><dd><code>~/.config/bws/access-token</code>（コンテナ内）</dd>
-          <dt>永続化</dt><dd><code>docker-compose.yml</code> のコメントアウトされた access-token マウントを有効化すると再ビルドでも保持</dd>
+          <dt>永続化</dt><dd>しない。環境変数・ホストファイルからの自動取得も無く、コンテナ再作成のたびに手動で再入力する</dd>
           <dt>注意</dt><dd>対象プロジェクトの全シークレット読取権を持つ。dev 限定・コミット禁止・漏洩時はローテート</dd>
         </dl>
       </div>
@@ -523,9 +524,9 @@ claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボ�
           <span class="role">API キーを環境変数として取り込む</span>
         </div>
         <p>
-          許可リストに載せた名前だけを解決する。<b>ホスト env</b>（<code>docker-compose.yml</code> の
-          <code>environment:</code> 経由）にあればそれを優先し、無ければ <b>bws</b> のシークレット
-          （<code>key</code> == その名前）から取得。結果は <code>~/.secrets</code> へ。
+          許可リストに載せた名前だけを解決する。<b>ホスト env</b> にあれば <code>claude</code> 関数が
+          起動のたびに <code>docker exec -e</code> で注入し（優先）、無ければ <b>bws</b> のシークレット
+          （<code>key</code> == その名前）から取得して <code>~/.secrets</code> へ。
         </p>
         <div class="cmd container">
           <span class="cmd-tag container">container · bash</span>
@@ -534,7 +535,7 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
         </div>
         <dl>
           <dt>リスト</dt><dd><code>.devcontainer/secrets.list</code> — 1 行 1 変数名、<code>#</code> コメント可。よく使うキーの候補入り</dd>
-          <dt>ホスト側</dt><dd>ホストから渡したい変数は <code>environment:</code> にも名前を追加する</dd>
+          <dt>ホスト側</dt><dd>リストに名前があり、ホストの環境変数（SecretStore 由来を含む）に値があれば自動で渡る。値はコンテナ設定に残らない</dd>
           <dt>保存先</dt><dd><code>~/.secrets</code>（600）／ <code>/etc/profile.d/secrets.sh</code> がシェル起動時に source</dd>
           <dt>安全側</dt><dd>bws を参照できない（トークン無し／認証失敗）ときは既存の <code>~/.secrets</code> を上書きしない</dd>
         </dl>
@@ -619,8 +620,8 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
       </table>
     </div>
     <p class="note">
-      <code>secrets.list</code> の名前をホストから渡したいときは、この <code>environment:</code> にも
-      同じ名前を足す。書かなければ bws から取得される。
+      <code>secrets.list</code> の名前は <code>claude</code> 関数が起動時に注入するので、
+      この <code>environment:</code> に足す必要はない。ホストに無い名前は bws から取得される。
     </p>
 
     <h3 style="font-size:1rem;font-weight:600;margin-top:2rem;">つまずいたら</h3>
