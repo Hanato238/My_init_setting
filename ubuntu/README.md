@@ -22,6 +22,7 @@ ubuntu/<name>/
 | [`remote-dev/`](remote-dev/README.md) | GCP等のVMをTailscale経由のリモート開発機にする |
 | [`life-os/`](life-os/README.md) | GCP等のVMをTailscale SSH専用のclone/push機にする（`remote-dev/`の簡易版・常駐サービス無し） |
 | [`remote-agy/`](remote-agy/README.md) | GCP等のVMをTailscale SSH（CLI）+ xrdp（GUI）で操作するAntigravity CLI向け開発機にする |
+| [`devbox/`](devbox/README.md) | ローカルDocker Engine上にtmux + Claude Code + Antigravity CLIのコンテナを立てて本リポジトリをマウントする（試験的） |
 | [`nanoclaw/`](nanoclaw/) | Telegram ボットフレームワーク NanoClaw のセットアップ |
 
 ---
@@ -38,6 +39,7 @@ bash wsl-setup/setup.sh security    # 4. Bitwarden Secrets Manager → ~/.secret
 bash wsl-setup/setup.sh mcp         # 5. Claude Code MCPサーバー設定
 bash wsl-setup/setup.sh gui         # 6. (任意) GUIデスクトップ環境。WSLでは自動スキップ
 bash wsl-setup/setup.sh all         # 上記 apps/security/aliases/mcp/workspace(/gui) を一括実行
+bash wsl-setup/setup.sh mount-workspace <path>  # (任意) Windows側workspaceをWSLの~/workspaceへbind mount
 ```
 
 サブコマンドと実体ファイルの対応:
@@ -46,6 +48,7 @@ bash wsl-setup/setup.sh all         # 上記 apps/security/aliases/mcp/workspace
 |------------|------|
 | `apps` | `wsl-setup/install_apps.sh` |
 | `workspace` | `wsl-setup/set_workspace.sh` |
+| `mount-workspace` | `wsl-setup/mount_workspace.sh`（引数: Windows側workspaceのWSLパス。通常は`windows/settings/Set-WslWorkspaceMount.ps1`経由） |
 | `aliases` | `wsl-setup/set_aliases.sh` |
 | `security` | `wsl-setup/initialize_security.sh` |
 | `mcp` | `wsl-setup/set_mcp_servers.sh` |
@@ -86,6 +89,33 @@ rustc --version && uv --version && docker --version
 ### `set_workspace.sh` — ワークスペースディレクトリ設定
 
 `~/workspace` を作成し、シェル起動時に自動で移動するよう `~/.bashrc` に追記する（冪等）。
+
+---
+
+### `mount_workspace.sh` — Windows側workspaceをWSLにbind mount（オプション）
+
+`set_workspace.sh`が作る`~/workspace`はWSL内だけの独立したディレクトリだが、こちらはWindows側の
+`$HOME\workspace`（`windows/settings/Set-Workspace.ps1`が作成）を`~/workspace`に直接bind mountし、
+**同一のディレクトリ**として扱えるようにする。`/etc/fstab`に永続化するため、`wsl --shutdown`や
+再起動後も（WSL起動時に自動で）再マウントされる。
+
+通常は手動で叩くのではなく、Windows側の`windows/settings/Set-WslWorkspaceMount.ps1`から
+（Windowsパスの変換を済ませた上で）呼び出す:
+
+```powershell
+.\windows\settings\Set-WslWorkspaceMount.ps1
+```
+
+WSL側で直接叩く場合は、マウントしたいWindowsパスのWSL表記を明示する:
+
+```bash
+bash wsl-setup/setup.sh mount-workspace /mnt/c/Users/<user>/workspace
+```
+
+**注意:** `/mnt/c`配下（DrvFs）はデフォルトではUnixパーミッションやシンボリックリンクを正しく
+保持できない。そこに置いたgitリポジトリで権限・シンボリックリンク絡みの挙動がおかしい場合は、
+`/etc/wsl.conf`の`[automount]`に`options = "metadata"`を追加する（`/mnt/c`全体に影響する別途の変更、
+本スクリプトでは行わない）ことを検討する。
 
 ---
 
