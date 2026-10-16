@@ -1,0 +1,47 @@
+# 俯瞰コンテナ（workspace 専用）
+# name と container_name は `claude` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
+#
+# マウント方針:
+#   - /workspace 全体を :ro。子プロジェクト・.git・.claude・.mcp.json・.devcontainer はすべて読むだけ。
+#     プロジェクトの増減に追従させるため、子を個別に列挙しない。
+#   - 書き込み可は .agents/（役割ごとの状態）だけ。
+#   - commit / push / submodule ポインタ更新はホスト側（.claude/scripts/commit-cycle）で行う。
+#     .git を書き込み可にすると、hooks や config 経由でホスト上のコマンド実行につながるため。
+#
+# 許可設定:
+#   - コンテナの正本は ./managed-settings.json。managed settings としてマウントし、
+#     ユーザー設定や「常に許可」では緩められない。
+#   - ../.claude/settings.json はホストで起動したときの保険。コンテナ内では allowManaged*Only により大半が無効。
+#   - 秘密情報の拒否ルールは両方にある。片方を変えたら、もう片方も合わせる。
+#   - ルールを変えたらコンテナを再起動するだけでよい（再ビルド不要）。
+#
+# 秘密情報の方針:
+#   - bws トークンは置かない。下の environment: に列挙した名前だけをホストの環境変数から引き継ぐ。
+#   - GITHUB_MCP_PAT は issues 専用の fine-grained PAT（All repositories / Issues: RW / Metadata: R）。
+#   - トークンは MCP サーバーだけが使う。Bash からは sandbox.credentials で見えなくしてある。
+
+name: workspace
+
+services:
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: node
+    container_name: workspace
+    volumes:
+      - ..:/workspace:ro
+      - ../.agents:/workspace/.agents
+      - ../_staged:/workspace/_staged
+      - ./managed-settings.json:/etc/claude-code/managed-settings.json:ro
+      - claude-home:/home/node/.claude
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    environment:
+      - ANTHROPIC_API_KEY
+      - TODOIST_API_KEY
+      - GITHUB_MCP_PAT
+      - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+
+volumes:
+  claude-home:

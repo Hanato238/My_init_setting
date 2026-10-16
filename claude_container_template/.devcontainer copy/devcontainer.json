@@ -1,0 +1,9 @@
+{
+  "name": "workspace (overview)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "node",
+  "workspaceFolder": "/workspace",
+  "postStartCommand": "zellij",
+  "containerUser": "node",
+  "remoteUser": "node"
+}

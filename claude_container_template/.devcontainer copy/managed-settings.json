@@ -1,0 +1,95 @@
+{
+  "allowManagedPermissionRulesOnly": true,
+  "allowManagedHooksOnly": true,
+  "allowManagedMcpServersOnly": true,
+  "allowedMcpServers": [
+    { "serverName": "todoist" },
+    { "serverName": "github" }
+  ],
+  "enabledMcpjsonServers": ["todoist", "github"],
+  "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "deny": [
+      "WebFetch",
+      "WebSearch",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/gcp-key/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*credential*)",
+      "Read(**/*secret*)",
+      "Read(//workspace/data/**)",
+      "Read(//workspace/planner/**)",
+      "mcp__todoist__delete-object"
+    ],
+    "ask": [
+      "mcp__github__issue_write",
+      "mcp__github__add_issue_comment",
+      "mcp__github__update_issue_comment",
+      "mcp__github__sub_issue_write"
+    ],
+    "allow": [
+      "Edit(//workspace/.agents/**)",
+      "mcp__github__issue_read",
+      "mcp__github__list_issues",
+      "mcp__github__search_issues",
+      "mcp__github__search_repositories",
+      "mcp__todoist__find-tasks",
+      "mcp__todoist__find-tasks-by-date",
+      "mcp__todoist__find-completed-tasks",
+      "mcp__todoist__find-projects",
+      "mcp__todoist__find-sections",
+      "mcp__todoist__find-labels",
+      "mcp__todoist__find-comments",
+      "mcp__todoist__get-overview",
+      "mcp__todoist__user-info"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/workspace/.claude/hooks/guard-write.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": false,
+    "allowUnsandboxedCommands": false,
+    "enableWeakerNestedSandbox": true,
+    "network": {
+      "strictAllowlist": true,
+      "allowedDomains": []
+    },
+    "filesystem": {
+      "denyRead": [
+        "/workspace/**/.env",
+        "/workspace/**/.env.*",
+        "/workspace/**/gcp-key",
+        "/workspace/**/*.pem",
+        "/workspace/**/*.key",
+        "/workspace/**/*credential*",
+        "/workspace/**/*secret*",
+        "/workspace/data",
+        "/workspace/planner"
+      ]
+    },
+    "credentials": {
+      "envVars": [
+        { "name": "GITHUB_MCP_PAT", "mode": "deny" },
+        { "name": "GITHUB_PERSONAL_ACCESS_TOKEN", "mode": "deny" },
+        { "name": "TODOIST_API_KEY", "mode": "deny" },
+        { "name": "TODOIST_API_TOKEN", "mode": "deny" },
+        { "name": "ANTHROPIC_API_KEY", "mode": "deny" }
+      ]
+    }
+  }
+}

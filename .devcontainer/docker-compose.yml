@@ -1,0 +1,53 @@
+# My_init_setting 専用の開発コンテナ
+# name と container_name は `claude` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
+#
+# マウント方針:
+#   - リポジトリ全体（..）は書き込み可。Claude がスクリプトを編集・テストする。
+#   - ホスト上で実行される設定は :ro で上に重ねる。コンテナ内で書き換えると、後でホストの git や
+#     Claude Code・docker compose がその内容を実行してしまうため。
+#       .git/          hooks・config（core.hooksPath / core.fsmonitor / alias）→ ホストの git が実行
+#       .devcontainer/ マウントの追加 → 次の `claude -Rebuild` でコンテナの外に出られる
+#       .mcp.json      MCP サーバーの command → ホストの Claude Code が起動
+#       .claude/settings.json・settings.local.json  hooks・許可設定 → ホストの Claude Code が実行
+#   - .claude/ のそれ以外（skills・commands）は書き込み可。skill の frontmatter hooks もホストで実行されうるため、
+#     ホストで skill を使う前に .claude/ の diff を確認すること。
+#   - :ro で重ねるファイルは必ずホストに存在させる（git 管理下）。無いと Docker が空ディレクトリを作る。
+#   - commit / push はホスト側で行う。
+#
+# 許可設定:
+#   - コンテナ専用の ./managed-settings.json を managed settings としてマウントする（ユーザー設定では緩められない）。
+#     ルールを変えたらコンテナを再起動するだけでよい（再ビルド不要）。
+#
+# 秘密情報の方針:
+#   - bws トークンは置かない。下の environment: に列挙したものだけをホストの環境変数から引き継ぐ。
+#   - GITHUB_MCP_PAT には My_init_setting だけに絞った fine-grained PAT（Issues: RW / Metadata: R）を渡す。
+#     ホストの GITHUB_MCP_PAT（全リポジトリ用）が入らないよう、別名の GITHUB_MCP_PAT_MY_INIT_SETTING から割り当てる。
+#   - トークンは MCP サーバーだけが使う。Bash からは sandbox.credentials で見えなくしてある。
+
+name: my_init_setting
+
+services:
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: node
+    container_name: My_init_setting
+    volumes:
+      - ..:/workspace
+      - ../.git:/workspace/.git:ro
+      - .:/workspace/.devcontainer:ro
+      - ../.mcp.json:/workspace/.mcp.json:ro
+      - ../.claude/settings.json:/workspace/.claude/settings.json:ro
+      - ../.claude/settings.local.json:/workspace/.claude/settings.local.json:ro
+      - ./managed-settings.json:/etc/claude-code/managed-settings.json:ro
+      - claude-home:/home/node/.claude
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    environment:
+      - ANTHROPIC_API_KEY
+      - GITHUB_MCP_PAT=${GITHUB_MCP_PAT_MY_INIT_SETTING}
+      - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+
+volumes:
+  claude-home:

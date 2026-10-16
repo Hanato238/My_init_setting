@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Dockerfile の「# renovate:」コメント直後の ARG の版を追う",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARG \\S+?=(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "node はメジャー版 22 のまま固定する",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["node"],
+      "allowedVersions": "/^22\\./"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    // 承認フローを効かせるため、permission-mode は既定（auto にしない）。
+    tab name="claude" {
+        pane command="claude" close_on_exit=false
+    }
+}
