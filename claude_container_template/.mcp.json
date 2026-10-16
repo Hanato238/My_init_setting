@@ -39,6 +39,13 @@
         "mcp-server-git"
       ],
       "env": {}
+    },
+   "todoist": {
+      "command": "npx",
+      "args": ["-y", "@doist/todoist-mcp"],
+      "env": {
+        "TODOIST_API_TOKEN": "あなたのTodoist APIトークン"
+      }
     }
   }
 }

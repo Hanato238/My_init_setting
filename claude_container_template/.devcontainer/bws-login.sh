@@ -7,8 +7,10 @@
 #
 # 使い方 (コンテナ内):
 #   .devcontainer/bws-login.sh <access-token>          # 引数で渡す
-#   BWS_ACCESS_TOKEN=xxx .devcontainer/bws-login.sh    # 環境変数で渡す
 #   .devcontainer/bws-login.sh                         # 対話入力 (エコーなし)
+#
+# 環境変数やホスト側ファイルからの自動取得は行わない。常に引数かその場での
+# 手動入力のみを使う（トークンをホストに保存しない方針）。
 #
 # ホスト側からまとめて実行したい場合は .devcontainer/bws-login.ps1 を使う。
 #
@@ -20,7 +22,7 @@
 #  - 引数でトークンを渡すとシェル履歴と /proc/<pid>/cmdline に残る。可能なら対話入力を使う。
 set -euo pipefail
 
-TOKEN="${1:-${BWS_ACCESS_TOKEN:-}}"
+TOKEN="${1:-}"
 if [ -z "$TOKEN" ]; then
   read -rsp "bws access token: " TOKEN
   echo

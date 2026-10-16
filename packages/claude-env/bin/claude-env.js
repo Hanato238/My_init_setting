@@ -53,8 +53,13 @@ function mergeHooks(srcPath, destPath) {
 
 const command = process.argv[2];
 
+// ─── version: package.json のバージョンを表示 ──────────────────────────────
+if (command === '--version' || command === '-v') {
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  console.log(version);
+
 // ─── install: yazi をシステムパスに配置（root 必須）──────────────────────────
-if (command === 'install') {
+} else if (command === 'install') {
   const isRoot = process.getuid && process.getuid() === 0;
   if (!isRoot) {
     console.error('[claude-env] "install" requires root. Run as root or via sudo.');
@@ -110,7 +115,8 @@ if (command === 'install') {
   console.log('[claude-env] Setup complete.');
 
 } else {
-  console.error('Usage: claude-env install   # root: yazi をシステムにインストール');
-  console.error('       claude-env setup     # user: zellij/claude 設定を配置');
+  console.error('Usage: claude-env install     # root: yazi をシステムにインストール');
+  console.error('       claude-env setup       # user: zellij/claude 設定を配置');
+  console.error('       claude-env --version   # バージョンを表示');
   process.exit(1);
 }

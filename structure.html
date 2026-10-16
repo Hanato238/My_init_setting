@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My_init_setting — 構造ガイド</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2d3145;
+    --accent: #5b8dee;
+    --accent2: #4ecdc4;
+    --accent3: #f7b731;
+    --text: #e0e6f0;
+    --muted: #7a82a0;
+    --ok: #44cf6c;
+    --warn: #f7b731;
+    --danger: #fc5c65;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem 1.5rem;
+  }
+  h1 { font-size: 1.6rem; font-weight: 700; color: var(--accent); margin-bottom: .3rem; }
+  h2 { font-size: 1.1rem; font-weight: 600; color: var(--accent2); margin: 2rem 0 .8rem; border-left: 3px solid var(--accent2); padding-left: .6rem; }
+  h3 { font-size: .95rem; font-weight: 600; color: var(--accent3); margin: 1.2rem 0 .4rem; }
+  p { color: var(--muted); font-size: .9rem; margin-bottom: .8rem; }
+  code {
+    font-family: 'Consolas', 'Cascadia Code', monospace;
+    background: #252837;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: .85rem;
+    color: var(--accent3);
+  }
+  .subtitle { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+
+  /* Quick ref table */
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-bottom: 1rem; }
+  th { background: var(--surface); color: var(--accent); text-align: left; padding: .5rem .8rem; border: 1px solid var(--border); }
+  td { padding: .45rem .8rem; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #151820; }
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-right: 3px;
+  }
+  .b-ps { background: #1a2a5e; color: #6fb1fc; }
+  .b-sh { background: #1a3a2a; color: #6ffca0; }
+  .b-gcp { background: #3a2a1a; color: #fcb36f; }
+  .b-npm { background: #2a1a3a; color: #c06ffc; }
+  .b-manual { background: #3a1a1a; color: #fc6f6f; }
+  .cmd {
+    font-family: 'Consolas', monospace;
+    font-size: .8rem;
+    color: var(--ok);
+    display: block;
+    margin-top: .2rem;
+  }
+
+  /* Diagram container */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+  }
+  .mermaid { min-width: 700px; }
+
+  /* Entry detail cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .card-title { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .5rem; }
+  .card-env { font-size: .75rem; color: var(--muted); margin-bottom: .6rem; }
+  .card ul { padding-left: 1.2rem; }
+  .card li { font-size: .82rem; color: var(--muted); margin-bottom: .2rem; }
+  .card li code { font-size: .78rem; }
+  .card .manual-steps { margin-top: .6rem; padding: .5rem; background: #2a1e1e; border-left: 3px solid var(--danger); border-radius: 0 4px 4px 0; }
+  .card .manual-steps p { font-size: .78rem; color: #fc9a9a; margin: 0; }
+
+  /* Shared layer */
+  .shared-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; }
+  .shared-item { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: .8rem; }
+  .shared-item .path { font-size: .8rem; color: var(--accent3); font-family: monospace; margin-bottom: .4rem; }
+  .shared-item .desc { font-size: .8rem; color: var(--muted); }
+  .shared-item .consumers { font-size: .75rem; color: var(--accent2); margin-top: .4rem; }
+
+  footer { text-align: center; font-size: .75rem; color: var(--muted); margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>My_init_setting</h1>
+<p class="subtitle">開発環境の一括セットアップ — 各エントリースクリプトの構造と依存関係</p>
+
+<!-- ====== Quick Reference ====== -->
+<h2>クイックリファレンス</h2>
+<table>
+  <thead>
+    <tr>
+      <th>対象環境</th>
+      <th>エントリースクリプト</th>
+      <th>実行コマンド</th>
+      <th>種別</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Windows 11</td>
+      <td><code>windows/Start-Setup.ps1</code></td>
+      <td><span class="cmd">iex (iwr ".../windows/Start-Setup.ps1")</span></td>
+      <td><span class="badge b-ps">PS1</span></td>
+    </tr>
+    <tr>
+      <td>WSL Ubuntu</td>
+      <td><code>ubuntu/wsl-setup/setup.sh</code></td>
+      <td><span class="cmd">bash setup.sh [apps|mcp|aliases|workspace|security|all]</span></td>
+      <td><span class="badge b-sh">Bash</span></td>
+    </tr>
+    <tr>
+      <td>Android Termux</td>
+      <td><code>android/termux/setup.sh</code></td>
+      <td><span class="cmd">bash setup.sh</span></td>
+      <td><span class="badge b-sh">Bash</span></td>
+    </tr>
+    <tr>
+      <td>GCP VM — Tailscale + Orca</td>
+      <td><code>ubuntu/remote-dev/Create-Vm.ps1</code></td>
+      <td><span class="cmd">.\Create-Vm.ps1 [-TailscaleAuthKey ...] [-DryRun]</span></td>
+      <td><span class="badge b-gcp">GCP</span><span class="badge b-ps">PS1</span></td>
+    </tr>
+    <tr>
+      <td>GCP VM — Antigravity CLI</td>
+      <td><code>ubuntu/remote-agy/Create-Vm.ps1</code></td>
+      <td><span class="cmd">.\Create-Vm.ps1 [-TailscaleAuthKey ...] [-DryRun]</span></td>
+      <td><span class="badge b-gcp">GCP</span><span class="badge b-ps">PS1</span></td>
+    </tr>
+    <tr>
+      <td>GCP VM — life-os 運用</td>
+      <td><code>ubuntu/life-os/Create-Vm.ps1</code></td>
+      <td><span class="cmd">.\Create-Vm.ps1 [-TailscaleAuthKey ...] [-DryRun]</span></td>
+      <td><span class="badge b-gcp">GCP</span><span class="badge b-ps">PS1</span></td>
+    </tr>
+    <tr>
+      <td>NanoClaw</td>
+      <td><code>ubuntu/nanoclaw/setup.sh</code></td>
+      <td><span class="cmd">bash setup.sh</span></td>
+      <td><span class="badge b-sh">Bash</span></td>
+    </tr>
+    <tr>
+      <td>Claude Code コンテナ</td>
+      <td><code>claude_container_template/.devcontainer/</code><br><code>packages/claude-env</code></td>
+      <td><span class="cmd">npx claude-env  /  VS Code Dev Containers</span></td>
+      <td><span class="badge b-npm">NPM</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ====== Dependency Graph ====== -->
+<h2>依存関係マップ</h2>
+<div class="diagram-wrap">
+<div class="mermaid">
+graph LR
+  subgraph SHARED["🔧 shared / packages — 横断レイヤー"]
+    mcp["shared/mcp.d/*.json\nMCPサーバー設定群\n(ai / browser / cloud / core …)"]
+    cenv["packages/claude-env\nClaude Code 環境\nNPMパッケージ"]
+  end
+
+  subgraph WIN["🖥️ Windows 11"]
+    w0(["Start-Setup.ps1"])
+    w1["installer/\nInstall-Apps.ps1\nwinget / choco / npm / uv / cargo"]
+    w2["installer/\nInstall-Office.ps1\n※ -IncludeOffice 指定時"]
+    w3["installer/\nInitialize-Security.ps1\n※ -SyncSecrets 指定時"]
+    w4["installer/\nSetup-Wsl.ps1"]
+    w5["settings/\nSet-Aliases.ps1\nSet-WindowsSettings.ps1\nSet-Workspace.ps1"]
+    w6["settings/\nSet-McpServers.ps1"]
+  end
+
+  subgraph WSL["🐧 WSL Ubuntu"]
+    u0(["wsl-setup/setup.sh"])
+    u1["install_apps.sh"]
+    u2["initialize_security.sh\n(Bitwarden)"]
+    u3["set_aliases.sh\nset_workspace.sh\nset_gui.sh"]
+    u4["set_mcp_servers.sh"]
+  end
+
+  subgraph TERM["📱 Android Termux"]
+    a0(["termux/setup.sh"])
+    a1["installer/\ninstall_proot_ubuntu.sh\n※ Termux ホスト検出時"]
+    a2["installer/\ninstall_llm_cli.sh\n(Antigravity CLI)"]
+    a3["installer/\ninitialize_security.sh"]
+    a4["settings/\nset_workspace.sh\nset_aliases.sh"]
+    a5["settings/\nset_mcp_servers.sh"]
+  end
+
+  subgraph RDEV["☁️ GCP VM: remote-dev\nTailscale + Orca headless"]
+    rd0(["remote-dev/\nCreate-Vm.ps1"])
+    rd1["startup-script.sh\n→ setup.sh\n+ packages.sh"]
+    rd2["Tailscale\n(VPN / exit node)"]
+    rd3["Orca headless server\n(systemd service)"]
+    rd4["Node / Docker / gh\nClaude Code / agy"]
+  end
+
+  subgraph RAGY["☁️ GCP VM: remote-agy\nAntigravity CLI"]
+    ra0(["remote-agy/\nCreate-Vm.ps1"])
+    ra1["startup-script.sh\n→ setup.sh\n+ packages.sh"]
+    ra2["Tailscale\n(VPN / exit node)"]
+    ra3["agy / uv / gcloud\nNotebookLM MCP"]
+  end
+
+  subgraph LIFEOS["☁️ GCP VM: life-os\npush 専用"]
+    lo0(["life-os/\nCreate-Vm.ps1"])
+    lo1["startup-script.sh\n→ setup.sh\n+ packages.sh"]
+    lo2["Tailscale SSH\n(exit node)"]
+    lo3["repo clone\n(初回ログイン時)"]
+  end
+
+  subgraph NANO["🤖 NanoClaw"]
+    n0(["nanoclaw/setup.sh"])
+    n1["Node / pnpm\nClaude Code CLI"]
+    n2["qwibitai/nanoclaw\nclone + nanoclaw.sh"]
+  end
+
+  subgraph CONT["🐳 Claude Code コンテナ"]
+    c0(["claude_container_template\n.devcontainer/"])
+    c1["Dockerfile\ndocker-compose.yml\ndevcontainer.json"]
+    c2["bws-login.sh / .ps1\n(Bitwarden 認証)"]
+    c3["load-secrets.sh\n(secrets 注入)"]
+    cp0(["packages/claude-env"])
+    cp1["claude-env.js\n(CLI)"]
+    cp2["assets/\nclaude-settings\nzellij-layout\nyazi-theme"]
+  end
+
+  %% Windows internal
+  w0 --> w1
+  w0 -.->|"-IncludeOffice"| w2
+  w0 -.->|"-SyncSecrets"| w3
+  w0 --> w4
+  w0 --> w5
+  w0 --> w6
+
+  %% WSL internal
+  u0 --> u1
+  u0 --> u2
+  u0 --> u3
+  u0 --> u4
+
+  %% Termux internal
+  a0 -->|"Termuxホスト"| a1
+  a0 --> a2
+  a0 --> a3
+  a0 --> a4
+  a0 --> a5
+
+  %% GCP VM internal
+  rd0 --> rd1
+  rd1 --> rd2
+  rd1 --> rd3
+  rd1 --> rd4
+
+  ra0 --> ra1
+  ra1 --> ra2
+  ra1 --> ra3
+
+  lo0 --> lo1
+  lo1 --> lo2
+  lo1 --> lo3
+
+  %% NanoClaw internal
+  n0 --> n1
+  n0 --> n2
+
+  %% Container internal
+  c0 --> c1
+  c0 --> c2
+  c0 --> c3
+  cp0 --> cp1
+  cp0 --> cp2
+
+  %% → shared layer
+  w6 -->|reads| mcp
+  u4 -->|reads| mcp
+  a5 -->|reads| mcp
+  c0 -->|reads| mcp
+  cp0 -->|installs| cenv
+
+  %% Windows → WSL bridging
+  w4 -.->|"WSL をセットアップ\n(Set-WslWorkspaceMount など)"| u0
+
+  style SHARED fill:#1e2035,stroke:#4a4f7a,color:#c0c8e0
+  style WIN fill:#1a2040,stroke:#3a50a0,color:#c0c8e0
+  style WSL fill:#1a3020,stroke:#3a7050,color:#c0c8e0
+  style TERM fill:#302015,stroke:#806030,color:#c0c8e0
+  style RDEV fill:#2a1a30,stroke:#704080,color:#c0c8e0
+  style RAGY fill:#2a1a30,stroke:#704080,color:#c0c8e0
+  style LIFEOS fill:#2a1a30,stroke:#704080,color:#c0c8e0
+  style NANO fill:#302020,stroke:#805040,color:#c0c8e0
+  style CONT fill:#15252a,stroke:#306070,color:#c0c8e0
+</div>
+</div>
+
+<!-- ====== Entry Point Detail ====== -->
+<h2>エントリースクリプト詳細</h2>
+<div class="cards">
+
+  <!-- Windows -->
+  <div class="card">
+    <div class="card-title">🖥️ windows/Start-Setup.ps1</div>
+    <div class="card-env">対象: Windows 11（管理者 PowerShell）</div>
+    <ul>
+      <li><code>installer/Install-Apps.ps1</code> — winget / choco / npm / uv / cargo パッケージ一括インストール。<code>-Clinic</code> フラグで診療所プロファイルに切替</li>
+      <li><code>installer/Install-Office.ps1</code> — <code>-IncludeOffice</code> 指定時のみ実行</li>
+      <li><code>installer/Initialize-Security.ps1</code> — <code>-SyncSecrets</code> 指定時に Bitwarden から秘密情報を配布</li>
+      <li><code>installer/Setup-Wsl.ps1</code> — WSL ディストリビューションのインストール</li>
+      <li><code>settings/Set-Aliases.ps1</code> — PowerShell プロファイルにエイリアス登録</li>
+      <li><code>settings/Set-McpServers.ps1</code> — <code>shared/mcp.d/</code> を読んで Claude / Gemini に登録</li>
+      <li><code>settings/Set-WindowsSettings.ps1</code> — Explorer / タスクバー等の設定</li>
+      <li><code>settings/Set-Workspace.ps1</code> — ワークスペースフォルダ作成 / マウント</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Bitwarden アクセストークン（実行時に対話入力）、Windows Sandbox での事前検証</p>
+    </div>
+  </div>
+
+  <!-- WSL -->
+  <div class="card">
+    <div class="card-title">🐧 ubuntu/wsl-setup/setup.sh</div>
+    <div class="card-env">対象: WSL Ubuntu（カテゴリ指定で部分実行可）</div>
+    <ul>
+      <li><code>install_apps.sh</code> — apt パッケージ + CLI ツール</li>
+      <li><code>initialize_security.sh</code> — Bitwarden / <code>~/.secrets</code> 設定</li>
+      <li><code>set_aliases.sh</code> — <code>~/.bash_profile</code> にエイリアス登録</li>
+      <li><code>set_mcp_servers.sh</code> — <code>shared/mcp.d/</code> を読んで Claude / Gemini に登録</li>
+      <li><code>set_workspace.sh</code> — <code>~/workspace</code> 作成・シンボリックリンク</li>
+      <li><code>set_gui.sh</code> — ネイティブ Ubuntu のみ（WSL では自動スキップ）</li>
+      <li><code>mount_workspace.sh</code> — Windows 側の <code>Set-WslWorkspaceMount.ps1</code> から呼ばれる</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Bitwarden アクセストークン</p>
+    </div>
+  </div>
+
+  <!-- Termux -->
+  <div class="card">
+    <div class="card-title">📱 android/termux/setup.sh</div>
+    <div class="card-env">対象: Android Termux → proot-distro Ubuntu</div>
+    <ul>
+      <li>Termux ホスト検出時: <code>installer/install_proot_ubuntu.sh</code> を実行して Ubuntu を展開し終了</li>
+      <li>Ubuntu/proot 環境内では:<ul>
+        <li><code>installer/install_llm_cli.sh</code> — Antigravity CLI (agy) インストール</li>
+        <li><code>installer/initialize_security.sh</code> — Bitwarden 設定</li>
+        <li><code>settings/set_workspace.sh / set_aliases.sh</code></li>
+        <li><code>settings/set_mcp_servers.sh</code></li>
+      </ul></li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: proot Ubuntu 内で再実行が必要、Bitwarden アクセストークン</p>
+    </div>
+  </div>
+
+  <!-- remote-dev -->
+  <div class="card">
+    <div class="card-title">☁️ ubuntu/remote-dev/Create-Vm.ps1</div>
+    <div class="card-env">対象: GCP VM — Tailscale + Orca headless server</div>
+    <ul>
+      <li><code>config/vm-config.json</code> を読んで <code>gcloud compute instances create</code> を実行</li>
+      <li>VM 起動時に <code>startup-script.sh</code> → <code>setup.sh</code> が自動実行</li>
+      <li><code>setup.sh</code> が行うこと:<ul>
+        <li>Tailscale インストール・有効化（exit node として広告）</li>
+        <li>Orca headless server（AppImage + systemd service）</li>
+        <li>Node / Docker / gh / Claude Code / agy</li>
+        <li>ログイン時エイリアス (<code>orca</code> / <code>claude</code> / <code>enable-tailnet-port</code>)</li>
+      </ul></li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: <code>-TailscaleAuthKey</code> 未指定時は Tailscale 認証が手動、Tailscale 管理コンソールで exit node 承認、Orca クライアントのペアリング</p>
+    </div>
+  </div>
+
+  <!-- remote-agy -->
+  <div class="card">
+    <div class="card-title">☁️ ubuntu/remote-agy/Create-Vm.ps1</div>
+    <div class="card-env">対象: GCP VM — Antigravity CLI (agy) 特化</div>
+    <ul>
+      <li>remote-dev と同じ VM 作成パターン（<code>config/vm-config.json</code> + <code>startup-script</code>）</li>
+      <li><code>setup.sh</code> が行うこと:<ul>
+        <li>Tailscale インストール（exit node）</li>
+        <li>Antigravity CLI (agy) / uv / gcloud CLI / gws</li>
+        <li>NotebookLM MCP CLI</li>
+      </ul></li>
+      <li>Orca・Docker は含まない（agy での agentic 作業に特化）</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Tailscale 認証、exit node 承認、GCP 認証 (<code>gcloud auth login</code>)</p>
+    </div>
+  </div>
+
+  <!-- life-os -->
+  <div class="card">
+    <div class="card-title">☁️ ubuntu/life-os/Create-Vm.ps1</div>
+    <div class="card-env">対象: GCP VM — life-os 運用・push 専用</div>
+    <ul>
+      <li>remote-dev と同じ VM 作成パターン</li>
+      <li><code>setup.sh</code> が行うこと:<ul>
+        <li>Tailscale SSH + exit node</li>
+        <li>対象リポジトリのクローン（初回 SSH ログイン時）</li>
+        <li>サービス・Docker・GUI なし（最小構成）</li>
+      </ul></li>
+      <li>人間が Tailscale SSH でログインして手動 push する用途</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Tailscale 認証、exit node 承認、GitHub 認証</p>
+    </div>
+  </div>
+
+  <!-- NanoClaw -->
+  <div class="card">
+    <div class="card-title">🤖 ubuntu/nanoclaw/setup.sh</div>
+    <div class="card-env">対象: NanoClaw（Ubuntu / WSL）</div>
+    <ul>
+      <li>Node.js (nvm / v24) + pnpm インストール</li>
+      <li>Claude Code CLI インストール</li>
+      <li><code>~/workspace/nanoclaw</code> にリポジトリをクローン</li>
+      <li><code>nanoclaw.sh</code> を実行（API キー設定 + チャンネルペアリング）</li>
+      <li>WSL2 の場合: <code>/etc/hosts</code> に Telegram API IP を追加</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Anthropic API キー入力、Telegram チャンネルペアリング</p>
+    </div>
+  </div>
+
+  <!-- Container -->
+  <div class="card">
+    <div class="card-title">🐳 claude_container_template / packages/claude-env</div>
+    <div class="card-env">対象: Claude Code Dev Container（プロジェクト単位）</div>
+    <ul>
+      <li><code>.devcontainer/devcontainer.json</code> + <code>docker-compose.yml</code> + <code>Dockerfile</code> をプロジェクトにコピーして使う</li>
+      <li><code>bws-login.sh / .ps1</code> — Bitwarden 認証（初回・トークン更新時）</li>
+      <li><code>load-secrets.sh</code> — <code>secrets.list</code> に列挙した秘密情報を bws から取得し <code>~/.secrets</code> へ</li>
+      <li><code>shared/mcp.d/</code> を読んで Claude / Gemini に MCP を登録</li>
+      <li><code>packages/claude-env</code> — <code>npx claude-env</code> で zellij / yazi / claude-settings を一括セットアップするスタンドアロン版</li>
+    </ul>
+    <div class="manual-steps">
+      <p>⚠️ 手動: Bitwarden マシンアカウントのアクセストークン、<code>secrets.list</code> のカスタマイズ</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ====== Shared Layer ====== -->
+<h2>横断レイヤー（shared / packages）</h2>
+<div class="shared-grid">
+  <div class="shared-item">
+    <div class="path">shared/mcp.d/*.json</div>
+    <div class="desc">MCPサーバー設定の分割ファイル群。カテゴリごとに分割（ai / browser / cloud / core / commerce / google / productivity）し、各 OS の MCP 登録スクリプトが統合して Claude・Gemini に適用する。</div>
+    <div class="consumers">▸ Windows: Set-McpServers.ps1 ▸ WSL: set_mcp_servers.sh ▸ Termux: set_mcp_servers.sh ▸ Container: load-secrets.sh</div>
+  </div>
+  <div class="shared-item">
+    <div class="path">packages/claude-env</div>
+    <div class="desc">Claude Code 環境のスタンドアロン NPM パッケージ。<code>npx claude-env</code> で実行すると zellij レイアウト・yazi テーマ・claude-settings を一括展開。Dev Container 不要で使える。</div>
+    <div class="consumers">▸ 任意の Ubuntu / WSL 環境</div>
+  </div>
+  <div class="shared-item">
+    <div class="path">shared/skills/</div>
+    <div class="desc">Claude Code スキル定義（grill-me / grill-with-docs / notebooklm-pdf-workflow）。各プロジェクトの <code>.claude/skills/</code> に配布して使う。</div>
+    <div class="consumers">▸ 全プロジェクト共通</div>
+  </div>
+  <div class="shared-item">
+    <div class="path">TAILNET-PORTS.md</div>
+    <div class="desc">Tailscale 経由で特定ポートを公開するヘルパーの手順書。Windows（PowerShell）・Ubuntu（ufw）の両方をカバー。</div>
+    <div class="consumers">▸ remote-dev ▸ remote-agy ▸ life-os</div>
+  </div>
+</div>
+
+<!-- ====== Design Principles ====== -->
+<h2>設計方針（v1 完成条件）</h2>
+<div class="cards" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+  <div class="card">
+    <h3>冪等性</h3>
+    <p>同じ入力（リポジトリ + 手動入力値）に対し、どの環境で・何度実行しても同じ環境を出力する。既存設定を二重登録しない。</p>
+  </div>
+  <div class="card">
+    <h3>秘密情報管理</h3>
+    <p>Bitwarden Secrets Manager を唯一の正とする。アクセストークンは実行時の環境変数か対話入力のみ。ファイル・恒久環境変数・SecretStore への平文保存は行わない。</p>
+  </div>
+  <div class="card">
+    <h3>手動工程の明示</h3>
+    <p>秘密情報の入力・外部コンソールでの承認など、自動化できない手順は README と各カードの ⚠️ 欄に明記。それ以外は空の環境で1回の実行で完結する。</p>
+  </div>
+  <div class="card">
+    <h3>場所非依存性</h3>
+    <p>どの端末・VMからでも同じ環境で作業を開始できる。作業場所に仕事が拘束されない長期目標の技術基盤。</p>
+  </div>
+</div>
+
+<footer>
+  My_init_setting — <a href="https://github.com/Hanato238/My_init_setting" style="color: var(--accent);">github.com/Hanato238/My_init_setting</a> &nbsp;|&nbsp; 最終更新: 2026-10-04
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#1a1d27',
+      primaryColor: '#252837',
+      primaryTextColor: '#e0e6f0',
+      primaryBorderColor: '#4a4f7a',
+      lineColor: '#5b8dee',
+      secondaryColor: '#1e2035',
+      tertiaryColor: '#151820',
+      clusterBkg: '#1a1d27',
+      clusterBorder: '#2d3145',
+      titleColor: '#e0e6f0',
+      edgeLabelBackground: '#252837',
+      nodeTextColor: '#e0e6f0',
+    },
+    flowchart: {
+      rankSpacing: 60,
+      nodeSpacing: 30,
+      curve: 'basis',
+      htmlLabels: false,
+    }
+  });
+</script>
+</body>
+</html>

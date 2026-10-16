@@ -203,6 +203,38 @@ function Get-SbxSandboxes {
     }
 }
 
+function Get-ClaudeSecretEnvArgs {
+    # Build `-e NAME` docker args for the names in secrets.list that are set in the host env.
+    # Only names are passed: docker reads each value from this process's environment, so
+    # values never appear on the command line or in the container's stored config.
+    param([Parameter(Mandatory = $true)][string]$TargetDir)
+
+    $listFile = Join-Path $TargetDir '.devcontainer\secrets.list'
+    if (-not (Test-Path $listFile)) {
+        $listFile = "$HOME\workspace\My_init_setting\claude_container_template\.devcontainer\secrets.list"
+    }
+    if (-not (Test-Path $listFile)) { return @() }
+
+    $envArgs = @()
+    $passed  = @()
+    foreach ($line in Get-Content -LiteralPath $listFile) {
+        $name = ($line -replace '#.*', '').Trim()
+        if (-not $name) { continue }
+        if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+            Write-Warning "secrets.list: skipping '$name' (not a valid environment variable name)"
+            continue
+        }
+        if ([Environment]::GetEnvironmentVariable($name)) {
+            $envArgs += '-e', $name
+            $passed  += $name
+        }
+    }
+    if ($passed.Count -gt 0) {
+        Write-Host "Host env -> container: $($passed -join ', ')" -ForegroundColor DarkGray
+    }
+    return $envArgs
+}
+
 function claude {
     param(
         [Parameter(Position=0)]
@@ -283,23 +315,56 @@ function claude {
             Write-Host "Container already running ($container)" -ForegroundColor Green
         }
 
-        docker exec -it $container zellij @Rest
+        $envArgs = @(Get-ClaudeSecretEnvArgs -TargetDir $targetDir)
+        docker exec -it @envArgs $container zellij @Rest
         return
     }
 
-    Write-Host "No .devcontainer found -> sbx exec claude" -ForegroundColor Yellow
-    $cols    = [Console]::WindowWidth
-    $rows    = [Console]::WindowHeight
-    $dirName = (Get-Item $targetDir).Name.ToLower() -replace '[^a-z0-9.+\-]', '-'
-    $sbxName = "claude-$dirName"
-    $sbxList = Get-SbxSandboxes
-    if (($sbxList | Where-Object { $_.name -eq $sbxName }).Count -eq 0) {
-        Write-Host "Creating sandbox $sbxName..." -ForegroundColor Cyan
-        sbx create -q --name $sbxName claude $targetDir
-        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create sandbox'; return }
+    Write-Host "No .devcontainer found -> generic container" -ForegroundColor Yellow
+    $repoRoot   = "$HOME\workspace\My_init_setting"
+    $image      = 'claude-sandbox:latest'
+    $dockerfile = Join-Path $repoRoot 'claude_container_template\.devcontainer\Dockerfile'
+
+    $null = docker image inspect $image 2>$null
+    if ($Rebuild -or $LASTEXITCODE -ne 0) {
+        if (-not (Test-Path $dockerfile)) { Write-Error "$dockerfile not found"; return }
+        Write-Host "Building $image..." -ForegroundColor Cyan
+        docker build -t $image -f $dockerfile $repoRoot
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to build image'; return }
     }
-    $sbxWorkdir = '/' + $targetDir[0].ToString().ToLower() + ($targetDir.Substring(2) -replace '\\', '/')
-    sbx exec -it -e "TERM=xterm-256color" -e "COLUMNS=$cols" -e "LINES=$rows" -w $sbxWorkdir $sbxName claude @Rest
+
+    # Container name = project (directory) name, same as the .devcontainer convention.
+    # Only characters Docker rejects in a container name are replaced.
+    $projectName = (Get-Item $targetDir).Name
+    $container   = $projectName -replace '[^a-zA-Z0-9_.\-]', '-' -replace '^[^a-zA-Z0-9]', 'c'
+    $dirLabel    = 'claude-sandbox.dir'
+
+    $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+    if ($status) {
+        # The name has no prefix, so an unrelated container may already own it.
+        # Only reuse (or remove) the one this function created for this directory.
+        $labels = docker inspect --format '{{json .Config.Labels}}' $container 2>$null | ConvertFrom-Json
+        if (-not $labels -or $labels.$dirLabel -ne $targetDir) {
+            Write-Error "A container named '$container' already exists but was not created for $targetDir. Remove it with 'docker rm -f $container' if it is no longer needed."
+            return
+        }
+        if ($Rebuild) {
+            docker rm -f $container | Out-Null
+            $status = $null
+        }
+    }
+
+    if (-not $status) {
+        Write-Host "Creating container $container..." -ForegroundColor Cyan
+        docker run -d --name $container --label "$dirLabel=$targetDir" -v "${targetDir}:/workspace" -w /workspace $image sleep infinity | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create container'; return }
+    } elseif ($status -ne 'running') {
+        docker start $container | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
+    }
+
+    $envArgs = @(Get-ClaudeSecretEnvArgs -TargetDir $targetDir)
+    docker exec -it @envArgs -e "TERM=xterm-256color" -e "PROJECT_NAME=$projectName" $container zellij @Rest
 }
 
 function nlm-login {

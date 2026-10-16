@@ -32,6 +32,20 @@ case "$CATEGORY" in
     workspace)
         run_if_exists "$SCRIPT_DIR/set_workspace.sh"
         ;;
+    mount-workspace)
+        # Takes an extra arg (the Windows workspace dir's WSL path, e.g.
+        # /mnt/c/Users/<user>/workspace) - not handled by run_if_exists,
+        # which doesn't forward args. Normally invoked from
+        # windows/settings/Set-WslWorkspaceMount.ps1; see mount_workspace.sh
+        # for standalone usage.
+        if [[ -f "$SCRIPT_DIR/mount_workspace.sh" ]]; then
+            echo ""
+            echo "=== Running: mount_workspace.sh ==="
+            bash "$SCRIPT_DIR/mount_workspace.sh" "${2:-}"
+        else
+            echo "Warning: not found, skipping: $SCRIPT_DIR/mount_workspace.sh" >&2
+        fi
+        ;;
     security)
         run_if_exists "$SCRIPT_DIR/initialize_security.sh"
         ;;
@@ -54,7 +68,7 @@ case "$CATEGORY" in
         ;;
     *)
         echo "Unknown category: $CATEGORY" >&2
-        echo "Usage: $0 [apps|mcp|aliases|workspace|security|gui|all]" >&2
+        echo "Usage: $0 [apps|mcp|aliases|workspace|mount-workspace|security|gui|all]" >&2
         exit 1
         ;;
 esac
