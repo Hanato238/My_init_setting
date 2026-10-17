@@ -235,7 +235,7 @@ function Get-ClaudeSecretEnvArgs {
     return $envArgs
 }
 
-function claude {
+function llm {
     param(
         [Parameter(Position=0)]
         [string]$Directory = '.',

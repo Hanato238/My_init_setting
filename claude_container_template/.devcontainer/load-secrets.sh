@@ -2,7 +2,7 @@
 # load-secrets.sh - secrets.list に列挙した環境変数だけを bws から ~/.secrets へ取り込む。
 #
 #   - リストの名前のうち bws のシークレット（key == その名前）にあるものを ~/.secrets に書く。
-#   - 各行は「未設定のときだけ設定」する形式なので、ホスト由来の値（`claude` 関数が
+#   - 各行は「未設定のときだけ設定」する形式なので、ホスト由来の値（`llm` 関数が
 #     docker exec -e で注入、または docker-compose.yml の environment:）が常に優先される。
 #
 # ~/.secrets は Dockerfile が仕込んだ /etc/profile.d/secrets.sh 経由で

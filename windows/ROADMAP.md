@@ -253,7 +253,7 @@ devcontainer は `secrets.list` に列挙した名前だけを取り込む。
 | 項目 | 決定 |
 |------|------|
 | 許可リスト | `.devcontainer/secrets.list`（1 行 1 環境変数名、`#` コメント可、値は書かない） |
-| 取得元の優先 | ホスト env（`claude` 関数が起動のたびに `docker exec -e NAME` で注入。値はコンテナ設定に残らない）→ 無ければ bws のシークレット（`key` == 名前） |
+| 取得元の優先 | ホスト env（`llm` 関数が起動のたびに `docker exec -e NAME` で注入。値はコンテナ設定に残らない）→ 無ければ bws のシークレット（`key` == 名前） |
 | 保存先（bws 由来のみ） | `~/.secrets`（chmod 600）。`/etc/profile.d/secrets.sh` 経由でシェル起動時に自動 source |
 | 実行 | `.devcontainer/load-secrets.sh`。`bws-login.sh` / `bws-login.ps1` の末尾で best-effort 自動実行。再取得は再実行のみ |
 | 優先の実現 | `~/.secrets` の各行は `[ -n "${NAME+x}" ] \|\| export NAME=...`（未設定のときだけ設定）。ホスト注入値を上書きしない |
@@ -261,7 +261,7 @@ devcontainer は `secrets.list` に列挙した名前だけを取り込む。
 
 ### sbx からの離脱（段階的）
 
-ホストが sbx 非対応 OS（Ubuntu 等）になっても同じ構成で動くよう、`claude` 関数を全てコンテナ起動へ寄せる。
+ホストが sbx 非対応 OS（Ubuntu 等）になっても同じ構成で動くよう、`llm` 関数を全てコンテナ起動へ寄せる。
 
 | 段階 | 内容 | 状態 |
 |------|------|------|

@@ -431,8 +431,8 @@
           <div class="cmd host">
             <span class="cmd-tag host">host · powershell</span>
             <pre><span class="c"># プロジェクトディレクトリで</span>
-claude              <span class="c"># up -d してから zellij にアタッチ</span>
-claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</span></pre>
+llm                 <span class="c"># up -d してから zellij にアタッチ</span>
+llm -Rebuild        <span class="c"># Dockerfile 変更後（up --build -d）</span></pre>
           </div>
           <p>VS Code なら「Reopen in Container」でも可。<code>postStartCommand</code> が <code>zellij</code>。</p>
         </div>
@@ -471,10 +471,10 @@ claude -Rebuild     <span class="c"># Dockerfile 変更後（up --build -d）</s
     <h2>日常の使い方</h2>
     <div class="cmd host">
       <span class="cmd-tag host">host · powershell</span>
-      <pre>claude            <span class="c"># 起動中ならそのままアタッチ、停止中なら up -d</span>
-claude -Rebuild   <span class="c"># イメージを作り直して起動</span>
-claude -AsHost    <span class="c"># コンテナを使わずホストの claude を実行</span>
-claude -Sbx       <span class="c"># devcontainer ではなく sbx サンドボックスで実行（廃止予定）</span></pre>
+      <pre>llm               <span class="c"># 起動中ならそのままアタッチ、停止中なら up -d</span>
+llm -Rebuild      <span class="c"># イメージを作り直して起動</span>
+llm -AsHost       <span class="c"># コンテナを使わずホストの claude を実行</span>
+llm -Sbx          <span class="c"># devcontainer ではなく sbx サンドボックスで実行（廃止予定）</span></pre>
     </div>
     <p>zellij に入ったあとの操作:</p>
     <ul class="plain">
@@ -631,7 +631,7 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
         <tbody>
           <tr><td>コンテナが起動しない</td><td><code>docker compose -f .devcontainer/docker-compose.yml logs node</code></td></tr>
           <tr><td><code>claude</code> が別のものを起動する</td><td>フォルダ名と <code>container_name</code> の不一致。両方を揃える</td></tr>
-          <tr><td>Dockerfile の変更が反映されない</td><td><code>claude -Rebuild</code></td></tr>
+          <tr><td>Dockerfile の変更が反映されない</td><td><code>llm -Rebuild</code></td></tr>
           <tr><td>API キーがシェルに無い</td><td><code>source ~/.secrets</code> ／ <code>bws-login</code> 未実行 ／ <code>secrets.list</code> が空</td></tr>
           <tr><td>bws の値を更新したい</td><td><code>bash .devcontainer/load-secrets.sh</code> を再実行</td></tr>
           <tr><td>nlm-login が CDP に繋がらない</td><td>ホストで <code>.devcontainer\host-chrome-debug.ps1</code> を先に実行</td></tr>

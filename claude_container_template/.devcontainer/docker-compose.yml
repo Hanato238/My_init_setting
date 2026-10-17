@@ -1,5 +1,5 @@
 # claude 関数用汎用テンプレート
-# name と container_name は `claude` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
+# name と container_name は `llm` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
 # このテンプレートをコピーして使う際はプロジェクトのディレクトリ名に合わせること。
 #
 # gws-login / nlm-login (プロファイル関数) はこの .devcontainer 内のスクリプトに委譲する形で
@@ -16,7 +16,7 @@
 # トークンはホストに保存しない方針のため、コンテナを作り直すたびに bws-login を再実行する。
 #
 # API キーの取り込みは .devcontainer/secrets.list（許可リスト = 環境変数名の列挙）で制御する。
-# リストの名前のうちホストの環境変数にあるものは、`claude` 関数が起動のたびに docker exec -e で
+# リストの名前のうちホストの環境変数にあるものは、`llm` 関数が起動のたびに docker exec -e で
 # 注入する（優先。値はコンテナ設定に残らない）ので、下の environment: に足す必要はない。
 # ホストに無い名前は bws から取得する（.devcontainer/load-secrets.sh。bws-login 実行時にも
 # 自動で走り、~/.secrets を生成）。
