@@ -3,3 +3,6 @@
 
 # Default: normalize line endings on commit, use platform native on checkout
 * text=auto
+
+# sshd reads this inside the Linux container; CRLF would break every directive
+.devcontainer/sshd_config text eol=lf

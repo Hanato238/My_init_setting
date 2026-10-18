@@ -10,3 +10,6 @@ node_modules/
 # Locally built Chocolatey packages and per-directory Claude settings.
 windows/installer/packages/local/**/*.nupkg
 windows/installer/packages/local/**/.claude/
+
+# Orca worktrees created inside the devcontainer (see .devcontainer/docker-compose.yml)
+/.worktrees/

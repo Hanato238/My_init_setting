@@ -235,6 +235,54 @@ function Get-ClaudeSecretEnvArgs {
     return $envArgs
 }
 
+function Initialize-DevcontainerSsh {
+    # Prepare SSH access (for Orca SSH worktrees) to a devcontainer that ships .devcontainer\sshd_config:
+    # a shared key pair (mounted into the container by docker-compose.yml) and a Host entry in ~/.ssh/config.
+    # The port is published on 127.0.0.1 only, so one passphrase-less key serves every project.
+    param([Parameter(Mandatory = $true)][string]$TargetDir)
+
+    if (-not (Test-Path (Join-Path $TargetDir '.devcontainer\sshd_config'))) { return }
+
+    $sshDir = "$HOME\.ssh"
+    $key    = "$sshDir\devcontainer_ed25519"
+    if (-not (Test-Path $sshDir)) { New-Item -ItemType Directory -Path $sshDir | Out-Null }
+    if (-not (Test-Path "$key.pub")) {
+        Write-Host "Creating devcontainer SSH key ($key)..." -ForegroundColor Cyan
+        # Windows PowerShell drops an empty native argument, so the empty passphrase must be quoted there.
+        $emptyPassphrase = if ($PSVersionTable.PSVersion -lt [version]'7.3') { '""' } else { '' }
+        ssh-keygen -q -t ed25519 -C devcontainer -N $emptyPassphrase -f $key
+        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create devcontainer SSH key'; return }
+    }
+
+    $compose = Get-Content -Raw (Join-Path $TargetDir '.devcontainer\docker-compose.yml')
+    if ($compose -notmatch '127\.0\.0\.1:(\d+):2222') {
+        Write-Warning 'docker-compose.yml does not publish 127.0.0.1:<port>:2222; skipping ~/.ssh/config'
+        return
+    }
+    $port  = $Matches[1]
+    $alias = (Get-Item $TargetDir).Name.ToLower() + '-dev'
+
+    $config  = "$sshDir\config"
+    $current = if (Test-Path $config) { Get-Content -Raw $config } else { '' }
+    if ($current -match "(?m)^\s*Host\s+(.*\s)?$([regex]::Escape($alias))(\s|$)") { return }
+
+    # Separate the new entry with a blank line even when the file lacks a trailing newline.
+    $separator = if (-not $current) { '' } elseif ($current.EndsWith("`n")) { "`n" } else { "`n`n" }
+    $block = $separator + (@(
+        "Host $alias"
+        '    HostName 127.0.0.1'
+        "    Port $port"
+        '    User node'
+        '    IdentityFile ~/.ssh/devcontainer_ed25519'
+        '    IdentitiesOnly yes'
+        '    StrictHostKeyChecking accept-new'
+        ''
+    ) -join "`n")
+    [IO.File]::AppendAllText($config, $block, (New-Object Text.UTF8Encoding $false))
+    Write-Host "Added 'Host $alias' to $config" -ForegroundColor Green
+    Write-Host "Orca: add SSH target '$alias', open /workspace, and create worktrees under /workspace/.worktrees" -ForegroundColor Yellow
+}
+
 function llm {
     param(
         [Parameter(Position=0)]
@@ -276,6 +324,7 @@ function llm {
     if (Test-Path (Join-Path $targetDir '.devcontainer') -PathType Container) {
         $compose   = Join-Path $targetDir '.devcontainer\docker-compose.yml'
         $container = (Get-Item $targetDir).Name
+        Initialize-DevcontainerSsh -TargetDir $targetDir
 
         $status = docker inspect --format '{{.State.Status}}' $container 2>$null
 

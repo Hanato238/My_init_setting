@@ -1,0 +1,9 @@
+# Orca 用のリポジトリ設定。接続先は devcontainer（SSH target: my_init_setting-dev、/workspace）。
+# worktree の作成先は Orca の設定で /workspace/.worktrees にする（gitignore 済み。/home/node はコンテナの作り直しで消える）。
+# 依存のインストールは不要（package.json は空）なので scripts.setup は置かない。
+defaultTabs:
+  # agent はこの最初のタブで起動する。zellij レイアウトと同じく permission-mode は既定のまま。
+  - title: claude
+    command: claude
+  - title: shell
+    command: bash

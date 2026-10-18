@@ -1,6 +1,8 @@
 # My_init_setting 専用の開発コンテナ。汎用テンプレート（claude_container_template）とは別物。
-# 方針: リポジトリは編集できるが、ホスト上で実行される設定（.git・.claude/settings*・.mcp.json・.devcontainer）は
-# docker-compose.yml で :ro に重ねる。秘密情報は ANTHROPIC_API_KEY と repo 限定の GitHub PAT だけ。bws は入れない。
+# 方針: リポジトリと .git は編集できる（Orca の worktree 作成・commit はコンテナ内でも行う。push はホスト）。
+# ホスト上で実行される設定（.claude/settings*・.mcp.json・.devcontainer）は docker-compose.yml で :ro に重ねる。
+# 秘密情報は ANTHROPIC_API_KEY と repo 限定の GitHub PAT だけ。bws は入れない。
+# ホストの Orca からは SSH（127.0.0.1:2222、鍵は `llm` が用意）で接続する。
 
 # ---- 共通部分（issue #4 の claude-base と同じ内容）--------------------------------
 # claude-base の公開後は、この区切りより上を `FROM ghcr.io/hanato238/claude-base:<YYYYMMDD>` に置き換え、
@@ -47,9 +49,16 @@ RUN curl -fsSL "https://github.com/github/github-mcp-server/releases/download/v$
     && chmod +x /usr/local/bin/github-mcp-server
 
 # /workspace は uid の合わない bind mount なので、git の所有者チェックを外す。
-# .git は :ro でマウントされるため、index の更新を伴うロックも取らせない（commit・push はホスト側）。
 RUN git config --system --add safe.directory '*'
-ENV GIT_OPTIONAL_LOCKS=0
+
+# ホストの Orca（SSH worktrees）用の sshd。node ユーザーのまま 2222 番で動かす（start-sshd.sh が PID 1）。
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-server \
+    && rm -rf /var/lib/apt/lists/*
+COPY sshd_config /etc/ssh/sshd_devcontainer.conf
+COPY --chmod=755 start-sshd.sh /usr/local/bin/start-sshd.sh
+RUN mkdir -p /home/node/.ssh /home/node/.ssh-hostkeys /etc/devcontainer \
+    && chown node:node /home/node/.ssh /home/node/.ssh-hostkeys
+EXPOSE 2222
 
 # 許可設定は .devcontainer/managed-settings.json を docker-compose.yml が
 # /etc/claude-code/managed-settings.json に :ro でマウントする。
