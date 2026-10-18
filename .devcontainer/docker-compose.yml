@@ -33,9 +33,14 @@ services:
       dockerfile: Dockerfile
     user: node
     container_name: My_init_setting
+    # Claude Code の Bash sandbox（bwrap）は user namespace を作る。
+    # Docker 既定の seccomp プロファイルは unshare / clone(CLONE_NEWUSER) を拒否するため外す。
+    # cap_add: SYS_ADMIN でも動くが、権限が広すぎるので使わない。
+    security_opt:
+      - seccomp=unconfined
     volumes:
       - ..:/workspace
-      - ../.git:/workspace/.git:ro
+      - ../.git:/workspace/.git
       - .:/workspace/.devcontainer:ro
       - ../.mcp.json:/workspace/.mcp.json:ro
       - ../.claude/settings.json:/workspace/.claude/settings.json:ro
