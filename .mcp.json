@@ -32,6 +32,10 @@
       ],
       "env": {}
     },
+    "agy-mcp": {
+      "command": "uv",
+      "args": ["run", "--directory", "D:\\Dev\\repos\\agy-mcp", "agy-mcp"]
+    },
     "github": {
       "command": "github-mcp-server",
       "args": [
