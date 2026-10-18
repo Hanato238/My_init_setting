@@ -18,7 +18,7 @@ ubuntu/<name>/
 
 | プロジェクト | 用途 |
 |------------|------|
-| [`wsl-setup/`](wsl-setup/) | WSLホスト共通のセットアップ（パッケージ、ワークスペース、エイリアス、Bitwarden連携、MCP、GUI） |
+| [`wsl-setup/`](wsl-setup/) | WSLホスト共通のセットアップ（Orca・Claude Code・Antigravity CLI・gh 開発環境、ワークスペース、エイリアス、Bitwarden連携、MCP） |
 | [`remote-dev/`](remote-dev/README.md) | GCP等のVMをTailscale経由のリモート開発機にする |
 | [`life-os/`](life-os/README.md) | GCP等のVMをTailscale SSH専用のclone/push機にする（`remote-dev/`の簡易版・常駐サービス無し） |
 | [`remote-agy/`](remote-agy/README.md) | GCP等のVMをTailscale SSH（CLI）+ xrdp（GUI）で操作するAntigravity CLI向け開発機にする |
@@ -32,13 +32,13 @@ ubuntu/<name>/
 新規セットアップ時は以下の順番で実行する（`bash wsl-setup/setup.sh all` でまとめて実行、または個別に）:
 
 ```bash
-bash wsl-setup/setup.sh apps        # 1. パッケージ・言語ランタイム・Docker Engine
+bash wsl-setup/setup.sh apps        # 1. 開発ツール (claude/agy/gh)・Docker Engine
 bash wsl-setup/setup.sh workspace   # 2. 作業ディレクトリ
 bash wsl-setup/setup.sh aliases     # 3. シェルエイリアス・環境変数ロード
 bash wsl-setup/setup.sh security    # 4. Bitwarden Secrets Manager → ~/.secrets
 bash wsl-setup/setup.sh mcp         # 5. Claude Code MCPサーバー設定
-bash wsl-setup/setup.sh gui         # 6. (任意) GUIデスクトップ環境。WSLでは自動スキップ
-bash wsl-setup/setup.sh all         # 上記 apps/security/aliases/mcp/workspace(/gui) を一括実行
+bash wsl-setup/setup.sh all         # 上記 apps/security/aliases/mcp/workspace を一括実行
+bash wsl-setup/setup.sh update      # apps の再実行（ツール更新。Setup-Wsl.ps1 -Update から呼ばれる）
 bash wsl-setup/setup.sh mount-workspace <path>  # (任意) Windows側workspaceをWSLの~/workspaceへbind mount
 ```
 
@@ -52,25 +52,26 @@ bash wsl-setup/setup.sh mount-workspace <path>  # (任意) Windows側workspace�
 | `aliases` | `wsl-setup/set_aliases.sh` |
 | `security` | `wsl-setup/initialize_security.sh` |
 | `mcp` | `wsl-setup/set_mcp_servers.sh` |
-| `gui` | `wsl-setup/set_gui.sh`（WSL上では自動スキップ） |
-| `all` | 上記を順番に実行（`gui`はWSL上ではスキップ） |
+| `update` | `wsl-setup/install_apps.sh`（再実行） |
+| `all` | 上記を順番に実行 |
 
 各スクリプトは直接 `bash wsl-setup/<script>.sh` としても実行できる。
 
 ---
 
-### `install_apps.sh` — 基本パッケージ・Docker Engine のインストール
+### `install_apps.sh` — 開発ツール・Docker Engine のインストール
 
-開発に必要な共通ツールを一括インストールする。
+Windows 上の Orca から WSL 内のリポジトリを開き、Claude Code / Antigravity CLI / gh で開発するための CLI ツールを入れる（GUI なし）。冪等なので `update` で再実行できる。
 
 | ステップ | 内容 |
 |---------|------|
-| apt install | git, curl, vim, tree, jq, wget, unzip, **tmux**, build-essential, gnupg など |
-| Python 3.12 | Deadsnakes PPA 経由でインストール。他バージョンは `uv python install 3.x` で管理 |
+| apt install | git（git-core PPA の最新版）, curl, vim, tree, jq, wget, unzip, tmux, ripgrep, build-essential, gnupg |
 | Node.js LTS | nvm 経由でインストール |
-| uv | Astral 製 Python パッケージ・バージョンマネージャー（`$HOME/.local/bin` にインストール） |
-| Rust | rustup（snap）で非インタラクティブインストール |
-| Claude Code / Gemini CLI / gh / ngrok | npm・snap経由でインストール |
+| uv | Astral 製 Python パッケージ・バージョンマネージャー。Python 本体は `uv python install 3.x` で管理 |
+| Claude Code | ネイティブインストーラー（`~/.local/bin/claude`、自動更新） |
+| Antigravity CLI (`agy`) | 公式インストーラー（`~/.local/bin/agy`） |
+| gh | 公式 apt リポジトリ（snap 版は入っていれば削除）。認証済みなら `gh auth setup-git` で git の credential helper に設定 |
+| 並列 worktree 向け設定 | inotify 上限の引き上げ（`/etc/sysctl.d/99-inotify.conf`）、`git config --global worktree.useRelativePaths true` / `fetch.prune true` |
 | Docker Engine (WSL2ネイティブ) | 公式リポジトリからインストール。`docker`グループへ追加、systemdがあればサービス有効化・起動 |
 
 **WSL 固有の注意点**:
@@ -80,9 +81,17 @@ bash wsl-setup/setup.sh mount-workspace <path>  # (任意) Windows側workspace�
 ```bash
 bash wsl-setup/setup.sh apps
 # 完了後の確認
-node --version && claude --version && gemini --version
-rustc --version && uv --version && docker --version
+git --version && node --version && uv --version
+claude --version && agy --version && gh --version && docker --version
 ```
+
+**手動ステップ:** `gh auth login && gh auth setup-git`（未認証の場合）。
+
+#### Orca (Windows) で使う
+
+- リポジトリは WSL の `~/workspace`（ext4）に clone し、Orca からは `\\wsl$\Ubuntu\home\<user>\workspace\<repo>` を開く。`/mnt/c` 上（`mount-workspace` で bind mount した場合も含む）は git が遅く、パーミッションも崩れるため、worktree を並列で使う用途には向かない。
+- worktree を作ったら、WSL 側で `git -C <worktree> status` が通ることを確認する。Windows 側の git が作った worktree は gitdir が UNC パスで記録され、WSL の git から開けないことがある（`worktree.useRelativePaths` で回避する想定）。
+- 並列で claude / agy を動かすとメモリを多く使う。足りなければ Windows 側の `%USERPROFILE%\.wslconfig` の `[wsl2]` に `memory=` を設定する。
 
 ---
 
@@ -193,28 +202,6 @@ bash wsl-setup/setup.sh security && source ~/.secrets
 ### `set_mcp_servers.sh` — Claude Code MCPサーバー設定
 
 `shared/mcp.d/*.json` の内容をマージし、`~/.claude.json` の`mcpServers`に反映する。
-
----
-
-### `set_gui.sh` — GUIデスクトップ環境（オプション）
-
-Lubuntu デスクトップと GUI アプリをインストールする。通常の WSL 開発には不要。Chrome Remote Desktop でリモートデスクトップを使う場合などに利用する。WSL上では`wsl-setup/setup.sh`が自動的にスキップする。
-
-| インストール内容 |
-|----------------|
-| Lubuntu デスクトップ |
-| Google Chrome |
-| Chrome Remote Desktop |
-| VSCode (snap) |
-| Telegram Desktop (snap) |
-| Zoom |
-| Bitwarden GUI (snap) |
-| TeamViewer |
-
-```bash
-bash wsl-setup/setup.sh gui
-# 完了後に再起動が必要
-```
 
 ---
 

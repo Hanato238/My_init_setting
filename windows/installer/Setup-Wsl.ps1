@@ -18,7 +18,7 @@ $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 # Convert Windows path to WSL-accessible path (e.g. /mnt/c/Users/...)
 $wslRepoRoot = (wsl wslpath ($repoRoot.Replace('\', '/'))).Trim()
-$wslSetupScript = "$wslRepoRoot/ubuntu/setup.sh"
+$wslSetupScript = "$wslRepoRoot/ubuntu/wsl-setup/setup.sh"
 
 # Check WSL availability
 if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {

@@ -15,12 +15,8 @@ run_if_exists() {
     fi
 }
 
-is_wsl() {
-    grep -qiE "microsoft|WSL" /proc/version 2>/dev/null
-}
-
 case "$CATEGORY" in
-    apps)
+    apps|update)
         run_if_exists "$SCRIPT_DIR/install_apps.sh"
         ;;
     mcp)
@@ -49,26 +45,16 @@ case "$CATEGORY" in
     security)
         run_if_exists "$SCRIPT_DIR/initialize_security.sh"
         ;;
-    gui)
-        if is_wsl; then
-            echo "Skipping gui: not supported on WSL." >&2
-            exit 0
-        fi
-        run_if_exists "$SCRIPT_DIR/set_gui.sh"
-        ;;
     all)
         run_if_exists "$SCRIPT_DIR/install_apps.sh"
         run_if_exists "$SCRIPT_DIR/initialize_security.sh"
         run_if_exists "$SCRIPT_DIR/set_aliases.sh"
         run_if_exists "$SCRIPT_DIR/set_mcp_servers.sh"
         run_if_exists "$SCRIPT_DIR/set_workspace.sh"
-        if ! is_wsl; then
-            run_if_exists "$SCRIPT_DIR/set_gui.sh"
-        fi
         ;;
     *)
         echo "Unknown category: $CATEGORY" >&2
-        echo "Usage: $0 [apps|mcp|aliases|workspace|mount-workspace|security|gui|all]" >&2
+        echo "Usage: $0 [apps|update|mcp|aliases|workspace|mount-workspace|security|all]" >&2
         exit 1
         ;;
 esac

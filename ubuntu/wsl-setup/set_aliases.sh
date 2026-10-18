@@ -3,6 +3,7 @@ set -e
 
 BASHRC="$HOME/.bashrc"
 MARKER_V3="# === Shell Aliases v3 ==="
+MARKER_V4="# === Shell Aliases v4 ==="
 
 # Install wslu (provides wslview) only in WSL
 if grep -qi microsoft /proc/version 2>/dev/null || [ -n "$WSL_DISTRO_NAME" ]; then
@@ -11,9 +12,16 @@ if grep -qi microsoft /proc/version 2>/dev/null || [ -n "$WSL_DISTRO_NAME" ]; th
     fi
 fi
 
-if grep -qF "$MARKER_V3" "$BASHRC"; then
-    echo "Aliases already configured (v3) in $BASHRC"
+if grep -qF "$MARKER_V4" "$BASHRC"; then
+    echo "Aliases already configured (v4) in $BASHRC"
     exit 0
+fi
+
+# Replace the v3 block (its claude() y/n prompt blocks claude launched by Orca).
+# v3 always ended with the sbxcc line.
+if grep -qF "$MARKER_V3" "$BASHRC"; then
+    sed -i "/^$MARKER_V3\$/,/^function sbxcc() /d" "$BASHRC"
+    echo "Removed old v3 aliases block from $BASHRC"
 fi
 
 # Warn if old blocks remain
@@ -23,7 +31,7 @@ fi
 
 cat >> "$BASHRC" << 'EOF'
 
-# === Shell Aliases v3 ===
+# === Shell Aliases v4 ===
 
 _is_wsl() { grep -qi microsoft /proc/version 2>/dev/null || [ -n "$WSL_DISTRO_NAME" ]; }
 
@@ -96,14 +104,9 @@ function sync_api_keys() {
 
 load_secret_environment
 
-# Host confirmation prompt (WSL/native 共通)
-function claude() {
-    read -rp "これはホスト環境です。実行しますか？(y/n): " response
-    [[ "$response" =~ ^[Yy]$ ]] && command claude "$@"
-}
 
 function sbxcc() { sbx run claude "$@"; }
 EOF
 
-echo "Aliases configured (v3) in $BASHRC"
+echo "Aliases configured (v4) in $BASHRC"
 echo "Please restart your shell to apply changes."
