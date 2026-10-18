@@ -1,35 +1,36 @@
-﻿BeforeAll {
+BeforeAll {
     $settingsDir = "$PSScriptRoot\..\settings"
     $scriptPath  = "$settingsDir\Set-McpServers.ps1"
 
-    # Pass a nonexistent path so main body returns early, but functions get defined
-    . $scriptPath -ServersPath "C:\__nonexistent__\mcp.json" 2>$null
+    # Pass a nonexistent -McpDir so the main body returns early (before touching the real
+    # ~/.claude.json / ~/.gemini/settings.json), but the functions still get defined.
+    # Point the target paths at a nonexistent location too, in case the guard ever moves.
+    . $scriptPath -McpDir "C:\__nonexistent__\mcp.d" `
+                  -ClaudePath "C:\__nonexistent__\claude.json" `
+                  -GeminiPath "C:\__nonexistent__\settings.json" 2>$null
 
     # Temp directory for test fixtures
     $script:tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $script:tmpDir | Out-Null
 
-    # Build sample MCP config as JSON string (avoids hashtable quoted-key parsing issues)
-    $script:sampleMcp = @'
+    $script:utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+    # shared/mcp.d layout: one file per group, each a flat { "<server>": { ... } } object
+    $script:mcpDir = Join-Path $script:tmpDir "mcp.d"
+    New-Item -ItemType Directory -Path $script:mcpDir | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $script:mcpDir "a-core.json"), @'
 {
-  "mcpServers": {
-    "git":    { "type": "stdio", "command": "uvx", "args": ["mcp-server-git"] },
-    "fetch":  { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] },
-    "memory": { "type": "stdio", "command": "npx", "args": ["@modelcontextprotocol/server-memory"] },
-    "sequential-thinking": { "type": "stdio", "command": "npx", "args": ["@modelcontextprotocol/server-sequential-thinking"] },
-    "github": { "type": "stdio", "command": "npx", "args": ["@modelcontextprotocol/server-github"] }
-  }
+  "git":   { "type": "stdio", "command": "uvx", "args": ["mcp-server-git"] },
+  "fetch": { "type": "stdio", "command": "uvx", "args": ["mcp-server-fetch"] }
 }
-'@
-
-    $script:srcPath    = Join-Path $script:tmpDir "mcp.json"
-    $script:claudePath = Join-Path $script:tmpDir "claude.json"
-    $script:geminiDir  = Join-Path $script:tmpDir "gemini"
-    $script:geminiPath = Join-Path $script:geminiDir "settings.json"
-
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($script:srcPath, $script:sampleMcp, $utf8NoBom)
-    New-Item -ItemType Directory -Path $script:geminiDir -Force | Out-Null
+'@, $script:utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $script:mcpDir "b-extra.json"), @'
+{
+  "fetch":  { "type": "stdio", "command": "npx", "args": ["fetch-override"] },
+  "github": { "type": "stdio", "command": "npx", "args": ["@modelcontextprotocol/server-github"] }
+}
+'@, $script:utf8NoBom)
+    [System.IO.File]::WriteAllText((Join-Path $script:mcpDir "ignored.txt"), 'not json', $script:utf8NoBom)
 }
 
 AfterAll {
@@ -60,50 +61,47 @@ Describe "Ensure-JsonFile" {
     }
 }
 
-Describe "Merge-GeminiMcpServers" {
-    It "writes only the specified keys to settings.json" {
-        $geminiKeys = @('git', 'fetch', 'memory', 'sequential-thinking')
-        Merge-GeminiMcpServers $script:geminiPath $script:srcPath $geminiKeys
-
-        $result = Get-Content $script:geminiPath -Raw | ConvertFrom-Json
-        $keys = $result.mcpServers.PSObject.Properties.Name
-
-        $keys | Should -Contain "git"
-        $keys | Should -Contain "fetch"
-        $keys | Should -Contain "memory"
-        $keys | Should -Contain "sequential-thinking"
-        $keys | Should -Contain "time"        # always injected
-        $keys | Should -Not -Contain "github" # excluded by filter
-    }
-
-    It "always injects the time server" {
-        $result = Get-Content $script:geminiPath -Raw | ConvertFrom-Json
-        $result.mcpServers.time.command | Should -Be "uvx"
-        $result.mcpServers.time.args    | Should -Contain "mcp-server-time"
-    }
-}
-
-Describe "Merge-ClaudeMcpServers" -Skip:(-not (Get-Command jq -ErrorAction SilentlyContinue)) {
-    It "merges all MCP servers into claude.json" {
-        Merge-ClaudeMcpServers $script:claudePath $script:srcPath
-
-        $result = Get-Content $script:claudePath -Raw | ConvertFrom-Json
-        $keys = $result.mcpServers.PSObject.Properties.Name
-
+Describe "Merge-McpDir" {
+    It "combines servers from every *.json file" {
+        $merged = Merge-McpDir $script:mcpDir
+        $keys = $merged.PSObject.Properties.Name
         $keys | Should -Contain "git"
         $keys | Should -Contain "fetch"
         $keys | Should -Contain "github"
+        $keys.Count | Should -Be 3
     }
 
-    It "preserves non-mcpServers fields in existing claude.json" {
-        $existingClaude = Join-Path $script:tmpDir "claude_existing.json"
-        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($existingClaude, '{"theme":"dark","mcpServers":{}}', $utf8NoBom)
+    It "lets a later file (by name) override an earlier one" {
+        $merged = Merge-McpDir $script:mcpDir
+        $merged.fetch.command | Should -Be "npx"
+        $merged.fetch.args    | Should -Contain "fetch-override"
+    }
+}
 
-        Merge-ClaudeMcpServers $existingClaude $script:srcPath
+Describe "Set-McpServers" {
+    BeforeAll {
+        $script:servers = Merge-McpDir $script:mcpDir
+    }
 
-        $result = Get-Content $existingClaude -Raw | ConvertFrom-Json
-        $result.mcpServers.PSObject.Properties.Name | Should -Contain "git"
+    It "writes only the specified keys and skips keys missing from the source" {
+        $target = Join-Path $script:tmpDir "only-keys.json"
+        Set-McpServers $target $script:servers @('git', 'github', 'not-defined')
+
+        $keys = (Get-Content $target -Raw | ConvertFrom-Json).mcpServers.PSObject.Properties.Name
+        $keys | Should -Contain "git"
+        $keys | Should -Contain "github"
+        $keys | Should -Not -Contain "fetch"
+        $keys | Should -Not -Contain "not-defined"
+    }
+
+    It "replaces existing mcpServers and preserves other fields" {
+        $target = Join-Path $script:tmpDir "existing-claude.json"
+        [System.IO.File]::WriteAllText($target, '{"theme":"dark","mcpServers":{"old":{"command":"x"}}}', $script:utf8NoBom)
+
+        Set-McpServers $target $script:servers @('git')
+
+        $result = Get-Content $target -Raw | ConvertFrom-Json
         $result.theme | Should -Be "dark"
+        $result.mcpServers.PSObject.Properties.Name | Should -Be @('git')
     }
 }
