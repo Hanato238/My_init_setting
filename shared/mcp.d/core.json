@@ -46,5 +46,12 @@
     "type": "stdio",
     "command": "npx",
     "args": ["gemini-mcp-tool"]
+  },
+  "todoist": {
+    "command": "npx",
+    "args": ["-y", "@doist/todoist-mcp"],
+    "env": {
+      "TODOIST_API_TOKEN": "あなたのTodoist APIトークン"
+    }
   }
 }
