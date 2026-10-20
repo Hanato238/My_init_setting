@@ -25,9 +25,9 @@
 #     llm を通さずに起動すると SSH_PORT が空になり、Docker が空き番号を選ぶ（次の llm で作り直される）。
 #   - 鍵は使わず node の空パスワードで入る。届くのはホスト上のプロセスだけで、それらはもともと
 #     docker exec でコンテナに入れるので、守りの範囲は変わらない。ports を 127.0.0.1 以外に広げないこと。
-#   - ~/.ssh/config の `Host my_init_setting-dev` は `llm` が初回に作る（ホスト鍵は照合しない）。
+#   - ~/.ssh/config の `Host my_init_setting` は `llm` が初回に作る（ホスト鍵は照合しない）。
 #   - SSH セッションにも environment: の変数がそのまま見える（start-sshd.sh が ~/.ssh/environment に書く）。
-#   - Orca では my_init_setting-dev を SSH target に追加して /workspace を開き、worktree の作成先は
+#   - Orca では my_init_setting を SSH target に追加して /workspace を開き、worktree の作成先は
 #     /workspace/.worktrees（gitignore 済み）にする。/home/node 配下はコンテナの作り直しで消える。
 #
 # 許可設定:

@@ -205,7 +205,7 @@ function Get-SbxSandboxes {
 
 function Initialize-DevcontainerSsh {
     # Pick the host port for the sshd that claude-base runs in a devcontainer (for Orca SSH worktrees)
-    # and keep it in ~/.ssh/config as `Host <dir>-dev`. That Port is the ledger: once written, the
+    # and keep it in ~/.ssh/config as `Host <dir, lowercased>`. That Port is the ledger: once written, the
     # same number is reused on every run, so Orca's settings never change.
     # Applies when docker-compose.yml publishes "127.0.0.1:${SSH_PORT:-}:2222".
     # The sshd takes node with an empty password and no keys: the port is published on 127.0.0.1 only,
@@ -221,9 +221,18 @@ function Initialize-DevcontainerSsh {
     $sshDir = "$HOME\.ssh"
     if (-not (Test-Path $sshDir)) { New-Item -ItemType Directory -Path $sshDir | Out-Null }
 
-    $alias   = (Get-Item $TargetDir).Name.ToLower() + '-dev'
+    $alias   = (Get-Item $TargetDir).Name.ToLower()
     $config  = "$sshDir\config"
     $current = if (Test-Path $config) { Get-Content -Raw $config } else { '' }
+
+    # Earlier versions named the entry `<alias>-dev`; rename it in place so its Port carries over.
+    $legacyName = "(?m)^Host[ \t]+$([regex]::Escape("$alias-dev"))[ \t]*$"
+    if ($current -notmatch "(?m)^\s*Host\s+(.*\s)?$([regex]::Escape($alias))(\s|$)" -and $current -match $legacyName) {
+        $current = [regex]::Replace($current, $legacyName, "Host $alias")
+        [IO.File]::WriteAllText($config, $current, (New-Object Text.UTF8Encoding $false))
+        Write-Host "Renamed 'Host $alias-dev' to 'Host $alias' in $config" -ForegroundColor Green
+        Write-Host "Orca: remove the SSH target '$alias-dev' and add '$alias'" -ForegroundColor Yellow
+    }
 
     $blockPattern = "(?m)^Host[ \t]+$([regex]::Escape($alias))[ \t]*\r?\n(?:[ \t]+\S.*(?:\r?\n|$))*(?:[ \t]*\r?\n)*"
     $old = [regex]::Match($current, $blockPattern)

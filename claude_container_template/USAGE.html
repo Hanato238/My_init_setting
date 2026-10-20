@@ -464,7 +464,7 @@ llm -Rebuild        <span class="c"># Dockerfile 変更後（up --build -d）</s
         <div>
           <h3>（Orca を使うなら）SSH target を追加</h3>
           <p>
-            <code>llm</code> が初回に <code>~/.ssh/config</code> へ <code>Host &lt;フォルダ名&gt;-dev</code> を書き、
+            <code>llm</code> が初回に <code>~/.ssh/config</code> へ <code>Host &lt;フォルダ名の小文字&gt;</code> を書き、
             ホスト側のポート（2200〜2299）を割り当てる。Orca の Settings → SSH でその名前を追加し、
             <code>/workspace</code> を開く。worktree は <code>/workspace/.worktrees</code> に作る。
           </p>
@@ -585,7 +585,7 @@ llm -Sbx          <span class="c"># devcontainer ではなく sbx サンドボ�
           <tr><td><code>claude</code> が別のものを起動する</td><td>フォルダ名と <code>container_name</code> の不一致。両方を揃える</td></tr>
           <tr><td>Dockerfile の変更が反映されない</td><td><code>llm -Rebuild</code></td></tr>
           <tr><td>API キーがシェルに無い</td><td><code>environment:</code> に名前が無い ／ ホストの環境変数に無い ／ ホストで変えたあと <code>llm -Rebuild</code> していない</td></tr>
-          <tr><td>Orca からつながらない</td><td><code>llm</code> を一度実行して <code>~/.ssh/config</code> の <code>Host &lt;フォルダ名&gt;-dev</code> とポートを合わせる</td></tr>
+          <tr><td>Orca からつながらない</td><td><code>llm</code> を一度実行して <code>~/.ssh/config</code> の <code>Host &lt;フォルダ名の小文字&gt;</code> とポートを合わせる</td></tr>
           <tr><td>nlm-login が CDP に繋がらない</td><td>ホストで <code>.devcontainer\host-chrome-debug.ps1</code> を先に実行</td></tr>
         </tbody>
       </table>

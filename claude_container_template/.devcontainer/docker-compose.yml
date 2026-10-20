@@ -13,7 +13,7 @@
 # Orca（SSH worktrees）からの接続:
 #   - sshd は claude-base に入っていて、command を指定しなければ起動する。
 #   - コンテナの 2222 番をホストの 127.0.0.1 にだけ公開する。ホスト側の番号は `llm` が SSH_PORT として
-#     割り当て、~/.ssh/config に `Host <ディレクトリ名>-dev` を書く。llm を通さずに起動すると
+#     割り当て、~/.ssh/config に `Host <ディレクトリ名の小文字>` を書く。llm を通さずに起動すると
 #     Docker が空き番号を選ぶ（次の llm で作り直される）。
 #   - 鍵は使わず node の空パスワードで入る。ports を 127.0.0.1 以外に広げないこと。
 #   - SSH セッションにも environment: の変数がそのまま見える。
