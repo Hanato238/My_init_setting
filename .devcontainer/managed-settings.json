@@ -54,7 +54,8 @@
       "envVars": [
         { "name": "GITHUB_MCP_PAT", "mode": "deny" },
         { "name": "GITHUB_PERSONAL_ACCESS_TOKEN", "mode": "deny" },
-        { "name": "ANTHROPIC_API_KEY", "mode": "deny" }
+        { "name": "ANTHROPIC_API_KEY", "mode": "deny" },
+        { "name": "ANTIGRAVITY_API_KEY", "mode": "deny" }
       ]
     }
   }

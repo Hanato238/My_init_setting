@@ -1,4 +1,4 @@
-# 共通部分（OS・基本 apt・zellij・Claude Code・LANG/SHELL・Orca 用の鍵なし sshd）は claude-base に入っている
+# 共通部分（OS・基本 apt・zellij・Claude Code・agy・LANG/SHELL・Orca 用の鍵なし sshd）は claude-base に入っている
 # （base_image/Dockerfile）。ここではテンプレート固有の差分だけを足す。base は USER node で終わるので
 # root に切り替えてから追加する。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
 # API キーは docker-compose.yml の environment: だけが供給する（イメージには入れない）。
@@ -9,10 +9,6 @@ USER root
 
 # uv（mcp-server-fetch / mcp-server-git 用）
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
-
-# Antigravity CLI (agy)
-RUN curl -fsSL https://antigravity.google/cli/install.sh | bash \
-    && mv /root/.local/bin/agy /usr/local/bin/agy
 
 # gws (Google Workspace CLI)
 RUN npm install -g @googleworkspace/cli

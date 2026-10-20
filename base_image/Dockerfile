@@ -1,6 +1,6 @@
 # Claude Code 用 devcontainer の共通ベース（ghcr.io/hanato238/claude-base）。
-# 中身は共通部分と、ホストの Orca から入るための鍵なし sshd（下の sshd の節を参照）。
-# uv / agy / gws / gcloud / MCP サーバー / safe.directory は下流で足す。
+# 中身は共通部分（Claude Code・agy・zellij）と、ホストの Orca から入るための鍵なし sshd（下の sshd の節を参照）。
+# uv / gws / gcloud / MCP サーバー / safe.directory は下流で足す。
 # 下流は FROM したあと、追加は USER root で行い、最後に USER node に戻す。
 # 版は ARG で固定し、Renovate が「# renovate:」の行を手がかりに更新 PR を作る。
 
@@ -29,6 +29,10 @@ RUN curl -fsSL "https://github.com/zellij-org/zellij/releases/download/v${ZELLIJ
 ARG CLAUDE_CODE_VERSION=2.1.301
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
     && node /usr/local/lib/node_modules/@anthropic-ai/claude-code/install.cjs
+
+# Antigravity CLI (agy)
+RUN curl -fsSL https://antigravity.google/cli/install.sh | bash \
+    && mv /root/.local/bin/agy /usr/local/bin/agy
 
 # ホストの Orca（SSH worktrees）用の sshd。node ユーザーのまま 2222 番で動かす（CMD の start-sshd.sh が PID 1）。
 # 鍵は使わず node の空パスワードで入る。下流は ports を必ず 127.0.0.1 にだけ公開すること

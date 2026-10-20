@@ -1,9 +1,9 @@
 # My_init_setting 専用の開発コンテナ。汎用テンプレート（claude_container_template）とは別物。
 # 方針: リポジトリと .git は編集できる（Orca の worktree 作成・commit はコンテナ内でも行う。push はホスト）。
 # ホスト上で実行される設定（.claude/settings*・.mcp.json・.devcontainer）は docker-compose.yml で :ro に重ねる。
-# 秘密情報は ANTHROPIC_API_KEY と repo 限定の GitHub PAT だけ。
+# 秘密情報は ANTHROPIC_API_KEY・ANTIGRAVITY_API_KEY と repo 限定の GitHub PAT だけ。
 #
-# 共通部分（OS・基本 apt・zellij・Claude Code・Orca 用の鍵なし sshd）は claude-base に入っている
+# 共通部分（OS・基本 apt・zellij・Claude Code・agy・Orca 用の鍵なし sshd）は claude-base に入っている
 # （base_image/Dockerfile）。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
 ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261020
 FROM ${BASE_IMAGE}

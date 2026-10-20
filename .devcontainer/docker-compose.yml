@@ -39,6 +39,7 @@
 #   - GITHUB_MCP_PAT には My_init_setting だけに絞った fine-grained PAT（Issues: RW / Metadata: R）を渡す。
 #     ホストの GITHUB_MCP_PAT（全リポジトリ用）が入らないよう、別名の GITHUB_MCP_PAT_MY_INIT_SETTING から割り当てる。
 #   - トークンは MCP サーバーだけが使う。Bash からは sandbox.credentials で見えなくしてある。
+#   - ANTIGRAVITY_API_KEY は agy（zellij の agy タブ・Orca のターミナル）用。Claude の Bash からは同じく見えない。
 
 name: my_init_setting
 
@@ -62,6 +63,7 @@ services:
     working_dir: /workspace
     environment:
       - ANTHROPIC_API_KEY
+      - ANTIGRAVITY_API_KEY
       - GITHUB_MCP_PAT=${GITHUB_MCP_PAT_MY_INIT_SETTING}
       - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
