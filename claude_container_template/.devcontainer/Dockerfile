@@ -2,7 +2,7 @@
 # （base_image/Dockerfile）。ここではテンプレート固有の差分だけを足す。base は USER node で終わるので
 # root に切り替えてから追加する。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
 # API キーは docker-compose.yml の environment: だけが供給する（イメージには入れない）。
-ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261016
+ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261020
 FROM ${BASE_IMAGE}
 
 USER root

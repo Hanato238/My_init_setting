@@ -5,7 +5,7 @@
 #
 # 共通部分（OS・基本 apt・zellij・Claude Code・Orca 用の鍵なし sshd）は claude-base に入っている
 # （base_image/Dockerfile）。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
-ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261016
+ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261020
 FROM ${BASE_IMAGE}
 
 USER root
