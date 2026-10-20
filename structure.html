@@ -241,8 +241,7 @@ graph LR
   subgraph CONT["🐳 Claude Code コンテナ"]
     c0(["claude_container_template\n.devcontainer/"])
     c1["Dockerfile\ndocker-compose.yml\ndevcontainer.json"]
-    c2["bws-login.sh / .ps1\n(Bitwarden 認証)"]
-    c3["load-secrets.sh\n(secrets 注入)"]
+    c2["FROM claude-base\n(base_image/・Orca 用 sshd)"]
     cp0(["packages/claude-env"])
     cp1["claude-env.js\n(CLI)"]
     cp2["assets/\nclaude-settings\nzellij-layout\nyazi-theme"]
@@ -290,7 +289,6 @@ graph LR
   %% Container internal
   c0 --> c1
   c0 --> c2
-  c0 --> c3
   cp0 --> cp1
   cp0 --> cp2
 
@@ -452,13 +450,13 @@ graph LR
     <div class="card-env">対象: Claude Code Dev Container（プロジェクト単位）</div>
     <ul>
       <li><code>.devcontainer/devcontainer.json</code> + <code>docker-compose.yml</code> + <code>Dockerfile</code> をプロジェクトにコピーして使う</li>
-      <li><code>bws-login.sh / .ps1</code> — Bitwarden 認証（初回・トークン更新時）</li>
-      <li><code>load-secrets.sh</code> — <code>secrets.list</code> に列挙した秘密情報を bws から取得し <code>~/.secrets</code> へ</li>
+      <li>API キーは <code>docker-compose.yml</code> の <code>environment:</code> に名前を書いてホストの環境変数から渡す</li>
+      <li>ホストの Orca から SSH で接続できる（sshd は claude-base 入り。ポートは <code>llm</code> が 127.0.0.1 に割り当て、<code>~/.ssh/config</code> に書く）</li>
       <li><code>shared/mcp.d/</code> を読んで Claude / Gemini に MCP を登録</li>
       <li><code>packages/claude-env</code> — <code>npx claude-env</code> で zellij / yazi / claude-settings を一括セットアップするスタンドアロン版</li>
     </ul>
     <div class="manual-steps">
-      <p>⚠️ 手動: Bitwarden マシンアカウントのアクセストークン、<code>secrets.list</code> のカスタマイズ</p>
+      <p>⚠️ 手動: <code>docker-compose.yml</code> の <code>environment:</code> のカスタマイズ、Orca への SSH target 追加</p>
     </div>
   </div>
 
@@ -470,7 +468,7 @@ graph LR
   <div class="shared-item">
     <div class="path">shared/mcp.d/*.json</div>
     <div class="desc">MCPサーバー設定の分割ファイル群。カテゴリごとに分割（ai / browser / cloud / core / commerce / google / productivity）し、各 OS の MCP 登録スクリプトが統合して Claude・Gemini に適用する。</div>
-    <div class="consumers">▸ Windows: Set-McpServers.ps1 ▸ WSL: set_mcp_servers.sh ▸ Termux: set_mcp_servers.sh ▸ Container: load-secrets.sh</div>
+    <div class="consumers">▸ Windows: Set-McpServers.ps1 ▸ WSL: set_mcp_servers.sh ▸ Termux: set_mcp_servers.sh</div>
   </div>
   <div class="shared-item">
     <div class="path">packages/claude-env</div>

@@ -1,6 +1,9 @@
-# 共通部分（OS・基本 apt・zellij・Claude Code・LANG/SHELL）は claude-base に入っている（base_image/Dockerfile）。
-# ここではテンプレート固有の差分だけを足す。base は USER node で終わるので root に切り替えてから追加する。
-FROM ghcr.io/hanato238/claude-base:20261016
+# 共通部分（OS・基本 apt・zellij・Claude Code・LANG/SHELL・Orca 用の鍵なし sshd）は claude-base に入っている
+# （base_image/Dockerfile）。ここではテンプレート固有の差分だけを足す。base は USER node で終わるので
+# root に切り替えてから追加する。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
+# API キーは docker-compose.yml の environment: だけが供給する（イメージには入れない）。
+ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261016
+FROM ${BASE_IMAGE}
 
 USER root
 
@@ -13,33 +16,6 @@ RUN curl -fsSL https://antigravity.google/cli/install.sh | bash \
 
 # gws (Google Workspace CLI)
 RUN npm install -g @googleworkspace/cli
-
-# bws (Bitwarden Secrets Manager CLI) - prebuilt musl binary
-ARG BWS_VERSION=2.1.0
-RUN curl -fsSL "https://github.com/bitwarden/sdk-sm/releases/download/bws-v${BWS_VERSION}/bws-x86_64-unknown-linux-musl-${BWS_VERSION}.zip" -o /tmp/bws.zip \
-    && unzip -q /tmp/bws.zip -d /usr/local/bin \
-    && chmod +x /usr/local/bin/bws \
-    && rm /tmp/bws.zip
-
-# bws のアクセストークンはコンテナ内 ~/.config/bws/access-token に保存し
-# (.devcontainer/bws-login.sh が書き込む)、シェル起動時に BWS_ACCESS_TOKEN として読み込む。
-RUN printf '%s\n' \
-      '# bws access token (.devcontainer/bws-login.sh がコンテナ内に保存する)' \
-      'if [ -r "$HOME/.config/bws/access-token" ]; then' \
-      '  export BWS_ACCESS_TOKEN="$(cat "$HOME/.config/bws/access-token")"' \
-      'fi' \
-      > /etc/profile.d/bws.sh \
-    && chmod 644 /etc/profile.d/bws.sh \
-    && printf '\n%s\n' '[ -r /etc/profile.d/bws.sh ] && . /etc/profile.d/bws.sh' >> /etc/bash.bashrc
-
-# API キーは secrets.list の許可リストに従い .devcontainer/load-secrets.sh が
-# ~/.secrets (chmod 600) へ書き込む。ここではそれをシェル起動時に読み込むだけ。
-RUN printf '%s\n' \
-      '# API keys (.devcontainer/load-secrets.sh が ~/.secrets に書く)' \
-      '[ -r "$HOME/.secrets" ] && . "$HOME/.secrets"' \
-      > /etc/profile.d/secrets.sh \
-    && chmod 644 /etc/profile.d/secrets.sh \
-    && printf '\n%s\n' '[ -r /etc/profile.d/secrets.sh ] && . /etc/profile.d/secrets.sh' >> /etc/bash.bashrc
 
 # Google Cloud SDK (gcloud)
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \

@@ -5,4 +5,4 @@
 * text=auto
 
 # sshd reads this inside the Linux container; CRLF would break every directive
-.devcontainer/sshd_config text eol=lf
+base_image/sshd_config text eol=lf

@@ -6,20 +6,17 @@
 # 対応済み。gws-login は client_secret.json (下記マウント) を前提とするため、ホスト側で
 # 事前に `gws auth login` 済みであること (~/.config/gws/client_secret.json が存在すること)。
 #
-# bws (Bitwarden Secrets Manager CLI): Dockerfile でバイナリを導入済み。アクセストークンは
-# コンテナ内 ~/.config/bws/access-token に保存する。コンテナ内で
-# `.devcontainer/bws-login.sh <token>`、またはホストから `.devcontainer/bws-login.ps1` を実行し、
-# その場で引数または対話入力で手動指定する（環境変数・ホストファイルからの自動取得は無し）。
-# 保存したトークンはログインシェルで BWS_ACCESS_TOKEN として自動 export される
-# (利便性優先。そのシェルから起動する Claude Code / MCP サーバーもトークンを参照できる点に留意)。
-# トークンは対象プロジェクトの全シークレット読み取り権を持つ。dev 限定・コミット禁止。
-# トークンはホストに保存しない方針のため、コンテナを作り直すたびに bws-login を再実行する。
+# API キー: 下の environment: に名前だけ書くと、ホストの環境変数の値がコンテナに入る
+# （ホストに無い名前は入らない）。値はコンテナ作成時に固定されるので、ホストで変えたら `llm -Rebuild`。使わない名前は消し、必要な名前を足す。
+# 値は docker inspect で見えるので、このコンテナで本当に使うものだけにすること。
 #
-# API キーの取り込みは .devcontainer/secrets.list（許可リスト = 環境変数名の列挙）で制御する。
-# リストの名前のうちホストの環境変数にあるものは、`llm` 関数が起動のたびに docker exec -e で
-# 注入する（優先。値はコンテナ設定に残らない）ので、下の environment: に足す必要はない。
-# ホストに無い名前は bws から取得する（.devcontainer/load-secrets.sh。bws-login 実行時にも
-# 自動で走り、~/.secrets を生成）。
+# Orca（SSH worktrees）からの接続:
+#   - sshd は claude-base に入っていて、command を指定しなければ起動する。
+#   - コンテナの 2222 番をホストの 127.0.0.1 にだけ公開する。ホスト側の番号は `llm` が SSH_PORT として
+#     割り当て、~/.ssh/config に `Host <ディレクトリ名>-dev` を書く。llm を通さずに起動すると
+#     Docker が空き番号を選ぶ（次の llm で作り直される）。
+#   - 鍵は使わず node の空パスワードで入る。ports を 127.0.0.1 以外に広げないこと。
+#   - SSH セッションにも environment: の変数がそのまま見える。
 
 name: claude_container_template
 
@@ -35,9 +32,27 @@ services:
       - .:/workspace/.devcontainer:ro
       - ../.mcp.json:/workspace/.mcp.json:ro
       - ${USERPROFILE}/.config/gws/client_secret.json:/home/node/.config/gws/client_secret.json:ro
+    ports:
+      - "127.0.0.1:${SSH_PORT:-}:2222"
     working_dir: /workspace
-    command: ["sleep", "infinity"]
     environment:
+      - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+      # LLM / AI
       - ANTHROPIC_API_KEY
       - ANTIGRAVITY_API_KEY
-      - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+      - PERPLEXITY_API_KEY           # perplexity MCP
+      # 検索 / Web
+      - CONTEXT7_API_KEY             # context7 MCP
+      # 開発 / VCS
+      - GITHUB_TOKEN
+      - GH_TOKEN
+      - GITHUB_MCP_PAT               # github MCP
+      # Google / Cloud
+      - GWS_MCP_CLIENT_ID            # google_workspace MCP
+      - GWS_MCP_CLIENT_SECRET        # google_workspace MCP
+      - GCP_PROJECT_ID               # gcp-hardening-* MCP（非シークレット）
+      - GEMINI_MODEL                 # gemini-cli MCP（非シークレット）
+      # 生産性 / コマース
+      - TODOIST_API_KEY              # todoist MCP
+      - RAINDROP_ACCESS_TOKEN        # raindrop MCP
+      - KEEPA_API_KEY                # keepa MCP

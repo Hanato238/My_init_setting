@@ -203,68 +203,61 @@ function Get-SbxSandboxes {
     }
 }
 
-function Get-ClaudeSecretEnvArgs {
-    # Build `-e NAME` docker args for the names in secrets.list that are set in the host env.
-    # Only names are passed: docker reads each value from this process's environment, so
-    # values never appear on the command line or in the container's stored config.
-    param([Parameter(Mandatory = $true)][string]$TargetDir)
-
-    $listFile = Join-Path $TargetDir '.devcontainer\secrets.list'
-    if (-not (Test-Path $listFile)) {
-        $listFile = "$HOME\workspace\My_init_setting\claude_container_template\.devcontainer\secrets.list"
-    }
-    if (-not (Test-Path $listFile)) { return @() }
-
-    $envArgs = @()
-    $passed  = @()
-    foreach ($line in Get-Content -LiteralPath $listFile) {
-        $name = ($line -replace '#.*', '').Trim()
-        if (-not $name) { continue }
-        if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
-            Write-Warning "secrets.list: skipping '$name' (not a valid environment variable name)"
-            continue
-        }
-        if ([Environment]::GetEnvironmentVariable($name)) {
-            $envArgs += '-e', $name
-            $passed  += $name
-        }
-    }
-    if ($passed.Count -gt 0) {
-        Write-Host "Host env -> container: $($passed -join ', ')" -ForegroundColor DarkGray
-    }
-    return $envArgs
-}
-
 function Initialize-DevcontainerSsh {
-    # Prepare SSH access (for Orca SSH worktrees) to a devcontainer that ships .devcontainer\sshd_config:
-    # a shared key pair (mounted into the container by docker-compose.yml) and a Host entry in ~/.ssh/config.
-    # The port is published on 127.0.0.1 only, so one passphrase-less key serves every project.
+    # Pick the host port for the sshd that claude-base runs in a devcontainer (for Orca SSH worktrees)
+    # and keep it in ~/.ssh/config as `Host <dir>-dev`. That Port is the ledger: once written, the
+    # same number is reused on every run, so Orca's settings never change.
+    # Applies when docker-compose.yml publishes "127.0.0.1:${SSH_PORT:-}:2222".
+    # The sshd takes node with an empty password and no keys: the port is published on 127.0.0.1 only,
+    # so only host processes (which can docker exec anyway) reach it. Its host key is regenerated on
+    # every start, so the entry skips host key checking.
+    # Returns the port, or $null when there is none (compose then lets Docker pick a free one).
     param([Parameter(Mandatory = $true)][string]$TargetDir)
 
-    if (-not (Test-Path (Join-Path $TargetDir '.devcontainer\sshd_config'))) { return }
+    $compose = Join-Path $TargetDir '.devcontainer\docker-compose.yml'
+    if (-not (Test-Path $compose)) { return $null }
+    if ((Get-Content -Raw $compose) -notmatch '127\.0\.0\.1:\$\{SSH_PORT[^}]*\}:2222') { return $null }
 
     $sshDir = "$HOME\.ssh"
-    $key    = "$sshDir\devcontainer_ed25519"
     if (-not (Test-Path $sshDir)) { New-Item -ItemType Directory -Path $sshDir | Out-Null }
-    if (-not (Test-Path "$key.pub")) {
-        Write-Host "Creating devcontainer SSH key ($key)..." -ForegroundColor Cyan
-        # Windows PowerShell drops an empty native argument, so the empty passphrase must be quoted there.
-        $emptyPassphrase = if ($PSVersionTable.PSVersion -lt [version]'7.3') { '""' } else { '' }
-        ssh-keygen -q -t ed25519 -C devcontainer -N $emptyPassphrase -f $key
-        if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to create devcontainer SSH key'; return }
-    }
 
-    $compose = Get-Content -Raw (Join-Path $TargetDir '.devcontainer\docker-compose.yml')
-    if ($compose -notmatch '127\.0\.0\.1:(\d+):2222') {
-        Write-Warning 'docker-compose.yml does not publish 127.0.0.1:<port>:2222; skipping ~/.ssh/config'
-        return
-    }
-    $port  = $Matches[1]
-    $alias = (Get-Item $TargetDir).Name.ToLower() + '-dev'
-
+    $alias   = (Get-Item $TargetDir).Name.ToLower() + '-dev'
     $config  = "$sshDir\config"
     $current = if (Test-Path $config) { Get-Content -Raw $config } else { '' }
-    if ($current -match "(?m)^\s*Host\s+(.*\s)?$([regex]::Escape($alias))(\s|$)") { return }
+
+    $blockPattern = "(?m)^Host[ \t]+$([regex]::Escape($alias))[ \t]*\r?\n(?:[ \t]+\S.*(?:\r?\n|$))*(?:[ \t]*\r?\n)*"
+    $old = [regex]::Match($current, $blockPattern)
+    if ($old.Success -and $old.Value -notmatch 'devcontainer_ed25519') {
+        if ($old.Value -match '(?m)^[ \t]+Port[ \t]+(\d+)') { return [int]$Matches[1] }
+        Write-Warning "'Host $alias' in $config has no Port; sshd gets a random port this time"
+        return $null
+    }
+    if ($old.Success) {
+        # An entry written by the old key-based setup is replaced (with a newly assigned port).
+        $current = $current.Remove($old.Index, $old.Length).TrimEnd() + "`n"
+        if (-not $current.Trim()) { $current = '' }
+    } elseif ($current -match "(?m)^\s*Host\s+(.*\s)?$([regex]::Escape($alias))(\s|$)") {
+        Write-Warning "'$alias' is part of a multi-host entry in $config; sshd gets a random port this time"
+        return $null
+    }
+
+    # New port: start from a hash of the alias in 2200-2299 and skip numbers that other Host entries
+    # use or that something already listens on.
+    $used = @{}
+    foreach ($m in [regex]::Matches($current, '(?m)^[ \t]+Port[ \t]+(\d+)')) { $used[[int]$m.Groups[1].Value] = $true }
+    try {
+        Get-NetTCPConnection -State Listen -ErrorAction Stop | ForEach-Object { $used[[int]$_.LocalPort] = $true }
+    } catch {}
+    $hash  = [Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($alias))
+    $port  = $null
+    for ($i = 0; $i -lt 100; $i++) {
+        $candidate = 2200 + (($hash[0] + $i) % 100)
+        if (-not $used.ContainsKey($candidate)) { $port = $candidate; break }
+    }
+    if (-not $port) {
+        Write-Warning 'No free port in 2200-2299; sshd gets a random port this time'
+        return $null
+    }
 
     # Separate the new entry with a blank line even when the file lacks a trailing newline.
     $separator = if (-not $current) { '' } elseif ($current.EndsWith("`n")) { "`n" } else { "`n`n" }
@@ -273,14 +266,16 @@ function Initialize-DevcontainerSsh {
         '    HostName 127.0.0.1'
         "    Port $port"
         '    User node'
-        '    IdentityFile ~/.ssh/devcontainer_ed25519'
-        '    IdentitiesOnly yes'
-        '    StrictHostKeyChecking accept-new'
+        '    PreferredAuthentications none,password'
+        '    StrictHostKeyChecking no'
+        '    UserKnownHostsFile NUL'
+        '    LogLevel ERROR'
         ''
     ) -join "`n")
-    [IO.File]::AppendAllText($config, $block, (New-Object Text.UTF8Encoding $false))
+    [IO.File]::WriteAllText($config, $current + $block, (New-Object Text.UTF8Encoding $false))
     Write-Host "Added 'Host $alias' to $config" -ForegroundColor Green
     Write-Host "Orca: add SSH target '$alias', open /workspace, and create worktrees under /workspace/.worktrees" -ForegroundColor Yellow
+    return $port
 }
 
 function llm {
@@ -324,48 +319,63 @@ function llm {
     if (Test-Path (Join-Path $targetDir '.devcontainer') -PathType Container) {
         $compose   = Join-Path $targetDir '.devcontainer\docker-compose.yml'
         $container = (Get-Item $targetDir).Name
-        Initialize-DevcontainerSsh -TargetDir $targetDir
+        $sshPort   = Initialize-DevcontainerSsh -TargetDir $targetDir
 
-        $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+        # compose publishes sshd on 127.0.0.1:${SSH_PORT:-}; an empty value lets Docker pick a free port.
+        $prevSshPort  = $env:SSH_PORT
+        $env:SSH_PORT = if ($sshPort) { "$sshPort" } else { '' }
+        try {
+            $status = docker inspect --format '{{.State.Status}}' $container 2>$null
 
-        if ($Rebuild) {
-            Write-Host "Rebuilding container..." -ForegroundColor Cyan
-            docker compose -f $compose up --build -d
-            if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to rebuild container'; return }
+            # Started without llm (e.g. VS Code) -> sshd sits on a random port; recreate it on the assigned one.
+            if ($status -eq 'running' -and $sshPort -and -not $Rebuild) {
+                $published = @(docker port $container 2222/tcp 2>$null)
+                if ($published -notcontains "127.0.0.1:$sshPort") {
+                    Write-Warning "$container publishes sshd on '$($published -join ', ')', not 127.0.0.1:$sshPort; recreating"
+                    $status = 'port-mismatch'
+                }
+            }
 
-            $ready = $false
-            for ($i = 0; $i -lt 30; $i++) {
-                $status = docker inspect --format '{{.State.Status}}' $container 2>$null
-                if ($status -eq 'running') { $ready = $true; break }
-                Start-Sleep -Seconds 2
-            }
-            if (-not $ready) {
-                Write-Error "$container did not start"
-                docker compose -f $compose logs node
-                return
-            }
-        } elseif ($status -ne 'running') {
-            Write-Host "Starting container..." -ForegroundColor Cyan
-            docker compose -f $compose up -d
-            if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
+            if ($Rebuild) {
+                Write-Host "Rebuilding container..." -ForegroundColor Cyan
+                docker compose -f $compose up --build -d
+                if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to rebuild container'; return }
 
-            $ready = $false
-            for ($i = 0; $i -lt 30; $i++) {
-                $status = docker inspect --format '{{.State.Status}}' $container 2>$null
-                if ($status -eq 'running') { $ready = $true; break }
-                Start-Sleep -Seconds 2
+                $ready = $false
+                for ($i = 0; $i -lt 30; $i++) {
+                    $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+                    if ($status -eq 'running') { $ready = $true; break }
+                    Start-Sleep -Seconds 2
+                }
+                if (-not $ready) {
+                    Write-Error "$container did not start"
+                    docker compose -f $compose logs node
+                    return
+                }
+            } elseif ($status -ne 'running') {
+                Write-Host "Starting container..." -ForegroundColor Cyan
+                docker compose -f $compose up -d
+                if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
+
+                $ready = $false
+                for ($i = 0; $i -lt 30; $i++) {
+                    $status = docker inspect --format '{{.State.Status}}' $container 2>$null
+                    if ($status -eq 'running') { $ready = $true; break }
+                    Start-Sleep -Seconds 2
+                }
+                if (-not $ready) {
+                    Write-Error "$container did not start"
+                    docker compose -f $compose logs node
+                    return
+                }
+            } else {
+                Write-Host "Container already running ($container)" -ForegroundColor Green
             }
-            if (-not $ready) {
-                Write-Error "$container did not start"
-                docker compose -f $compose logs node
-                return
-            }
-        } else {
-            Write-Host "Container already running ($container)" -ForegroundColor Green
+        } finally {
+            $env:SSH_PORT = $prevSshPort
         }
 
-        $envArgs = @(Get-ClaudeSecretEnvArgs -TargetDir $targetDir)
-        docker exec -it @envArgs $container zellij @Rest
+        docker exec -it $container zellij @Rest
         return
     }
 
@@ -412,8 +422,7 @@ function llm {
         if ($LASTEXITCODE -ne 0) { Write-Error 'Failed to start container'; return }
     }
 
-    $envArgs = @(Get-ClaudeSecretEnvArgs -TargetDir $targetDir)
-    docker exec -it @envArgs -e "TERM=xterm-256color" -e "PROJECT_NAME=$projectName" $container zellij @Rest
+    docker exec -it -e "TERM=xterm-256color" -e "PROJECT_NAME=$projectName" $container zellij @Rest
 }
 
 function nlm-login {
@@ -428,25 +437,6 @@ function nlm-login {
         return
     }
     & $scriptPath
-}
-
-function bws-login {
-    param(
-        [Parameter(Position=0)]
-        [string]$Directory = '.',
-        [string]$Token
-    )
-    $targetDir = (Get-Item $Directory).FullName
-    $scriptPath = Join-Path $targetDir '.devcontainer\bws-login.ps1'
-    if (-not (Test-Path $scriptPath)) {
-        Write-Error "$scriptPath が見つかりません。"
-        return
-    }
-    if ($Token) {
-        & $scriptPath -Token $Token
-    } else {
-        & $scriptPath
-    }
 }
 
 function gws-login {

@@ -381,15 +381,16 @@
   <section id="inside">
     <h2>コンテナに入っているもの</h2>
     <p class="section-intro">
-      ベースは <code>node:22-slim</code>。<code>Dockerfile</code> がビルド時に以下を組み込む。
+      ベースは共通イメージ <code>ghcr.io/hanato238/claude-base</code>（<code>base_image/</code>、中身は <code>node:22-slim</code> + zellij + Claude Code + sshd）。
+      <code>Dockerfile</code> がその上に以下を組み込む。
     </p>
     <dl class="spec">
-      <div><dt>zellij</dt><dd>ターミナルマルチプレクサ（0.41.2）。起動時に <code>claude</code> / <code>agy</code> の 2 タブが立ち上がる</dd></div>
+      <div><dt>sshd</dt><dd>ホストの Orca から SSH で入るためのもの（base 入り）。鍵なし・node の空パスワードで、ホストの 127.0.0.1 にだけ公開する</dd></div>
+      <div><dt>zellij</dt><dd>ターミナルマルチプレクサ（base 入り）。起動時に <code>claude</code> / <code>agy</code> の 2 タブが立ち上がる</dd></div>
       <div><dt>claude-env</dt><dd>ローカル npm パッケージ。yazi ファイラ（<kbd>Ctrl</kbd>+<kbd>f</kbd> で開閉）＋ zjstatus ステータスバー＋ Claude Code の統計 hook</dd></div>
       <div><dt>claude</dt><dd>Claude Code 本体。native binary まで導入済み</dd></div>
       <div><dt>agy</dt><dd>Antigravity CLI</dd></div>
       <div><dt>MCP</dt><dd><code>.mcp.json</code> をマウント。filesystem / memory / sequential-thinking / fetch / git（fetch・git は <code>uvx</code>）</dd></div>
-      <div><dt>bws</dt><dd>Bitwarden Secrets Manager CLI（2.1.0）。API キー配布用</dd></div>
       <div><dt>gws</dt><dd>Google Workspace CLI</dd></div>
       <div><dt>nlm</dt><dd>notebooklm-mcp-cli（<code>uv tool</code>）</dd></div>
       <div><dt>gcloud</dt><dd>Google Cloud SDK</dd></div>
@@ -441,10 +442,6 @@ llm -Rebuild        <span class="c"># Dockerfile 変更後（up --build -d）</s
         <div>
           <h3>必要な CLI を認証する</h3>
           <p>使うものだけでよい。詳細は下の「認証ブリッジ」を参照。</p>
-          <div class="cmd container">
-            <span class="cmd-tag container">container · bash</span>
-            <pre>.devcontainer/bws-login.sh &lt;access-token&gt;   <span class="c"># Bitwarden Secrets Manager（手動入力）</span></pre>
-          </div>
           <div class="cmd host">
             <span class="cmd-tag host">host · powershell</span>
             <pre>.devcontainer\gws-login.ps1                  <span class="c"># Google Workspace</span>
@@ -456,11 +453,20 @@ llm -Rebuild        <span class="c"># Dockerfile 変更後（up --build -d）</s
         <div>
           <h3>取り込む API キーを宣言する</h3>
           <p>
-            <code>.devcontainer/secrets.list</code> に環境変数名を 1 行 1 つ書く（値は書かない）。
-            よく使う API キー名の候補がコメントで入っているので、使う行の <code>#</code> を外すだけでよい。
-            ホストの環境変数にある名前は <code>claude</code> 起動のたびに自動で注入される。
-            ホストに無い名前は <code>bws-login</code> 実行時に <code>load-secrets.sh</code> が bws から取得して
-            <code>~/.secrets</code>（600）へ。以降シェル起動時に自動読込。
+            <code>docker-compose.yml</code> の <code>environment:</code> に環境変数名を書く（値は書かない）。
+            よく使う API キー名が入っているので、使わないものは消し、必要なものを足す。
+            ホストの環境変数（SecretStore 由来を含む）の値がコンテナに入り、Orca の SSH セッションからも見える。
+            値はコンテナ作成時に固定されるので、ホストで変えたら <code>llm -Rebuild</code>。
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>（Orca を使うなら）SSH target を追加</h3>
+          <p>
+            <code>llm</code> が初回に <code>~/.ssh/config</code> へ <code>Host &lt;フォルダ名&gt;-dev</code> を書き、
+            ホスト側のポート（2200〜2299）を割り当てる。Orca の Settings → SSH でその名前を追加し、
+            <code>/workspace</code> を開く。worktree は <code>/workspace/.worktrees</code> に作る。
           </p>
         </div>
       </li>
@@ -482,7 +488,6 @@ llm -Sbx          <span class="c"># devcontainer ではなく sbx サンドボ�
       <li><b>agy タブ</b> — <code>agy --mode=accept-edits</code> が起動済み</li>
       <li><kbd>Ctrl</kbd>+<kbd>f</kbd> — yazi ファイラのフローティングペインを開閉</li>
       <li><kbd>Ctrl</kbd>+<kbd>o</kbd> → <kbd>d</kbd> — デタッチ（コンテナは動いたまま）。<code>claude</code> で再アタッチ</li>
-      <li>新しいペインを開くと <code>~/.secrets</code> の API キーは環境変数として読込済み</li>
     </ul>
   </section>
 
@@ -490,56 +495,8 @@ llm -Sbx          <span class="c"># devcontainer ではなく sbx サンドボ�
     <h2>認証ブリッジ</h2>
     <p class="section-intro">
       コンテナには GUI ブラウザが無いため、ブラウザ認証が要るものはホストで済ませて結果だけ渡す。
-      <code>bws</code> はトークン文字列だけで動くのでコンテナ内で完結する。
     </p>
     <div class="bridges">
-
-      <div class="bridge">
-        <div class="bridge-head">
-          <h3>bws-login</h3>
-          <span class="role">Bitwarden Secrets Manager のアクセストークン</span>
-        </div>
-        <p>
-          マシンアカウントのトークンを <code>~/.config/bws/access-token</code>（600）に保存し、
-          ログインシェルで <code>BWS_ACCESS_TOKEN</code> を自動 export。続けて <code>load-secrets.sh</code> を実行。
-        </p>
-        <div class="cmd container">
-          <span class="cmd-tag container">container · bash</span>
-          <pre>.devcontainer/bws-login.sh &lt;token&gt;   <span class="c"># 引数 or 対話入力</span></pre>
-        </div>
-        <div class="cmd host">
-          <span class="cmd-tag host">host · powershell</span>
-          <pre>.devcontainer\bws-login.ps1          <span class="c"># -Token / プロンプト</span></pre>
-        </div>
-        <dl>
-          <dt>保存先</dt><dd><code>~/.config/bws/access-token</code>（コンテナ内）</dd>
-          <dt>永続化</dt><dd>しない。環境変数・ホストファイルからの自動取得も無く、コンテナ再作成のたびに手動で再入力する</dd>
-          <dt>注意</dt><dd>対象プロジェクトの全シークレット読取権を持つ。dev 限定・コミット禁止・漏洩時はローテート</dd>
-        </dl>
-      </div>
-
-      <div class="bridge">
-        <div class="bridge-head">
-          <h3>secrets.list + load-secrets.sh</h3>
-          <span class="role">API キーを環境変数として取り込む</span>
-        </div>
-        <p>
-          許可リストに載せた名前だけを解決する。<b>ホスト env</b> にあれば <code>claude</code> 関数が
-          起動のたびに <code>docker exec -e</code> で注入し（優先）、無ければ <b>bws</b> のシークレット
-          （<code>key</code> == その名前）から取得して <code>~/.secrets</code> へ。
-        </p>
-        <div class="cmd container">
-          <span class="cmd-tag container">container · bash</span>
-          <pre>bash .devcontainer/load-secrets.sh          <span class="c"># 再取得したいとき（bws-login でも自動実行）</span>
-BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
-        </div>
-        <dl>
-          <dt>リスト</dt><dd><code>.devcontainer/secrets.list</code> — 1 行 1 変数名、<code>#</code> コメント可。よく使うキーの候補入り</dd>
-          <dt>ホスト側</dt><dd>リストに名前があり、ホストの環境変数（SecretStore 由来を含む）に値があれば自動で渡る。値はコンテナ設定に残らない</dd>
-          <dt>保存先</dt><dd><code>~/.secrets</code>（600）／ <code>/etc/profile.d/secrets.sh</code> がシェル起動時に source</dd>
-          <dt>安全側</dt><dd>bws を参照できない（トークン無し／認証失敗）ときは既存の <code>~/.secrets</code> を上書きしない</dd>
-        </dl>
-      </div>
 
       <div class="bridge">
         <div class="bridge-head">
@@ -596,9 +553,6 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
           <tr><td><code>docker-compose.yml</code></td><td>サービス・マウント・環境変数。<code>name</code> / <code>container_name</code> をここで合わせる</td></tr>
           <tr><td><code>devcontainer.json</code></td><td>VS Code 用。<code>postStartCommand: zellij</code></td></tr>
           <tr><td><code>zellij-layout.kdl</code></td><td>claude / agy の 2 タブ構成</td></tr>
-          <tr><td><code>secrets.list</code></td><td>取り込む環境変数名の許可リスト</td></tr>
-          <tr><td><code>load-secrets.sh</code></td><td>許可リストを解決して <code>~/.secrets</code> を生成</td></tr>
-          <tr><td><code>bws-login.sh</code> / <code>.ps1</code></td><td>bws アクセストークンの保存</td></tr>
           <tr><td><code>gws-login.ps1</code></td><td>Google Workspace 認証の引き渡し</td></tr>
           <tr><td><code>nlm-login.sh</code> / <code>.ps1</code></td><td>NotebookLM 認証（Chrome CDP）</td></tr>
           <tr><td><code>host-chrome-debug.ps1</code></td><td>ホスト Chrome を CDP 起動（nlm のトラブルシュート用）</td></tr>
@@ -612,16 +566,14 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
       <table>
         <thead><tr><th>変数</th><th>説明</th></tr></thead>
         <tbody>
-          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>ホストから引き継ぎ</td></tr>
-          <tr><td><code>ANTIGRAVITY_API_KEY</code></td><td>ホストから引き継ぎ</td></tr>
           <tr><td><code>PROJECT_NAME</code></td><td><code>${COMPOSE_PROJECT_NAME}</code></td></tr>
-          <tr><td><code>BWS_ACCESS_TOKEN</code></td><td><code>~/.config/bws/access-token</code> から <code>/etc/profile.d/bws.sh</code> が自動 export</td></tr>
+          <tr><td><code>ANTHROPIC_API_KEY</code> ほか API キー</td><td>名前だけ列挙。ホストの環境変数から引き継ぐ（ホストに無い名前は入らない）</td></tr>
+          <tr><td><code>SSH_PORT</code>（ports）</td><td><code>llm</code> が割り当てるホスト側の sshd ポート。未設定なら Docker が空き番号を選ぶ</td></tr>
         </tbody>
       </table>
     </div>
     <p class="note">
-      <code>secrets.list</code> の名前は <code>claude</code> 関数が起動時に注入するので、
-      この <code>environment:</code> に足す必要はない。ホストに無い名前は bws から取得される。
+      値は <code>docker inspect</code> で見えるので、このコンテナで使うものだけを列挙する。
     </p>
 
     <h3 style="font-size:1rem;font-weight:600;margin-top:2rem;">つまずいたら</h3>
@@ -632,8 +584,8 @@ BWS_PROJECT=my-proj bash .devcontainer/load-secrets.sh</pre>
           <tr><td>コンテナが起動しない</td><td><code>docker compose -f .devcontainer/docker-compose.yml logs node</code></td></tr>
           <tr><td><code>claude</code> が別のものを起動する</td><td>フォルダ名と <code>container_name</code> の不一致。両方を揃える</td></tr>
           <tr><td>Dockerfile の変更が反映されない</td><td><code>llm -Rebuild</code></td></tr>
-          <tr><td>API キーがシェルに無い</td><td><code>source ~/.secrets</code> ／ <code>bws-login</code> 未実行 ／ <code>secrets.list</code> が空</td></tr>
-          <tr><td>bws の値を更新したい</td><td><code>bash .devcontainer/load-secrets.sh</code> を再実行</td></tr>
+          <tr><td>API キーがシェルに無い</td><td><code>environment:</code> に名前が無い ／ ホストの環境変数に無い ／ ホストで変えたあと <code>llm -Rebuild</code> していない</td></tr>
+          <tr><td>Orca からつながらない</td><td><code>llm</code> を一度実行して <code>~/.ssh/config</code> の <code>Host &lt;フォルダ名&gt;-dev</code> とポートを合わせる</td></tr>
           <tr><td>nlm-login が CDP に繋がらない</td><td>ホストで <code>.devcontainer\host-chrome-debug.ps1</code> を先に実行</td></tr>
         </tbody>
       </table>

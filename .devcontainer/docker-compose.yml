@@ -19,8 +19,14 @@
 #   - push はホスト側で行う。
 #
 # Orca（SSH worktrees）からの接続:
-#   - sshd を 127.0.0.1:2222 にだけ公開する（LAN・tailnet からは届かない）。パスワード認証は無効。
-#   - 鍵と ~/.ssh/config の `Host my_init_setting-dev` は `llm` が初回に作る。公開鍵が無いとコンテナは起動しない。
+#   - sshd は claude-base に入っていて、command を指定しなければ起動する。
+#   - コンテナの 2222 番をホストの 127.0.0.1 にだけ公開する（LAN・tailnet からは届かない）。
+#     ホスト側の番号は `llm` が SSH_PORT として割り当てる（~/.ssh/config の Port が台帳）。
+#     llm を通さずに起動すると SSH_PORT が空になり、Docker が空き番号を選ぶ（次の llm で作り直される）。
+#   - 鍵は使わず node の空パスワードで入る。届くのはホスト上のプロセスだけで、それらはもともと
+#     docker exec でコンテナに入れるので、守りの範囲は変わらない。ports を 127.0.0.1 以外に広げないこと。
+#   - ~/.ssh/config の `Host my_init_setting-dev` は `llm` が初回に作る（ホスト鍵は照合しない）。
+#   - SSH セッションにも environment: の変数がそのまま見える（start-sshd.sh が ~/.ssh/environment に書く）。
 #   - Orca では my_init_setting-dev を SSH target に追加して /workspace を開き、worktree の作成先は
 #     /workspace/.worktrees（gitignore 済み）にする。/home/node 配下はコンテナの作り直しで消える。
 #
@@ -51,12 +57,9 @@ services:
       - ../.claude/settings.local.json:/workspace/.claude/settings.local.json:ro
       - ./managed-settings.json:/etc/claude-code/managed-settings.json:ro
       - claude-home:/home/node/.claude
-      - ${USERPROFILE}/.ssh/devcontainer_ed25519.pub:/etc/devcontainer/authorized_key.pub:ro
-      - ssh-hostkeys:/home/node/.ssh-hostkeys
     ports:
-      - "127.0.0.1:2222:2222"
+      - "127.0.0.1:${SSH_PORT:-}:2222"
     working_dir: /workspace
-    command: ["/usr/local/bin/start-sshd.sh"]
     environment:
       - ANTHROPIC_API_KEY
       - GITHUB_MCP_PAT=${GITHUB_MCP_PAT_MY_INIT_SETTING}
@@ -64,4 +67,3 @@ services:
 
 volumes:
   claude-home:
-  ssh-hostkeys:

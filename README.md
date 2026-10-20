@@ -48,5 +48,5 @@ bash ubuntu/initialize_security.sh
   - 取得は `bws`（Secrets Manager CLI）+ マシンアカウントのアクセストークン。トークンは実行時に環境変数か対話貼り付けで渡し、平文ファイル・恒久環境変数・SecretStore のいずれにも保存しない
   - Windows: PowerShell SecretStore (`LocalStore` Vault)
   - Ubuntu / Termux: `~/.secrets` ファイル（chmod 600）
-  - devcontainer: `.devcontainer/secrets.list` に列挙した名前だけを取り込む。ホストの環境変数にあるものは `llm` 関数が起動のたびに `docker exec -e` で注入し（優先）、無ければ bws から補完して `~/.secrets`（chmod 600）へ。bws 側の反映は `.devcontainer/load-secrets.sh`（`bws-login` 実行時に自動）
+  - devcontainer: `docker-compose.yml` の `environment:` に名前だけ列挙したものを、ホストの環境変数から引き継ぐ（コンテナ内に bws は置かない）。Orca の SSH セッションにも同じ変数が見える
 - **MCP サーバー**: Claude Code・Gemini CLI に共通の MCP サーバー群を登録

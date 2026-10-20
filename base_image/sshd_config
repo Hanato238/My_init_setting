@@ -1,0 +1,26 @@
+# ホストの Orca（SSH worktrees）から接続するための sshd 設定。start-sshd.sh が node ユーザーで起動する。
+# 鍵は使わず、node の空パスワードで入る。下流の docker-compose.yml はホストの 127.0.0.1 にだけ公開すること。
+# そうすれば届くのはホスト上のプロセスだけ（もともと docker exec でコンテナに入れる相手）。
+Port 2222
+# ホスト鍵は起動のたびに作り直す。クライアント側（~/.ssh/config）では照合しない。
+HostKey /tmp/ssh_host_ed25519_key
+PidFile /tmp/sshd.pid
+AllowUsers node
+
+PubkeyAuthentication no
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+KbdInteractiveAuthentication no
+UsePAM no
+PermitRootLogin no
+
+# Orca は relay との通信に -L 転送を使う。リモート転送・agent・X11 は不要。
+AllowTcpForwarding local
+AllowAgentForwarding no
+X11Forwarding no
+
+# SSH セッションはコンテナの環境変数を引き継がないため、start-sshd.sh が起動時の環境変数を
+# ~/.ssh/environment に書き出す。docker exec と同じ変数が見えるようにする。
+PermitUserEnvironment yes
+
+Subsystem sftp internal-sftp

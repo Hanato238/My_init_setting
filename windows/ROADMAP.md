@@ -244,20 +244,25 @@ Windows / WSL(`ubuntu/`) / Termux(`android/`) の 3 プラットフォームを�
 
 ---
 
-## 追加実装済み — devcontainer の API キー取得（許可リスト方式）
+## 追加実装済み — devcontainer の API キー取得（compose の environment: に一本化）
 
-`claude_container_template/.devcontainer/` に、取り込む環境変数を絞る許可リスト取得を追加した。
-WSL/Termux の `initialize_security.sh` がプロジェクトの全シークレットをダンプするのに対し、
-devcontainer は `secrets.list` に列挙した名前だけを取り込む。
+以前の `secrets.list` + `load-secrets.sh` + コンテナ内 bws（`bws-login`）は廃止した。
+Orca が SSH で起動するプロセスにも同じキーを見せるため、キーはコンテナ自体の環境変数に入れる。
 
 | 項目 | 決定 |
 |------|------|
-| 許可リスト | `.devcontainer/secrets.list`（1 行 1 環境変数名、`#` コメント可、値は書かない） |
-| 取得元の優先 | ホスト env（`llm` 関数が起動のたびに `docker exec -e NAME` で注入。値はコンテナ設定に残らない）→ 無ければ bws のシークレット（`key` == 名前） |
-| 保存先（bws 由来のみ） | `~/.secrets`（chmod 600）。`/etc/profile.d/secrets.sh` 経由でシェル起動時に自動 source |
-| 実行 | `.devcontainer/load-secrets.sh`。`bws-login.sh` / `bws-login.ps1` の末尾で best-effort 自動実行。再取得は再実行のみ |
-| 優先の実現 | `~/.secrets` の各行は `[ -n "${NAME+x}" ] \|\| export NAME=...`（未設定のときだけ設定）。ホスト注入値を上書きしない |
-| 値の受け渡し | `bws secret list -o json` → `jq` で base64 化 → デコード（改行・引用符に耐える）。`printf %q` で `~/.secrets` に書く |
+| 供給元 | `docker-compose.yml` の `environment:` に名前だけ列挙し、ホストの環境変数（Windows は SecretStore をプロファイルで展開したもの）を引き継ぐ |
+| SSH セッション | claude-base の `start-sshd.sh` が起動時の環境変数を `~/.ssh/environment` に書き、sshd が読み込む（`PermitUserEnvironment yes`） |
+| トレードオフ | 値は `docker inspect` で見える。値はコンテナ作成時に固定されるので、ホストで変えたら `llm -Rebuild` |
+| 汎用コンテナ | `.devcontainer` が無いときの `llm` の汎用コンテナには API キーを渡さない |
+
+## 追加実装済み — claude-base に Orca 用 sshd
+
+| 項目 | 決定 |
+|------|------|
+| 認証 | 鍵なし・node の空パスワード。compose はホストの 127.0.0.1 にだけ公開（届くのは docker exec できるホスト上のプロセスだけ） |
+| 起動 | base の `CMD` が `start-sshd.sh`。compose で `command:` を指定すれば起動しない（オプトイン） |
+| ホスト側ポート | compose は `127.0.0.1:${SSH_PORT:-}:2222`。`llm` が 2200〜2299 からディレクトリ名のハッシュで選び、`~/.ssh/config` の `Host <dir>-dev` の Port を台帳にして再利用する。未設定なら Docker が空き番号を選び、次の `llm` が作り直す |
 
 ### sbx からの離脱（段階的）
 
