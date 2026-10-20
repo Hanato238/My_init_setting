@@ -29,10 +29,10 @@ iex (iwr "https://raw.githubusercontent.com/hanato238/My_init_setting/main/windo
 WSL Ubuntu 上で以下を順番に実行:
 
 ```bash
-bash ubuntu/install_apps.sh
-bash ubuntu/setup_workspace.sh
-bash ubuntu/setup_aliases.sh
-bash ubuntu/initialize_security.sh
+bash ubuntu/wsl-setup/install_apps.sh
+bash ubuntu/wsl-setup/set_workspace.sh
+bash ubuntu/wsl-setup/set_aliases.sh
+bash ubuntu/wsl-setup/initialize_security.sh
 ```
 
 詳細は [`ubuntu/README.md`](ubuntu/README.md) を参照。
