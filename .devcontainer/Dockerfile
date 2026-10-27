@@ -4,8 +4,8 @@
 # 秘密情報は ANTHROPIC_API_KEY・ANTIGRAVITY_API_KEY と repo 限定の GitHub PAT だけ。
 #
 # 共通部分（OS・基本 apt・zellij・Claude Code・agy・Orca 用の鍵なし sshd）は claude-base に入っている
-# （base_image/Dockerfile）。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
-ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261020
+# （workspace の container/Dockerfile）。base を試すときは --build-arg BASE_IMAGE=ghcr.io/hanato238/claude-base:local で差し替える。
+ARG BASE_IMAGE=ghcr.io/hanato238/claude-base:20261027
 FROM ${BASE_IMAGE}
 
 USER root
