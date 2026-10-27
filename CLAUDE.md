@@ -1,4 +1,4 @@
+# コンテキストを小さく保つ
 
-# Gemini 連携
-
-Gemini の呼び出し方針・トークン節約ルールは [`gemini.md`](./gemini.md) を参照。
+委譲（agy-bridge・サブエージェント）とセッションの区切り方は、コンテナ共通ルールに従う
+（コンテナでは `/etc/claude-code/CLAUDE.md` として自動で読み込まれる）。
