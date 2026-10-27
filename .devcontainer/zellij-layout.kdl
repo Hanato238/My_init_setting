@@ -8,8 +8,8 @@ layout {
             plugin location="zellij:status-bar"
         }
     }
-    // 承認フローを効かせるため、permission-mode は既定（auto にしない）。
-    tab name="claude" {
-        pane command="claude" close_on_exit=false
+    // claude / agy は自動で起動しない。必要なときにシェルから起動する。
+    tab name="shell" {
+        pane
     }
 }

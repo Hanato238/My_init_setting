@@ -1,5 +1,8 @@
 # My_init_setting 専用の開発コンテナ
+# 共通部分（ports・seccomp・claude-home・共通プラグイン・CLAUDE.md・hook・agy 設定・共通 env・Orca/SSH・github MCP サーバー）は
+# ../../container/base.yml にある。ここは My_init_setting 固有の差分だけ。
 # name と container_name は `llm` 関数が (Get-Item .).Name（ディレクトリ名）で参照する。
+# .devcontainer/zellij-layout.kdl を COPY するので build の context は .devcontainer（.）。
 #
 # マウント方針:
 #   - リポジトリ全体（..）は書き込み可。Claude がスクリプトを編集・テストする。
@@ -17,39 +20,49 @@
 #     ホストで skill を使う前に .claude/ の diff を確認すること。
 #   - :ro で重ねるファイルは必ずホストに存在させる（git 管理下）。無いと Docker が空ディレクトリを作る。
 #   - push はホスト側で行う。
-#
-# Orca（SSH worktrees）からの接続:
-#   - sshd は claude-base に入っていて、command を指定しなければ起動する。
-#   - コンテナの 2222 番をホストの 127.0.0.1 にだけ公開する（LAN・tailnet からは届かない）。
-#     ホスト側の番号は `llm` が SSH_PORT として割り当てる（~/.ssh/config の Port が台帳）。
-#     llm を通さずに起動すると SSH_PORT が空になり、Docker が空き番号を選ぶ（次の llm で作り直される）。
-#   - 鍵は使わず node の空パスワードで入る。届くのはホスト上のプロセスだけで、それらはもともと
-#     docker exec でコンテナに入れるので、守りの範囲は変わらない。ports を 127.0.0.1 以外に広げないこと。
-#   - ~/.ssh/config の `Host my_init_setting` は `llm` が初回に作る（ホスト鍵は照合しない）。
-#   - SSH セッションにも environment: の変数がそのまま見える（start-sshd.sh が ~/.ssh/environment に書く）。
 #   - Orca では my_init_setting を SSH target に追加して /workspace を開き、worktree の作成先は
 #     /workspace/.worktrees（gitignore 済み）にする。/home/node 配下はコンテナの作り直しで消える。
 #
 # 許可設定:
 #   - コンテナ専用の ./managed-settings.json を managed settings としてマウントする（ユーザー設定では緩められない）。
+#     共通のプラグイン・statusline・hook は base.yml の drop-in（10-common.json）が足す。
 #     ルールを変えたらコンテナを再起動するだけでよい（再ビルド不要）。
 #
 # 秘密情報の方針:
-#   - bws トークンは置かない。下の environment: に列挙したものだけをホストの環境変数から引き継ぐ。
+#   - bws トークンは置かない。base.yml と下の environment: に列挙したものだけをホストの環境変数から引き継ぐ。
 #   - GITHUB_MCP_PAT には My_init_setting だけに絞った fine-grained PAT（Issues: RW / Metadata: R）を渡す。
 #     ホストの GITHUB_MCP_PAT（全リポジトリ用）が入らないよう、別名の GITHUB_MCP_PAT_MY_INIT_SETTING から割り当てる。
 #   - トークンは MCP サーバーだけが使う。Bash からは sandbox.credentials で見えなくしてある。
-#   - ANTIGRAVITY_API_KEY は agy（zellij の agy タブ・Orca のターミナル）用。Claude の Bash からは同じく見えない。
 
 name: my_init_setting
 
 services:
   node:
+    extends:
+      file: ../../container/base.yml
+      service: node
+    container_name: My_init_setting
     build:
       context: .
-      dockerfile: Dockerfile
-    user: node
-    container_name: My_init_setting
+      dockerfile_inline: |
+        ARG BASE_IMAGE
+        FROM $${BASE_IMAGE}
+        USER root
+
+        # 検証ツール: shellcheck（ubuntu/・android/ の bash）、pwsh + Pester（windows/tests）。
+        # pwsh は 7 系なので、Windows PowerShell 5.1 固有の挙動と Windows 依存のテストはホストで確認する。
+        RUN apt-get update && apt-get install -y --no-install-recommends shellcheck \
+            && curl -fsSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o /tmp/ms-prod.deb \
+            && dpkg -i /tmp/ms-prod.deb \
+            && rm /tmp/ms-prod.deb \
+            && apt-get update && apt-get install -y --no-install-recommends powershell \
+            && rm -rf /var/lib/apt/lists/*
+        ARG PESTER_VERSION=5.7.1
+        RUN pwsh -NoProfile -Command "Set-PSRepository PSGallery -InstallationPolicy Trusted; Install-Module Pester -RequiredVersion $${PESTER_VERSION} -Scope AllUsers -Force"
+
+        COPY --chown=node:node zellij-layout.kdl /home/node/.config/zellij/layouts/default.kdl
+
+        USER node
     volumes:
       - ..:/workspace
       - .:/workspace/.devcontainer:ro
@@ -57,15 +70,9 @@ services:
       - ../.claude/settings.json:/workspace/.claude/settings.json:ro
       - ../.claude/settings.local.json:/workspace/.claude/settings.local.json:ro
       - ./managed-settings.json:/etc/claude-code/managed-settings.json:ro
-      - claude-home:/home/node/.claude
-    ports:
-      - "127.0.0.1:${SSH_PORT:-}:2222"
-    working_dir: /workspace
     environment:
-      - ANTHROPIC_API_KEY
-      - ANTIGRAVITY_API_KEY
       - GITHUB_MCP_PAT=${GITHUB_MCP_PAT_MY_INIT_SETTING}
-      - PROJECT_NAME=${COMPOSE_PROJECT_NAME}
 
+# extends ではトップレベルの volumes が継承されないため必須。
 volumes:
   claude-home:

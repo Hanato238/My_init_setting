@@ -1,4 +1,5 @@
 {
+  "model": "opus",
   "allowManagedPermissionRulesOnly": true,
   "allowManagedHooksOnly": true,
   "allowManagedMcpServersOnly": true,
@@ -36,6 +37,7 @@
     "failIfUnavailable": false,
     "allowUnsandboxedCommands": false,
     "enableWeakerNestedSandbox": true,
+    "excludedCommands": ["orca", "orca *"],
     "network": {
       "strictAllowlist": true,
       "allowedDomains": []
